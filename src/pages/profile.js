@@ -112,10 +112,24 @@ export default async function Profile({ params }) {
     ...[['content', 'Content'], ['ach', 'Achievements'], ['about', 'About']].map(([t, label]) => h('button', { 'data-t': t, onclick: () => { tab = t; drawBody(); } }, label)));
   drawBody();
 
+  // numbers count up when the profile opens
+  setTimeout(() => document.querySelectorAll('.profile-stats b').forEach((b) => {
+    const end = Number(String(b.textContent).replace(/\D/g, '')) || 0;
+    if (!end || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t0 = performance.now(); const text = b.textContent;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / 900); const v = Math.round(end * (1 - (1 - k) ** 3));
+      if (!b.isConnected) return;
+      b.textContent = k < 1 ? fmt(v) : text;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }), 60);
+
   const earnedBadges = ach.filter((a) => a.done && ['met-owner', 'pro', 'famous', 'level-25', 'friend'].includes(a.id));
   return h('div', { class: 'page stack', style: { gap: '18px' } },
     h('section', { class: `profile${owner ? ' is-owner' : ''}` },
-      h('div', { class: 'profile-banner' }, profileBanner(user.banner, { owner })),
+      h('div', { class: 'profile-banner' }, profileBanner(user.banner, { owner }), owner ? founderCard(user) : null),
       h('div', { class: 'profile-main' },
         h('div', { class: 'profile-avatar' }, blook(user.blook, owner ? 132 : 120), owner ? h('span', { class: 'profile-crown' }, icon('star', { size: 20 })) : null),
         h('div', { class: 'profile-name' },
@@ -133,6 +147,26 @@ export default async function Profile({ params }) {
           : hasChannel ? followButton(claim.uid, countEl) : null)),
       tabs),
     body);
+}
+
+/* ------------------------------------------------------- founder card */
+
+/** A holographic card that tilts with the pointer: the founder's ID. */
+function founderCard(user) {
+  const card = h('div', { class: 'founder-card', 'aria-label': 'Founder of Quickzy' },
+    h('div', { class: 'fc-shine' }),
+    h('div', { class: 'fc-top' }, h('span', { class: 'fc-logo' }, logo()), h('b', {}, 'QUICKZY')),
+    h('div', { class: 'fc-title' }, 'FOUNDER'),
+    h('div', { class: 'fc-name' }, user.displayName),
+    h('div', { class: 'fc-foot' }, h('span', {}, 'No. 001'), h('span', {}, 'Since 2026'), h('span', {}, '🇰🇬')));
+  card.addEventListener('pointermove', (e) => {
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width; const y = (e.clientY - r.top) / r.height;
+    card.style.setProperty('--rx', `${(0.5 - y) * 22}deg`); card.style.setProperty('--ry', `${(x - 0.5) * 26}deg`);
+    card.style.setProperty('--mx', `${x * 100}%`); card.style.setProperty('--my', `${y * 100}%`);
+  });
+  card.addEventListener('pointerleave', () => { card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg'); });
+  return card;
 }
 
 /* --------------------------------------------------------- all channels */

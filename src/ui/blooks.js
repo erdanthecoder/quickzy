@@ -431,6 +431,61 @@ const DRAW = {
     mouth(s, 'smile', 64);
     cheeks(s);
   },
+  /* rails: the Wild Rails pack */
+  conductor(s) {
+    block(s, '#f2c9a0', '#d6a77a');
+    s.append(svg('rect', { x: 22, y: 14, width: 56, height: 16, rx: 5, fill: '#1f3a6b' }));
+    s.append(svg('rect', { x: 16, y: 27, width: 68, height: 6, rx: 3, fill: '#142a52' }));
+    s.append(svg('rect', { x: 42, y: 17, width: 16, height: 8, rx: 2, fill: '#ffcd1f' }));
+    eyes(s, { y: 50 });
+    s.append(svg('path', { d: 'M36 62 q7 -5 14 0 q7 -5 14 0', fill: '#6b4426' }));
+    mouth(s, 'smile', 69);
+    s.append(svg('rect', { x: 14, y: 76, width: 72, height: 6, fill: '#1f3a6b' }));
+    for (const x of [30, 50, 70]) s.append(svg('circle', { cx: x, cy: 79, r: 2, fill: '#ffcd1f' }));
+  },
+  miner(s) {
+    block(s, '#c9b8a6', '#9c8a78');
+    for (const [x, y] of [[30, 66], [70, 44], [62, 74], [24, 50]]) s.append(svg('circle', { cx: x, cy: y, r: 3.5, fill: '#3b3b44', opacity: 0.45 }));
+    s.append(svg('path', { d: 'M18 30 Q50 2 82 30 Z', fill: '#ffb21f' }));
+    s.append(svg('rect', { x: 14, y: 28, width: 72, height: 6, rx: 3, fill: '#d98a00' }));
+    s.append(svg('circle', { cx: 50, cy: 20, r: 6, fill: '#fff6c4' }));
+    s.append(svg('circle', { cx: 50, cy: 20, r: 3, fill: '#ffe45c' }));
+    eyes(s, { y: 52, style: 'happy' });
+    mouth(s, 'open', 64);
+  },
+  cowboy(s) {
+    s.append(svg('path', { d: 'M6 30 Q50 40 94 30 Q90 38 50 42 Q10 38 6 30 Z', fill: '#8a5a2b' }));
+    block(s, '#f2c9a0', '#d6a77a', { top: 30 });
+    s.append(svg('path', { d: 'M28 32 Q30 6 50 8 Q70 6 72 32 Z', fill: '#a8703c' }));
+    s.append(svg('path', { d: 'M8 32 Q50 44 92 32', fill: 'none', stroke: '#6b4426', 'stroke-width': 5, 'stroke-linecap': 'round' }));
+    s.append(svg('rect', { x: 29, y: 24, width: 42, height: 5, fill: '#e2384d' }));
+    eyes(s, { y: 54, r: 7.5 });
+    mouth(s, 'smile', 67);
+    s.append(svg('path', { d: 'M30 78 L50 88 L70 78 Z', fill: '#e2384d' }));
+  },
+  outlaw(s) {
+    s.append(svg('path', { d: 'M6 28 Q50 38 94 28 Q90 36 50 40 Q10 36 6 28 Z', fill: '#22223a' }));
+    block(s, '#f2c9a0', '#d6a77a', { top: 28 });
+    s.append(svg('path', { d: 'M28 30 Q30 4 50 6 Q70 4 72 30 Z', fill: '#2c2c44' }));
+    s.append(svg('path', { d: 'M8 30 Q50 42 92 30', fill: 'none', stroke: '#17172a', 'stroke-width': 5, 'stroke-linecap': 'round' }));
+    eyes(s, { y: 50, r: 7 });
+    s.append(svg('path', { d: 'M38 46 l8 2 M62 46 l-8 2', stroke: '#3a2a1a', 'stroke-width': 3, 'stroke-linecap': 'round' }));
+    s.append(svg('path', { d: 'M14 58 H86 V80 Q50 92 14 80 Z', fill: '#c1263a' }));
+    for (const [x, y] of [[28, 66], [50, 72], [72, 66], [38, 80], [62, 80]]) s.append(svg('circle', { cx: x, cy: y, r: 2.4, fill: '#fff', opacity: 0.8 }));
+  },
+  locomotive(s) {
+    s.append(svg('circle', { cx: 74, cy: 6, r: 6, fill: '#e6e6ee', opacity: 0.8 }));
+    s.append(svg('circle', { cx: 84, cy: -2, r: 5, fill: '#e6e6ee', opacity: 0.6 }));
+    s.append(svg('rect', { x: 66, y: 10, width: 14, height: 18, rx: 2, fill: '#1d1d24' }));
+    block(s, '#2b2e38', '#17181e');
+    s.append(svg('rect', { x: 14, y: 38, width: 72, height: 5, fill: '#ffcd1f' }));
+    s.append(svg('rect', { x: 14, y: 62, width: 72, height: 5, fill: '#ffcd1f' }));
+    s.append(svg('circle', { cx: 50, cy: 34, r: 8, fill: '#fff1c4' }));
+    s.append(svg('circle', { cx: 50, cy: 34, r: 4, fill: '#ffcd1f' }));
+    eyes(s, { y: 52, color: '#17133f' });
+    mouth(s, 'smile', 72, '#ffcd1f');
+    s.append(svg('path', { d: 'M14 82 L30 92 H70 L86 82 Z', fill: '#c1263a' }));
+  },
   /* winter: the limited Christmas pack */
   snowman(s) {
     block(s, '#f7fbff', '#cfdcf0');
@@ -608,6 +663,11 @@ export const BLOOKS = [
   { id: 'reindeer', name: 'Jingle', set: 'Winter', limited: true },
   { id: 'elf', name: 'Twinkle', set: 'Winter', limited: true },
   { id: 'santa', name: 'Santa', set: 'Winter', limited: true },
+  { id: 'conductor', name: 'Conductor', set: 'Rails' },
+  { id: 'miner', name: 'Coal Miner', set: 'Rails' },
+  { id: 'cowboy', name: 'Rusty', set: 'Rails' },
+  { id: 'outlaw', name: 'Bandit', set: 'Rails' },
+  { id: 'locomotive', name: 'Old Steamy', set: 'Rails' },
   { id: 'buddy', name: 'Buddy', set: 'Friends', reward: true },
   { id: 'kyrgyzstan', name: 'Kyrgyzstan', set: 'Flags', exclusive: true },
   { id: 'azerbaijan', name: 'Azerbaijan', set: 'Flags', exclusive: true },
@@ -636,7 +696,7 @@ const RARITY_OF = {
   legendary: ['dragon', 'unicorn'],
 };
 // the winter pack has its own spread, from a common snowman to a legendary Santa
-const WINTER_RARITY = { snowman: 'common', gingerbread: 'uncommon', reindeer: 'rare', elf: 'epic', santa: 'legendary' };
+const WINTER_RARITY = { snowman: 'common', gingerbread: 'uncommon', reindeer: 'rare', elf: 'epic', santa: 'legendary', conductor: 'common', miner: 'uncommon', cowboy: 'rare', outlaw: 'epic', locomotive: 'legendary' };
 for (const [id, r] of Object.entries(WINTER_RARITY)) RARITY_OF[r].push(id);
 // flags are legendary and exclusive: never in any box, only given by the owner
 RARITY_OF.legendary.push('kyrgyzstan', 'azerbaijan', 'turkey', 'uzbekistan');
@@ -649,7 +709,7 @@ export const LIMITED = BLOOKS.filter((b) => b.limited).map((b) => b.id);
 export const EXCLUSIVE = BLOOKS.filter((b) => b.exclusive).map((b) => b.id);
 /** Everything boxes can give: not limited, not exclusive. */
 export const REGULAR = BLOOKS.filter((b) => !b.limited && !b.exclusive && !b.reward).map((b) => b.id);
-export const STARTERS = RARITY_OF.common.filter((id) => !LIMITED.includes(id));
+export const STARTERS = RARITY_OF.common.filter((id) => !LIMITED.includes(id) && BLOOKS.find((b) => b.id === id)?.set !== 'Rails');
 
 export function rarityOf(id) {
   if (isCustom(id)) return RARITY_BY_ID.get('legendary');

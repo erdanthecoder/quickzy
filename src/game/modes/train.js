@@ -86,7 +86,7 @@ function noise(x) {
 }
 const ridge = (x, oct = 4) => { let v = 0; let a = 0.5; let fq = 1; for (let i = 0; i < oct; i++) { v += noise(x * fq) * a; a /= 2; fq *= 2.1; } return v; };
 
-function drawSkyAndHills(ctx, w, hor, shift, t, warm = 1) {
+export function drawSkyAndHills(ctx, w, hor, shift, t, warm = 1) {
   const g = ctx.createLinearGradient(0, 0, 0, hor);
   g.addColorStop(0, SKY[0]); g.addColorStop(0.55, SKY[1]); g.addColorStop(1, SKY[2]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, hor + 2);
@@ -120,7 +120,7 @@ function drawSkyAndHills(ctx, w, hor, shift, t, warm = 1) {
   ctx.fillStyle = hz; ctx.fillRect(0, hor - hor * 0.12, w, hor * 0.12 + 1);
 }
 
-function pine(ctx, x, y, s, fog) {
+export function pine(ctx, x, y, s, fog) {
   if (s < 0.6) return;
   ctx.fillStyle = `rgb(${lerp(58, 201, fog)},${lerp(44, 214, fog)},${lerp(30, 227, fog)})`;
   ctx.fillRect(x - s * 0.08, y - s * 0.35, s * 0.16, s * 0.35);
