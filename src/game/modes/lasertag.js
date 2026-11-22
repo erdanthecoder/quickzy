@@ -13,6 +13,7 @@ import { h } from '../../ui/dom.js';
 import { makeCanvas, loop, controls, particles, shaker, drawBlook, nameTag, hashString, lerp, rr } from '../arcade/engine.js';
 import { preloadBlooks } from '../../ui/blooks.js';
 import { sfx } from '../sound.js';
+import { loadThree, want3D } from '../arcade/three.js';
 
 /* ------------------------------------------------------------------ world */
 
@@ -283,6 +284,22 @@ export function createHost({ live, P, players, dirty }) {
 export function mountPlayer(game) {
   const { stage, uid, live, P } = game;
   const view = makeCanvas(stage);
+  // the 3D arena, when this device can show it; the 2D one until then
+  let arena = null; let gone = false;
+  const holder = h('div', { class: 'lt3' });
+  const deadEl = h('div', { class: 'lt3-dead', hidden: true });
+  if (want3D()) {
+    Promise.all([loadThree(), import('./lt3d.js')]).then(([T, A]) => {
+      if (gone) return;
+      const canvas = h('canvas', { class: 'lt3-canvas' });
+      holder.append(canvas, deadEl, h('div', { class: 'lt3-cross' }));
+      stage.prepend(holder);
+      try {
+        arena = A.createArena(T, canvas, { W, H, walls: WALLS, spawns: SPAWNS, pickups: PICKUPS });
+        view.canvas.style.display = 'none';
+      } catch { holder.remove(); arena = null; }
+    }).catch(() => {});
+  }
   const ctl = controls(stage, { joystick: true, aim: true, buttons: [{ id: 'recharge', label: 'Recharge', className: 'is-right is-small' }] });
   const fx = particles();
   const shake = shaker();
@@ -419,9 +436,13 @@ export function mountPlayer(game) {
       });
       collide(me);
       if (ctl.aim) {
-        const cam = camera();
-        const wx = (ctl.aim.x - cam.ox) / cam.s;
-        const wy = (ctl.aim.y - cam.oy) / cam.s;
+        let wx; let wy;
+        const hit = arena && arena.toArena(ctl.aim.x, ctl.aim.y);
+        if (hit) { wx = hit.x; wy = hit.y; } else {
+          const cam = camera();
+          wx = (ctl.aim.x - cam.ox) / cam.s;
+          wy = (ctl.aim.y - cam.oy) / cam.s;
+        }
         me.a = Math.atan2(wy - me.y, wx - me.x);
       } else if (ctl.x || ctl.y) me.a = Math.atan2(ctl.y, ctl.x);
       if (ctl.tapped('aim') || ctl.tapped('action') || (ctl.held('action') && cool <= 0)) fire();
@@ -438,6 +459,19 @@ export function mountPlayer(game) {
       game.sendProg({ x: Math.round(me.x), y: Math.round(me.y), a: Math.round(me.a * 100) / 100, s: me.shield ? 1 : 0 });
     }
   }, () => {
+    if (arena) {
+      const now = live.now();
+      const keep = new Set([uid]);
+      arena.setPlayer(uid, { ...me, colour: colourOf(uid), me: true });
+      for (const o of others.values()) if (o.name) { keep.add(o.uid); arena.setPlayer(o.uid, { ...o, colour: colourOf(o.uid) }); }
+      arena.prune(keep);
+      for (const b of beams) if (!b.shown) { b.shown = true; arena.addBeam(b.x1, b.y1, b.x2, b.y2, b.c); }
+      arena.setPickups(taken.map((x) => x <= now));
+      arena.render(1 / 60, me);
+      deadEl.hidden = !me.dead;
+      if (me.dead) deadEl.innerHTML = `<b>${killer ? `Tagged by ${killer.replace(/[<>&]/g, '')}` : 'Tagged!'}</b><span>Back in ${Math.max(0, Math.ceil((deadUntil - now) / 1000))}</span>`;
+      return;
+    }
     const { ctx } = view;
     view.begin();
     ctx.fillStyle = '#07061c';
@@ -483,6 +517,7 @@ export function mountPlayer(game) {
   }
 
   return () => {
+    gone = true; if (arena) arena.destroy(); holder.remove();
     stop(); ctl.destroy(); view.destroy();
     unsubs.forEach((u) => u());
   };
@@ -490,7 +525,50 @@ export function mountPlayer(game) {
 
 /* =========================================================== big screen */
 
-export function mountScreen(el, { ref, live }) {
+export function mountScreen(el, opts) {
+  if (!want3D()) return mountScreen2D(el, opts);
+  let cleanup = null; let gone = false;
+  Promise.all([loadThree(), import('./lt3d.js')]).then(([T, A]) => {
+    if (gone) return;
+    try { cleanup = mountScreen3D(el, opts, T, A); } catch { cleanup = mountScreen2D(el, opts); }
+  }).catch(() => { if (!gone) cleanup = mountScreen2D(el, opts); });
+  return () => { gone = true; if (cleanup) cleanup(); };
+}
+
+function mountScreen3D(el, { ref, live }, T, A) {
+  const canvas = h('canvas', { class: 'lt3-canvas' });
+  const feedEl = h('div', { class: 'lt3-feed' });
+  const holder = h('div', { class: 'lt3' }, canvas, feedEl);
+  el.append(holder);
+  const arena = A.createArena(T, canvas, { W, H, walls: WALLS, spawns: SPAWNS, pickups: PICKUPS, tv: true });
+  arena.setPickups(PICKUPS.map(() => false));
+  const seenBeams = new Set(); let last = performance.now(); let feedKey = '';
+  const stop = loop(() => {}, () => {
+    const nowP = performance.now(); const dt = Math.min(0.1, (nowP - last) / 1000); last = nowP;
+    const host = ref.modeHost; const now = live.now();
+    const keep = new Set();
+    if (host) {
+      for (const [uid, v] of host.pos) {
+        const p = ref.players.get(uid); if (!p) continue;
+        keep.add(uid);
+        arena.setPlayer(uid, { x: v.x, y: v.y, a: v.a, name: p.name, blook: p.blook, colour: colourOf(uid), dead: p.extra.deadUntil > now, shield: p.extra.shieldUntil > now || v.s });
+      }
+      for (const b of host.beams) { const k = `${b.at}|${b.x1}`; if (now - b.at < 400 && !seenBeams.has(k)) { seenBeams.add(k); arena.addBeam(b.x1, b.y1, b.x2, b.y2, b.c); } }
+      if (seenBeams.size > 200) seenBeams.clear();
+      const feed = host.feed.filter((x) => now - x.at < 5000).slice(-4);
+      const fk = feed.map((f) => f.at).join();
+      if (fk !== feedKey) {
+        feedKey = fk;
+        feedEl.replaceChildren(...feed.map((f) => h('div', { class: 'lt3-tag' }, h('b', { style: { color: f.ca } }, f.a), h('span', {}, ' tagged '), h('b', { style: { color: f.cb } }, f.b))));
+      }
+    }
+    arena.prune(keep);
+    arena.render(dt, { x: W / 2, y: H / 2 });
+  });
+  return () => { stop(); arena.destroy(); holder.remove(); };
+}
+
+function mountScreen2D(el, { ref, live }) {
   const view = makeCanvas(el);
   const mh = () => ref.modeHost;
   let t = 0;

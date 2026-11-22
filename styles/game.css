@@ -428,3 +428,20 @@ body.in-game { background: var(--night); color: #fff; overscroll-behavior: none;
 .tr3-row { display: flex; align-items: center; gap: 8px; font: 800 14px Nunito, system-ui; }
 .tr3-row .blook { width: 28px; height: 28px; }
 .tr3-row.is-first b:last-child { color: #ffcd1f; }
+/* Laser Tag, 3D */
+.lt3 { position: absolute; inset: 0; overflow: hidden; background: #05041a; }
+.lt3-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.lt3-dead { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 6px; background: radial-gradient(circle, rgba(255,71,114,.25), rgba(40,0,20,.55)); color: #fff; pointer-events: none; animation: lt3-hit .35s ease; }
+.lt3-dead b { font: 400 clamp(28px, 6vw, 46px) 'Lilita One', system-ui; text-shadow: 0 0 18px #ff4772; }
+.lt3-dead span { font: 900 16px Nunito, system-ui; }
+@keyframes lt3-hit { from { background: rgba(255,255,255,.8); } }
+.lt3-feed { position: absolute; top: 14px; right: 14px; display: grid; gap: 8px; justify-items: end; z-index: 2; }
+.lt3-tag { padding: 8px 14px; border-radius: 12px; background: rgba(5,4,26,.75); border: 1px solid rgba(89,240,255,.4); color: #fff; font: 900 16px Nunito, system-ui; box-shadow: 0 0 18px rgba(89,240,255,.25); animation: lt3-in .3s ease; }
+@keyframes lt3-in { from { transform: translateX(30px); opacity: 0; } }
+/* Robot Run, 3D */
+.rr3 { position: absolute; inset: 0; overflow: hidden; background: #ff8a6a; }
+.rr3-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.rr3-dist { position: absolute; top: 12px; left: 16px; color: #fff; font: 400 34px 'Lilita One', system-ui; text-shadow: 0 3px 10px rgba(0,0,0,.4); pointer-events: none; }
+.rr3-board { position: absolute; top: 14px; right: 14px; width: min(260px, 30%); padding: 10px 12px; border-radius: 14px; background: rgba(23,19,63,.72); color: #fff; display: grid; gap: 6px; backdrop-filter: blur(4px); }
+.rr3-board h3 { margin: 0; color: #ffcd1f; font: 400 18px 'Lilita One', system-ui; }
+.rr3-row { display: flex; gap: 8px; font: 800 14px Nunito, system-ui; }
