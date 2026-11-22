@@ -393,3 +393,38 @@ body.in-game { background: var(--night); color: #fff; overscroll-behavior: none;
 .td-panel { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: #fff; }
 .td-buy i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--tc); margin-right: 4px; }
 .td-hint { color: #fff; opacity: .8; font-weight: 800; }
+/* Train Travel, 3D */
+.tr3 { position: absolute; inset: 0; overflow: hidden; background: #e9cfae; }
+.tr3-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tr3-loading { position: absolute; inset: 0; display: grid; place-items: center; font: 400 26px 'Lilita One', system-ui; color: #3b2a1e; }
+.tr3-dash { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 10px 14px 12px; background: linear-gradient(transparent, rgba(20,12,6,.75) 45%); pointer-events: none; }
+.tr3-coal { display: grid; gap: 4px; color: #f4ecd8; font: 900 15px Nunito, system-ui; text-shadow: 0 2px 4px #000; }
+.tr3-coal b { font-size: 22px; }
+.tr3-lumps { display: flex; flex-wrap: wrap; gap: 3px; max-width: 150px; }
+.tr3-lumps i { width: 14px; height: 11px; border-radius: 45% 55% 40% 60%; background: radial-gradient(circle at 30% 30%, #555, #0b0b0b); animation: trLump .3s backwards; }
+@keyframes trLump { from { transform: translateY(-14px); opacity: 0; } }
+.tr3-gauge { position: relative; width: 84px; height: 84px; border-radius: 50%; background: radial-gradient(#f4ecd8 62%, #c9a24a 64%, #8a6a22 72%); box-shadow: 0 4px 12px #0008; --a: -120deg; }
+.tr3-gauge i { position: absolute; left: 50%; top: 50%; width: 3px; height: 32px; margin-left: -1.5px; background: #c0161e; transform-origin: 50% 100%; transform: translate(0, -100%) rotate(var(--a)); border-radius: 2px; }
+.tr3-gauge small { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; font: 900 10px Nunito, system-ui; color: #3a2a1a; }
+.tr3-plate { display: grid; justify-items: center; padding: 8px 18px; border-radius: 10px; background: linear-gradient(#e2c46e, #9a7a2a); border: 2px solid #6a5016; color: #2a1d0a; box-shadow: 0 4px 12px #0008; }
+.tr3-plate b { font: 400 30px/1 'Lilita One', system-ui; }
+.tr3-plate small { font: 900 10px Nunito, system-ui; letter-spacing: .5px; }
+.tr3-near { position: absolute; top: 10px; right: 12px; display: grid; gap: 6px; justify-items: end; pointer-events: none; }
+.tr3-chip { padding: 5px 12px; border-radius: 99px; font: 900 13px Nunito, system-ui; color: #fff; box-shadow: 0 3px 8px #0006; }
+.tr3-chip.is-ahead { background: rgba(232,17,45,.88); }
+.tr3-chip.is-behind { background: rgba(18,169,138,.9); }
+.tr3-out { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); padding: 10px 18px; border-radius: 14px; background: rgba(232,17,45,.92); color: #fff; font: 900 16px Nunito, system-ui; animation: trPulse 1s infinite alternate; pointer-events: none; text-align: center; }
+@keyframes trPulse { to { transform: translateX(-50%) scale(1.06); } }
+.tr3-cam { position: absolute; top: 10px; left: 12px; padding: 7px 12px; border-radius: 12px; border: 0; background: rgba(23,19,63,.75); color: #fff; font: 900 13px Nunito, system-ui; cursor: pointer; z-index: 3; }
+.tr3-bars::before, .tr3-bars::after { content: ''; position: absolute; left: 0; right: 0; height: 6%; background: #000; z-index: 1; }
+.tr3-bars::before { top: 0; } .tr3-bars::after { bottom: 0; }
+.tr3-bars { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 160px rgba(0,0,0,.45); }
+.tr3-rec { position: absolute; top: 0; left: 0; right: 0; height: 6%; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 0 18px; color: #fff; font: 800 14px Nunito, system-ui; letter-spacing: .5px; }
+.tr3-rec i { width: 11px; height: 11px; border-radius: 50%; background: #ff2a2a; box-shadow: 0 0 8px #ff2a2a; }
+.tr3-rec i.off { opacity: .2; }
+.tr3-rec b { color: #ffcd1f; }
+.tr3-board { position: absolute; top: 9%; right: 16px; width: min(290px, 30%); padding: 10px 12px; border-radius: 14px; background: rgba(15,12,40,.72); color: #fff; display: grid; gap: 6px; z-index: 2; backdrop-filter: blur(4px); }
+.tr3-board h3 { margin: 0 0 2px; color: #ffcd1f; font: 400 18px 'Lilita One', system-ui; }
+.tr3-row { display: flex; align-items: center; gap: 8px; font: 800 14px Nunito, system-ui; }
+.tr3-row .blook { width: 28px; height: 28px; }
+.tr3-row.is-first b:last-child { color: #ffcd1f; }

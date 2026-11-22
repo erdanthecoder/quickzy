@@ -255,7 +255,7 @@ export async function createReferee({ pin, meta: initialMeta, quiz, key, onChang
     const shown = typeof a.s === 'number' ? a.s : a.t;
     const elapsed = Math.max(0, Math.min(a.t - shown, pub[qi].time * 1000));
     // arcade answers are worth a tenth of a classic one: the game itself earns the rest
-    const res = mark(p, qi, a.c, elapsed, pub[qi].time, 0.1);
+    const res = mark(p, qi, a.c, elapsed, pub[qi].time, modeHost && modeHost.answerPoints === false ? 0 : 0.1);
     const grant = modeHost && modeHost.grant ? modeHost.grant(p, res.correct || res.poll) : 0;
     live.set(P(`res/${a.u}/${id}`), { ok: res.correct, poll: Boolean(res.poll), pts: res.pts, st: p.streak, d: res.correct ? '' : res.display, g: grant });
     emit();

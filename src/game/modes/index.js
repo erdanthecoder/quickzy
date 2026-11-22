@@ -28,21 +28,15 @@ export const MODES = [
     durations: [3, 5, 7, 10],
   },
   {
-    id: 'spacecraft', name: 'Spacecraft', kind: 'arcade',
-    tagline: 'Blast asteroids. Answer to refuel and upgrade.',
-    bg: 'linear-gradient(140deg, #0b1030, #1d3b8f)',
-    durations: [3, 5, 7, 10],
-  },
-  {
     id: 'obby', name: 'Sky Climb', kind: 'arcade',
     tagline: 'Climb six worlds to the summit. Fall and you drop. Don\'t look down!',
     bg: 'linear-gradient(160deg, #070b26, #3a2380 35%, #7a80b8 55%, #7fdcff 75%, #78cbff)',
     durations: [3, 5, 7, 10],
   },
   {
-    id: 'defense', name: 'Tower Defense', kind: 'arcade',
-    tagline: 'Build towers, stop the monsters, save the castle. Answers buy towers.',
-    bg: 'linear-gradient(140deg, #2e7d32, #66bb6a 60%, #a8703c)',
+    id: 'train', name: 'Train Travel', kind: 'arcade', isNew: true,
+    tagline: 'Answer for coal, keep the fire burning, and travel the farthest!',
+    bg: 'linear-gradient(160deg, #3b2a1e, #8a5a2b 45%, #f2a65a)',
     durations: [3, 5, 7, 10],
   },
   {
@@ -55,12 +49,6 @@ export const MODES = [
     id: 'treasure', name: 'Treasure Hunt', kind: 'arcade', proOnly: true,
     tagline: 'Answer to open chests. Gold, double, triple… or steal from a rival!',
     bg: 'linear-gradient(140deg, #8a5a2b, #ffb21f)',
-    durations: [3, 5, 7, 10],
-  },
-  {
-    id: 'fishing', name: 'Fishing Frenzy', kind: 'arcade', proOnly: true,
-    tagline: 'Answer for bait, cast, and reel in at the right moment. Catch the Kraken!',
-    bg: 'linear-gradient(160deg, #ffb86b, #2fb8ff 45%, #0b3a7a)',
     durations: [3, 5, 7, 10],
   },
   {
@@ -113,13 +101,6 @@ export function modeArt(id) {
     add('circle', { cx: 62, cy: 70, r: 10, fill: '#17133f' });
     add('path', { d: 'M6 40 h16 M10 52 h12 M4 64 h14', stroke: '#fff', 'stroke-width': 4, 'stroke-linecap': 'round', opacity: 0.7 });
   }
-  if (id === 'spacecraft') {
-    for (const [x, y, r] of [[14, 18, 2], [84, 26, 2.5], [20, 76, 1.8], [80, 82, 2], [62, 12, 1.6]]) add('circle', { cx: x, cy: y, r, fill: '#fff' });
-    add('path', { d: 'M50 10 C64 22 66 46 62 64 H38 C34 46 36 22 50 10 Z', fill: '#e8ecff' });
-    add('circle', { cx: 50, cy: 36, r: 8, fill: '#59f0ff' });
-    add('path', { d: 'M38 52 L24 70 L38 66 Z M62 52 L76 70 L62 66 Z', fill: '#ff4772' });
-    add('path', { d: 'M42 64 L50 88 L58 64 Z', fill: '#ffcd1f' });
-  }
   if (id === 'obby') {
     add('rect', { x: 8, y: 78, width: 30, height: 10, rx: 4, fill: '#fff' });
     add('rect', { x: 40, y: 60, width: 26, height: 10, rx: 4, fill: '#ffcd1f' });
@@ -127,18 +108,6 @@ export function modeArt(id) {
     add('rect', { x: 30, y: 20, width: 24, height: 10, rx: 4, fill: '#ff4772' });
     add('rect', { x: 66, y: 22, width: 14, height: 18, rx: 4, fill: '#17133f' });
     add('path', { d: 'M20 76 q14 -30 30 -18', fill: 'none', stroke: '#fff', 'stroke-width': 3, 'stroke-dasharray': '4 5' });
-  }
-  if (id === 'defense') {
-    add('path', { d: 'M0 30 H34 V70 H66 V40 H100', fill: 'none', stroke: '#d9a466', 'stroke-width': 12, 'stroke-linejoin': 'round' });
-    add('rect', { x: 14, y: 50, width: 16, height: 16, rx: 4, fill: '#4e4a75' });
-    add('circle', { cx: 22, cy: 58, r: 5, fill: '#59f0ff' });
-    add('rect', { x: 44, y: 22, width: 16, height: 16, rx: 4, fill: '#4e4a75' });
-    add('circle', { cx: 52, cy: 30, r: 5, fill: '#ff8a2a' });
-    add('rect', { x: 78, y: 18, width: 20, height: 18, rx: 3, fill: '#e8ecff' });
-    add('rect', { x: 78, y: 13, width: 5, height: 6, fill: '#6b4cff' });
-    add('rect', { x: 86, y: 13, width: 5, height: 6, fill: '#6b4cff' });
-    add('rect', { x: 94, y: 13, width: 4, height: 6, fill: '#6b4cff' });
-    add('circle', { cx: 36, cy: 72, r: 6, fill: '#ff4772' });
   }
   if (id === 'skyrace') {
     add('path', { d: 'M8 30 h26 M4 44 h20 M10 58 h18', stroke: '#fff', 'stroke-width': 4, 'stroke-linecap': 'round', opacity: 0.7 });
@@ -149,20 +118,24 @@ export function modeArt(id) {
     add('path', { d: 'M4 78 L26 76 L30 78 L26 80 Z', fill: '#4a5068' });
     add('path', { d: 'M30 78 h14', stroke: '#ff4772', 'stroke-width': 3, 'stroke-linecap': 'round' });
   }
+  if (id === 'train') {
+    add('path', { d: 'M0 84 H100', stroke: '#2a1a10', 'stroke-width': 4 });
+    for (let x = 4; x < 100; x += 12) add('rect', { x, y: 84, width: 7, height: 6, fill: '#5a3a1a' });
+    add('rect', { x: 22, y: 46, width: 46, height: 24, rx: 10, fill: '#1d1d24' });
+    add('rect', { x: 60, y: 30, width: 26, height: 40, rx: 3, fill: '#8a1f1f' });
+    add('rect', { x: 66, y: 36, width: 14, height: 12, rx: 2, fill: '#ffd27a' });
+    add('rect', { x: 28, y: 32, width: 9, height: 16, fill: '#1d1d24' });
+    add('path', { d: 'M8 70 L22 58 V72 Z', fill: '#c9a24a' });
+    for (const [x, r] of [[34, 9], [54, 9], [76, 7]]) { add('circle', { cx: x, cy: 76, r, fill: '#c9a24a' }); add('circle', { cx: x, cy: 76, r: r - 4, fill: '#1d1d24' }); }
+    add('circle', { cx: 32, cy: 20, r: 8, fill: 'rgba(255,255,255,.8)' });
+    add('circle', { cx: 20, cy: 12, r: 6, fill: 'rgba(255,255,255,.6)' });
+  }
   if (id === 'treasure') {
     add('rect', { x: 20, y: 46, width: 60, height: 36, rx: 5, fill: '#8a5a2b' });
     add('path', { d: 'M20 50 Q50 18 80 50 Z', fill: '#a8703c' });
     add('rect', { x: 20, y: 46, width: 60, height: 7, fill: '#ffcd1f' });
     add('rect', { x: 45, y: 50, width: 10, height: 14, rx: 2, fill: '#ffcd1f' });
     for (const [x, y] of [[30, 30], [62, 24], [76, 36]]) add('circle', { cx: x, cy: y, r: 5, fill: '#ffe45c' });
-  }
-  if (id === 'fishing') {
-    add('path', { d: 'M10 50 Q30 44 50 50 T90 50 V90 H10 Z', fill: '#2fb8ff' });
-    add('path', { d: 'M22 10 L60 40', stroke: '#5a3a1a', 'stroke-width': 4, 'stroke-linecap': 'round' });
-    add('path', { d: 'M60 40 V62', stroke: '#fff', 'stroke-width': 2 });
-    add('ellipse', { cx: 56, cy: 74, rx: 16, ry: 8, fill: '#ffcd1f' });
-    add('path', { d: 'M42 74 L32 66 V82 Z', fill: '#ffcd1f' });
-    add('circle', { cx: 64, cy: 72, r: 2, fill: '#17133f' });
   }
   if (id === 'candy') {
     add('rect', { x: 10, y: 66, width: 80, height: 10, rx: 5, fill: '#17133f' });
