@@ -50,7 +50,7 @@ for (const f of files) {
 }
 
 // every arcade mode implements the same interface
-for (const id of ['lasertag', 'robotrun', 'spacecraft', 'obby']) {
+for (const id of ['lasertag', 'robotrun', 'obby', 'train', 'skyrace', 'treasure', 'candy']) {
   const ex = exportsOf.get(join(root, `src/game/modes/${id}.js`)) || new Set();
   for (const need of ['createHost', 'mountPlayer', 'mountScreen']) if (!ex.has(need)) { console.log(`mode ${id} lacks ${need}`); bad++; }
 }

@@ -51,7 +51,7 @@ export default function Teachers() {
       h('div', { class: 'tch-grid' }, ...WHY.map(card))),
 
     h('section', { class: 'stack' },
-      h('h2', {}, 'Ten ways to play'),
+      h('h2', {}, `${MODES.length} ways to play`),
       h('div', { class: 'features' }, ...MODES.map((m) => h('div', { class: 'mode-card', style: { background: m.bg } },
         modeArt(m.id), h('h3', {}, m.name), h('p', {}, m.tagline))))),
 

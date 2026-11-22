@@ -296,12 +296,13 @@ if (which === 'teams' || which === 'classic' || which === 'all') {
 }
 
 if (which === 'arcade' || which === 'all') {
-  for (const [mode, name] of (process.env.ONLY ? process.env.ONLY.split(',').map((m, i) => [m, process.env.ONLY_NAME.split(',')[i]]) : null) || [['lasertag', 'Laser Tag'], ['robotrun', 'Robot Run'], ['spacecraft', 'Spacecraft'], ['obby', 'Sky Climb'], ['defense', 'Tower Defense'], ['skyrace', 'Sky Race'], ['treasure', 'Treasure Hunt'], ['fishing', 'Fishing Frenzy'], ['candy', 'Candy Factory']]) {
+  for (const [mode, name] of (process.env.ONLY ? process.env.ONLY.split(',').map((m, i) => [m, process.env.ONLY_NAME.split(',')[i]]) : null) || [['lasertag', 'Laser Tag'], ['robotrun', 'Robot Run'], ['obby', 'Sky Climb'], ['train', 'Train Travel'], ['skyrace', 'Sky Race'], ['treasure', 'Treasure Hunt'], ['candy', 'Candy Factory']]) {
     say(`${mode}: open the lobby`);
     if (mode === 'skyrace') await host.evaluate(() => localStorage.setItem('quickzy.test.early', '1'));
     const pin = await openLobby(name, () => (mode === 'skyrace' ? host.waitForSelector('.set-row:has-text("Game length") .pill:has-text("3 min")') : host.click('.set-row:has-text("Game length") button:has-text("3 min")')));
     const cara = await join(pin, 'Cara', { width: 390, height: 780 });
     const dev = await join(pin, 'Dev', { width: 900, height: 600 });
+    if (mode === 'train' && process.env.TRAIN3D) for (const pg of process.env.TRAIN3D === 'host' ? [host] : [dev]) await pg.evaluate(() => localStorage.setItem('quickzy.test.3d', '1'));
     await host.click('button:has-text("Start")');
     say(`${mode}: countdown and play`);
     await cara.waitForSelector('.hud', { timeout: 15000 });
@@ -321,8 +322,8 @@ if (which === 'arcade' || which === 'all') {
       await p.evaluate(() => { if (window.__quickzyAsk) window.__quickzyAsk(); });
       await p.waitForSelector('.q-overlay:not([hidden]) .pad', { timeout: 5000 });
       await answer(p, true);
-      await p.waitForSelector('.verdict', { timeout: 10000 });
-      return p.locator('.verdict h2').innerText();
+      const v = await p.waitForFunction(() => document.querySelector('.verdict h2')?.innerText, null, { timeout: 10000 });
+      return v.jsonValue();
     };
     await ask(dev);
     let verdictText = '';
@@ -356,23 +357,20 @@ if (which === 'arcade' || which === 'all') {
       await cara.waitForTimeout(6000);
       await cara.screenshot({ path: `${SHOTS}/skyrace-jets.png` });
     }
+    if (mode === 'train') {
+      say('train: the coal burns and the train travels');
+      await cara.waitForFunction(() => Number(document.querySelectorAll('.hud-cell')[2].innerText.replace(/\D/g, '')) >= 1000, null, { timeout: 15000 })
+        .catch(() => fail('train: should have travelled 1 km'));
+      await dev.waitForTimeout(1500);
+      await cara.screenshot({ path: `${SHOTS}/train.png` });
+      await dev.screenshot({ path: `${SHOTS}/train-wide.png` });
+    }
     if (mode === 'treasure') {
       say('treasure: open a chest');
       await cara.evaluate(() => window.__quickzyTreasure.give());
       await cara.click('.th-chest >> nth=1');
       await cara.waitForSelector('.th-prize, .th-pick:not([hidden])', { timeout: 10000 });
       await cara.screenshot({ path: `${SHOTS}/treasure-chest.png` });
-    }
-    if (mode === 'fishing') {
-      say('fishing: cast and reel in');
-      await cara.evaluate(() => window.__quickzyFishing.give());
-      await cara.click('.fi-btn');
-      await cara.waitForFunction(() => window.__quickzyFishing.state() === 'bite', null, { timeout: 8000 });
-      await cara.screenshot({ path: `${SHOTS}/fishing-bite.png` });
-      await cara.click('.fi-btn');
-      await cara.waitForFunction(() => window.__quickzyFishing.state() === 'idle', null, { timeout: 8000 });
-      await cara.waitForTimeout(400);
-      await cara.screenshot({ path: `${SHOTS}/fishing-catch.png` });
     }
     if (mode === 'candy') {
       say('candy: buy a machine and make candy');

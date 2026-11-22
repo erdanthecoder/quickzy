@@ -40,6 +40,7 @@ export const BOXES = [
   { id: 'basic', name: 'Quickzy Box', price: 25, level: 1, luck: 1, pool: REGULAR, colour: 'linear-gradient(140deg, #6b4cff, #a560ff)' },
   { id: 'winter', name: 'Winter Pack', price: 25, level: 1, luck: 1, pool: LIMITED, limited: true, ends: WINTER_ENDS,
     colour: 'linear-gradient(160deg, #1d4fbf, #5fb4ff 60%, #e9f6ff)', blurb: 'Christmas limited edition' },
+  { id: 'rails', name: 'Wild Rails Pack', price: 35, level: 1, luck: 1, pool: fromSets('Rails'), colour: 'linear-gradient(160deg, #3b2a1e, #a8703c 55%, #f2a65a)', blurb: 'New! Ride with the Train Travel crew' },
   { id: 'animal', name: 'Animal Pack', price: 30, level: 1, luck: 1, pool: fromSets('Pets', 'Farm', 'Wild'), colour: 'linear-gradient(140deg, #12c9a6, #19c37d)' },
   { id: 'snack', name: 'Snack Pack', price: 20, level: 1, luck: 1, pool: fromSets('Snacks'), colour: 'linear-gradient(140deg, #ff8a2a, #ff4772)' },
   { id: 'space', name: 'Space & Magic Pack', price: 40, level: 2, luck: 1, pool: fromSets('Space', 'Magic'), colour: 'linear-gradient(140deg, #17133f, #3a2ca0)' },

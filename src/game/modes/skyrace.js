@@ -14,6 +14,7 @@ import { makeCanvas, loop, controls, particles, shaker, drawBlook, nameTag, rr, 
 import { preloadBlooks } from '../../ui/blooks.js';
 import { h } from '../../ui/dom.js';
 import { sfx } from '../sound.js';
+import { drawSkyAndHills, pine } from './train.js';
 
 export const BOOSTS = 10;
 export const PER_BOOST = 3;        // right answers for one boost
@@ -69,34 +70,28 @@ export function createHost({ live, P, players, dirty }) {
 /* ================================================================ player */
 
 function drawSky(ctx, w, hh, scroll, t, boosting) {
-  const g = ctx.createLinearGradient(0, 0, 0, hh);
-  g.addColorStop(0, '#2a6fdb'); g.addColorStop(0.6, '#7cc2ff'); g.addColorStop(1, '#ffe2b0');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, w, hh);
-  // sun
-  ctx.fillStyle = 'rgba(255,245,200,0.9)';
-  ctx.beginPath(); ctx.arc(w * 0.85, hh * 0.18, 34, 0, Math.PI * 2); ctx.fill();
-  // far mountains, slow
-  ctx.fillStyle = '#6b84c9';
-  ctx.beginPath(); ctx.moveTo(0, hh);
-  for (let x = 0; x <= w + 40; x += 40) {
-    const k = (x + scroll * 0.05) / 160;
-    ctx.lineTo(x, hh * 0.78 - Math.abs(Math.sin(k)) * 90 - Math.sin(k * 2.3) * 20);
+  // golden-hour sky, sun glow, soft clouds and three hazy mountain ranges
+  const hor = hh * 0.86;
+  drawSkyAndHills(ctx, w, hor, scroll * 2.2, t * 3);
+  // the land far below: fields and forest, rushing past
+  const gg = ctx.createLinearGradient(0, hor, 0, hh);
+  gg.addColorStop(0, '#b9b98a'); gg.addColorStop(1, '#5d7034');
+  ctx.fillStyle = gg; ctx.fillRect(0, hor, w, hh - hor);
+  for (let i = 0; i < 26; i++) {
+    const x = ((i * 113 - scroll * 0.9) % (w + 120) + w + 120) % (w + 120) - 60;
+    pine(ctx, x, hor + 10 + (i % 3) * 6, 14 + (i % 4) * 5, 0.35);
   }
-  ctx.lineTo(w, hh); ctx.fill();
-  ctx.fillStyle = '#4c66b0';
-  ctx.beginPath(); ctx.moveTo(0, hh);
-  for (let x = 0; x <= w + 40; x += 30) {
-    const k = (x + scroll * 0.12) / 110;
-    ctx.lineTo(x, hh * 0.88 - Math.abs(Math.sin(k)) * 60);
-  }
-  ctx.lineTo(w, hh); ctx.fill();
-  // clouds, fast
-  for (let i = 0; i < 8; i++) {
-    const cw = 120 + (i % 3) * 40;
-    const x = w - ((scroll * (0.5 + (i % 3) * 0.25) + i * 230) % (w + cw * 2)) + cw;
-    const y = 40 + ((i * 97) % (hh * 0.6));
-    ctx.fillStyle = `rgba(255,255,255,${0.55 + (i % 2) * 0.2})`;
-    ctx.beginPath(); ctx.ellipse(x, y, cw / 2, 18, 0, 0, Math.PI * 2); ctx.ellipse(x + 30, y - 12, cw / 3, 16, 0, 0, Math.PI * 2); ctx.fill();
+  // close clouds that fly past the plane
+  for (let i = 0; i < 5; i++) {
+    const cw = w * 0.18 + (i % 2) * 60;
+    const x = w - ((scroll * (1.6 + i * 0.3) + i * 410) % (w + cw * 2)) + cw;
+    const y = hh * (0.12 + i * 0.15);
+    for (let k = 0; k < 4; k++) {
+      const r = cw * (0.22 + (k % 2) * 0.1);
+      const g = ctx.createRadialGradient(x + k * cw * 0.2, y, 1, x + k * cw * 0.2, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,.8)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(x + k * cw * 0.2 - r, y - r, r * 2, r * 2);
+    }
   }
   // speed lines when boosting
   if (boosting) {
@@ -124,8 +119,12 @@ function drawPlane(ctx, x, y, s, { tilt = 0, blookId, boosting, t, colour = '#ff
   }
   ctx.fillStyle = '#e8112d';
   ctx.beginPath(); ctx.moveTo(-48, -2); ctx.lineTo(-60, -26); ctx.lineTo(-44, -26); ctx.lineTo(-30, -4); ctx.fill();
-  ctx.fillStyle = colour;
+  const body = ctx.createLinearGradient(0, -13, 0, 13);
+  body.addColorStop(0, '#ffffff'); body.addColorStop(0.45, colour); body.addColorStop(1, '#9aa0bf');
+  ctx.fillStyle = body;
   ctx.beginPath(); ctx.ellipse(0, 0, 54, 13, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2b3a66';
+  for (let k = 0; k < 7; k++) { ctx.beginPath(); ctx.arc(-26 + k * 8, -3, 1.8, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = '#c9cff5';
   ctx.beginPath(); ctx.ellipse(0, 6, 50, 6, 0, 0, Math.PI); ctx.fill();
   ctx.fillStyle = '#6b4cff';

@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const { rollChest, createHost: treasureHost } = await import('../../src/game/modes/treasure.js');
-const { rollFish, FISH } = await import('../../src/game/modes/fishing.js');
 const { createHost: candyHost, costOf } = await import('../../src/game/modes/candy.js');
 
 const setup = (make) => {
@@ -33,14 +32,6 @@ test('treasure: chest outcomes are sane', () => {
   }
 });
 
-test('fishing: a miss gets away, perfect timing finds fish in range', () => {
-  assert.equal(rollFish(0), null);
-  for (let i = 0; i < 300; i++) {
-    const f = rollFish(1);
-    assert.ok(f.lb >= FISH[f.i][2] * 0.6 && f.lb <= FISH[f.i][3]);
-  }
-});
-
 test('candy: machines cost cash and make candy', () => {
   const { host, add } = setup(candyHost);
   const p = add('p');
@@ -52,4 +43,20 @@ test('candy: machines cost cash and make candy', () => {
   assert.ok(costOf(0, 1) > costOf(0, 0));
   host.tick(1000); host.tick(2000);
   assert.ok(p.score >= 1);
+});
+
+const { createHost: trainHost, burn } = await import('../../src/game/modes/train.js');
+
+test('train: a right answer is 2 coal, a coal burns 3 s and carries 500 m', () => {
+  const { host, add } = setup(trainHost);
+  const p = add('p');
+  assert.equal(p.extra.coal, 2);
+  assert.equal(host.grant(p, false), 0);
+  assert.equal(host.grant(p, true), 2);
+  assert.equal(p.extra.coal, 4);
+  host.tick(1000); host.tick(4000);            // 3 seconds: one coal burned
+  assert.equal(p.score, 500);
+  const e = { coal: 1, fire: 0, m: 0 };
+  burn(e, 100);                                // one coal, then the fire goes out
+  assert.equal(e.m, 500); assert.equal(e.coal, 0);
 });

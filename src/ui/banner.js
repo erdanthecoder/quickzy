@@ -53,15 +53,19 @@ export function profileBanner(choice, { owner = false } = {}) {
   return h('div', { class: 'bn', style: { background: b.bg } }, shapes(b.shapes));
 }
 
-/** The founder's banner: an animated scene with the logo and a blook parade. */
+/** The founder's banner: deep space, an aurora, shooting stars, and blooks orbiting the logo. */
 function ownerBanner() {
-  const parade = ['kyrgyzstan', 'dragon', 'unicorn', 'robot', 'fox', 'astronaut', 'santa', 'buddy', 'yeti', 'alien', 'tiger', 'panda'];
+  const orbit = ['kyrgyzstan', 'dragon', 'unicorn', 'robot', 'astronaut', 'fox'];
   return h('div', { class: 'bn bn-owner' },
+    h('div', { class: 'bno-aurora' }, h('i'), h('i'), h('i')),
+    h('div', { class: 'bno-stars' }, ...Array.from({ length: 46 }, (_, i) => h('i', { style: { '--x': `${(i * 37) % 100}%`, '--y': `${(i * 53) % 100}%`, '--d': `${(i % 7) * 0.4}s`, '--s': `${1 + (i % 3)}px` } }))),
+    h('div', { class: 'bno-shoot' }, h('i'), h('i'), h('i')),
+    h('div', { class: 'bno-word', 'aria-hidden': 'true' }, 'FOUNDER'),
     shapes('mountains'),
-    h('div', { class: 'bn-owner-glow' }),
-    h('div', { class: 'bn-owner-logo' }, logo()),
-    h('div', { class: 'bn-parade' }, ...parade.concat(parade).map((id, i) => h('span', { style: { '--i': i } }, blook(id, 54)))),
-    h('div', { class: 'bn-sparkles' }, ...Array.from({ length: 18 }, (_, i) => h('i', { style: { '--i': i } }))));
+    h('div', { class: 'bno-core' },
+      h('div', { class: 'bno-ring' }),
+      h('div', { class: 'bno-orbit' }, ...orbit.map((id, i) => h('span', { style: { '--i': i, '--n': orbit.length } }, h('span', {}, blook(id, 40))))),
+      h('div', { class: 'bno-logo' }, logo())));
 }
 
 /** A small preview of each banner, for the picker in Settings. */

@@ -1205,12 +1205,6 @@ button.bcard.is-slot { color: var(--violet); border-color: var(--violet); backgr
 @keyframes bn-drift { to { transform: translateX(40px); } }
 @keyframes bn-twinkle { 50% { opacity: .2; } }
 @keyframes bn-bob { to { transform: translateY(-14px); } }
-.bn-owner { background: linear-gradient(120deg, #ff8a2a, #ff4772 35%, #6b4cff 70%, #2f9bff); background-size: 300% 300%; animation: bn-hue 12s ease infinite; }
-@keyframes bn-hue { 50% { background-position: 100% 50%; } }
-.bn-owner-glow { position: absolute; inset: 0; background: radial-gradient(circle at 50% 120%, #ffe45c88, transparent 60%); }
-.bn-owner-logo { position: absolute; left: 50%; top: 14%; transform: translateX(-50%); width: clamp(60px, 9vw, 96px); filter: drop-shadow(0 6px 14px #0006); animation: bn-float 3.2s ease-in-out infinite; }
-.bn-owner-logo .logo-mark { width: 100%; height: auto; }
-@keyframes bn-float { 50% { transform: translate(-50%, -10px) rotate(-4deg); } }
 .bn-parade { position: absolute; left: 0; bottom: 6px; display: flex; gap: 14px; width: max-content; animation: bn-parade 28s linear infinite; }
 .bn-parade span { animation: bn-hop .7s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -.12s); }
 @keyframes bn-parade { to { transform: translateX(-50%); } }
@@ -1554,3 +1548,62 @@ button.bcard.is-slot { color: var(--violet); border-color: var(--violet); backgr
 .person .blook { width: 56px; height: 56px; }
 .person b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person small { color: var(--ink-2); font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- The founder's profile: deep space, aurora, orbiting blooks ---- */
+.bn-owner { background: radial-gradient(ellipse at 50% 120%, #3a1a7a, #120a38 55%, #05031a); }
+.bno-aurora i { position: absolute; width: 60%; height: 140%; top: -30%; border-radius: 50%; filter: blur(40px); opacity: .55; mix-blend-mode: screen; animation: bno-aur 14s ease-in-out infinite alternate; }
+.bno-aurora i:nth-child(1) { left: -10%; background: #12c9a6; }
+.bno-aurora i:nth-child(2) { left: 25%; background: #6b4cff; animation-delay: -5s; }
+.bno-aurora i:nth-child(3) { left: 55%; background: #ff4772; animation-delay: -9s; opacity: .4; }
+@keyframes bno-aur { to { transform: translate(12%, 8%) scale(1.15) rotate(12deg); } }
+.bno-stars i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; animation: bn-twinkle 2.6s ease-in-out infinite; animation-delay: var(--d); }
+.bno-shoot i { position: absolute; top: 10%; left: 110%; width: 140px; height: 2px; background: linear-gradient(90deg, #fff, transparent); border-radius: 2px; transform: rotate(-18deg); animation: bno-shoot 7s linear infinite; opacity: 0; }
+.bno-shoot i:nth-child(2) { top: 30%; animation-delay: 2.4s; }
+.bno-shoot i:nth-child(3) { top: 4%; animation-delay: 4.8s; }
+@keyframes bno-shoot { 0% { transform: translateX(0) rotate(-18deg); opacity: 0; } 4% { opacity: 1; } 16% { transform: translateX(-140vw) rotate(-18deg); opacity: 0; } 100% { opacity: 0; transform: translateX(-140vw) rotate(-18deg); } }
+.bno-word { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -55%); font: 400 clamp(60px, 14vw, 170px)/1 'Lilita One', system-ui; letter-spacing: 6px; color: transparent; -webkit-text-stroke: 2px rgba(255,255,255,.14); background: linear-gradient(100deg, transparent 30%, rgba(255,230,140,.5) 50%, transparent 70%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; animation: bno-sheen 5s linear infinite; white-space: nowrap; pointer-events: none; }
+@keyframes bno-sheen { to { background-position: -300% 0; } }
+.bn-owner .bn-art { opacity: .55; }
+.bno-core { position: absolute; left: 50%; top: 46%; width: clamp(150px, 22vw, 210px); aspect-ratio: 1; transform: translate(-50%, -50%); }
+.bno-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px dashed rgba(255,255,255,.25); animation: spin-slow 40s linear infinite; }
+.bno-logo { position: absolute; inset: 30%; filter: drop-shadow(0 0 22px rgba(255,205,31,.55)); animation: bno-pulse 3s ease-in-out infinite; }
+.bno-logo .logo-mark { width: 100%; height: 100%; }
+@keyframes bno-pulse { 50% { transform: scale(1.08) rotate(-4deg); } }
+.bno-orbit { position: absolute; inset: 0; animation: spin-slow 18s linear infinite; }
+.bno-orbit > span { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(calc(var(--i) * 360deg / var(--n))) translateY(calc(clamp(150px, 22vw, 210px) / -2)); }
+.bno-orbit > span > span { display: block; transform: translate(-50%, -50%) rotate(calc(var(--i) * -360deg / var(--n))); animation: spin-slow 18s linear infinite reverse; }
+.is-owner .profile-banner { height: clamp(190px, 30vw, 300px); }
+
+.profile.is-owner { position: relative; background: linear-gradient(160deg, #150f3d, #0b0826 60%, #1a0f2e); color: #fff; box-shadow: 0 0 0 2px transparent, 0 20px 60px rgba(107,76,255,.35); isolation: isolate; }
+.profile.is-owner::before { content: ''; position: absolute; inset: -2px; border-radius: 28px; padding: 2px; background: conic-gradient(from var(--ang, 0deg), #ffcd1f, #ff4772, #6b4cff, #12c9a6, #ffcd1f); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: own-border 6s linear infinite; z-index: -1; }
+@property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes own-border { to { --ang: 360deg; } }
+.is-owner .profile-main { margin-top: -78px; }
+.is-owner .profile-avatar { padding: 6px; box-shadow: 0 0 40px rgba(255,205,31,.45), 0 0 0 4px #150f3d; }
+.is-owner .profile-avatar > :first-child { background: #1d1550; }
+.is-owner .profile-name h1 { background: linear-gradient(90deg, #ffe7a0, #ffcd1f 30%, #fff 50%, #ffcd1f 70%, #ffe7a0) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: own-name 4s linear infinite; font-size: clamp(30px, 5vw, 46px); filter: drop-shadow(0 2px 10px rgba(255,205,31,.35)); }
+@keyframes own-name { to { background-position: -200% 0; } }
+.is-owner .profile-name .muted, .is-owner .profile-stats small { color: rgba(255,255,255,.65); }
+.is-owner .profile-stats > div { padding: 8px 14px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); }
+.is-owner .profile-stats b { color: #fff; }
+.is-owner .profile-tabs { border-top-color: rgba(255,255,255,.1); }
+.is-owner .profile-tabs button { color: rgba(255,255,255,.6); }
+.is-owner .profile-tabs button.is-on, .is-owner .profile-tabs button[aria-selected="true"] { color: #ffcd1f; border-bottom-color: #ffcd1f; }
+.is-owner .profile-action .btn { background: rgba(255,255,255,.1); color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.4); }
+.is-owner .profile-crown { animation: own-crown 2.4s ease-in-out infinite; }
+@keyframes own-crown { 50% { transform: translateY(-4px) rotate(10deg); } }
+
+.founder-card { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; position: relative; width: 190px; aspect-ratio: 1.58; border-radius: 14px; padding: 12px 14px; color: #2a1d0a; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto auto; transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform .15s; background: linear-gradient(135deg, #fff1b8, #ffcd1f 30%, #e8a91a 55%, #fff1b8 80%, #d9971a); box-shadow: 0 10px 30px rgba(255,205,31,.35), inset 0 0 0 1px rgba(255,255,255,.6); animation: fc-float 4s ease-in-out infinite; }
+@keyframes fc-float { 50% { translate: 0 -5px; } }
+.fc-shine { position: absolute; inset: 0; background: radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,.75), transparent 45%), linear-gradient(115deg, transparent 30%, rgba(255,71,114,.25) 42%, rgba(47,155,255,.25) 50%, rgba(18,201,166,.25) 58%, transparent 70%); background-size: 100% 100%, 250% 100%; mix-blend-mode: overlay; animation: fc-holo 3.5s linear infinite; pointer-events: none; }
+@keyframes fc-holo { to { background-position: 0 0, -250% 0; } }
+.fc-top { display: flex; align-items: center; gap: 6px; font: 900 11px Nunito, system-ui; letter-spacing: 2px; }
+.fc-logo { width: 22px; height: 22px; display: inline-block; }
+.fc-logo .logo-mark { width: 100%; height: 100%; }
+.fc-title { align-self: end; font: 400 26px/1 'Lilita One', system-ui; letter-spacing: 3px; }
+.fc-name { font: 900 13px Nunito, system-ui; opacity: .85; }
+.fc-foot { display: flex; justify-content: space-between; font: 900 10px Nunito, system-ui; letter-spacing: 1px; opacity: .75; margin-top: 4px; }
+@media (max-width: 600px) { .founder-card { width: 100%; max-width: 280px; } }
+@media (prefers-reduced-motion: reduce) { .bno-orbit, .bno-orbit > span > span, .bno-ring, .bno-aurora i, .bno-shoot i, .founder-card, .fc-shine { animation: none; } }
+.profile-banner .founder-card { position: absolute; right: 22px; bottom: 18px; z-index: 2; }
+@media (max-width: 600px) { .profile-banner .founder-card { width: 128px; right: 10px; bottom: 10px; padding: 7px 9px; } .profile-banner .fc-title { font-size: 18px; } }

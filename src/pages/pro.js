@@ -22,7 +22,7 @@ export function proLetter() {
     h('p', { class: 'letter-to' }, `Dear ${p.displayName || 'friend'},`),
     h('p', {}, 'Thank you for becoming a Quickzy Pro member. You are one of the people who keep Quickzy growing: every quiz you make and every game you host makes it better for everyone who plays.'),
     h('p', {}, 'Your gold PRO badge now shines next to your name. Your quizzes go live the moment you publish them, your games hold up to 100 players, and every game mode is yours to host.'),
-    h('p', {}, 'We are building more for you: video quizzes, making quizzes together, and a brand new Tower Defense game. You will be the first to play them.'),
+    h('p', {}, 'We are building more for you: video quizzes, making quizzes together, and brand new games. You will be the first to play them.'),
     h('p', { class: 'letter-sign' }, 'With thanks,', h('br'), h('b', {}, 'Erdan and the Quickzy team')),
     h('button', { class: 'btn btn-main btn-block', onclick: () => close() }, 'Thank you!'))], { wide: false });
 }
@@ -78,7 +78,7 @@ export default async function Pro() {
         h('ul', { class: 'pro-list is-free' },
           perk(['list', `${free.quizzes} quizzes`, 'Plenty to start with.']),
           perk(['users', `${free.players} players a game`, 'Great for one class.']),
-          perk(['play', 'Classic, Robot Run and Sky Climb', 'Laser Tag, Spacecraft, Tower Defense and 3 Pro-only games are Pro.']),
+          perk(['play', 'Classic, Robot Run, Sky Climb, Train Travel and Sky Race', 'Laser Tag and the Pro-only games are Pro.']),
           perk(['clock', 'Quizzes are checked', 'Published quizzes are checked automatically and go live in 3–5 days.'])),
         h('div', { class: 'row', style: { justifyContent: 'center', gap: '10px' } }, ...['fox', 'unicorn', 'dragon', 'kyrgyzstan'].map((id) => blook(id, 56))))));
 }

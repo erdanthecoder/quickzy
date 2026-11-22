@@ -47,7 +47,7 @@ function sceneJoin() {
 function scenePlay() {
   return h('div', { class: 'cs-scene' },
     h('h2', { class: 'cs-head' }, '3. Play it like a game'),
-    h('div', { class: 'cs-modes' }, ...['lasertag', 'robotrun', 'spacecraft', 'obby'].map((m, i) =>
+    h('div', { class: 'cs-modes' }, ...['lasertag', 'robotrun', 'train', 'obby'].map((m, i) =>
       h('div', { class: 'cs-mode', style: { animationDelay: `${i * 220}ms` } }, modeArt(m)))),
     h('div', { class: 'cs-zoom' }, blook('astronaut', 70)));
 }
