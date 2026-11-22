@@ -55,7 +55,8 @@ export default async function HostSetup({ params }) {
         if (locked) { toast(`${m.name} is for Pro members. Go Pro to host every game.`, 'bad'); navigate('/pro'); return; }
         s.mode = m.id; drawModes(); drawOptions();
       },
-    }, modeArt(m.id), h('b', {}, m.name), h('small', {}, m.tagline), soon ? h('span', { class: 'pro-tag is-soon' }, icon('clock', { size: 12 }), 'SOON') : locked ? h('span', { class: 'pro-tag' }, icon('lock', { size: 12 }), 'PRO') : m.proOnly ? h('span', { class: 'pro-tag' }, icon('star', { size: 12 }), 'PRO') : m.isNew ? h('span', { class: 'pro-tag is-new' }, 'NEW') : null);
+    }, h('span', { class: 'mode-stage' }, h('span', { class: 'mode-spot' }), modeArt(m.id)), h('span', { class: 'mode-text' }, h('b', {}, m.name), h('small', {}, m.tagline)),
+    m.id === s.mode ? h('span', { class: 'mode-check' }, icon('check', { size: 16, stroke: 3.4 })) : null, soon ? h('span', { class: 'pro-tag is-soon' }, icon('clock', { size: 12 }), 'SOON') : locked ? h('span', { class: 'pro-tag' }, icon('lock', { size: 12 }), 'PRO') : m.proOnly ? h('span', { class: 'pro-tag' }, icon('star', { size: 12 }), 'PRO') : m.isNew ? h('span', { class: 'pro-tag is-new' }, 'NEW') : null);
   }));
 
   const opt = (title, text, control) => h('div', { class: 'set-row' },

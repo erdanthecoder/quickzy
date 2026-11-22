@@ -13,6 +13,8 @@
 import { makeCanvas, loop, controls, particles, shaker, drawBlook, nameTag, rng, hashString, rr, lerp } from '../arcade/engine.js';
 import { preloadBlooks } from '../../ui/blooks.js';
 import { sfx } from '../sound.js';
+import { h } from '../../ui/dom.js';
+import { loadThree, want3D } from '../arcade/three.js';
 
 const PX = 40;                    // pixels per metre
 const BASE = 8;                   // m/s
@@ -101,6 +103,20 @@ export function mountPlayer(game) {
   const { stage, uid, live, P, meta } = game;
   const view = makeCanvas(stage);
   const ctl = controls(stage, { buttons: [{ id: 'action', label: 'Jump', className: 'is-right' }] });
+  // the 3D street, when this device can show it
+  let run3d = null; let gone = false;
+  const holder = h('div', { class: 'rr3' });
+  const distEl = h('div', { class: 'rr3-dist' });
+  if (want3D()) {
+    Promise.all([loadThree(), import('./rr3d.js')]).then(([T, R]) => {
+      if (gone) return;
+      const canvas = h('canvas', { class: 'rr3-canvas' });
+      holder.append(canvas, distEl); stage.prepend(holder);
+      try { run3d = R.createRun(T, canvas); view.canvas.style.display = 'none'; } catch { holder.remove(); run3d = null; }
+    }).catch(() => {});
+  }
+  const laneOf = (u) => [-1, 1][hashString(u) % 2];
+  let lastDraw = performance.now();
   const fx = particles();
   const shake = shaker();
   const seed = hashString(`${meta.quizId}:${game.meta.createdAt || 0}`);
@@ -218,6 +234,21 @@ export function mountPlayer(game) {
     const now = live.now();
     if (now - lastProg > 500) { lastProg = now; game.sendProg({ d: Math.round(bot.d * 10) / 10 }); }
   }, () => {
+    if (run3d) {
+      const nowP = performance.now(); const dt = Math.min(0.1, (nowP - lastDraw) / 1000); lastDraw = nowP;
+      const keep = new Set([uid]);
+      run3d.setRunner(uid, { blook: game.blook, name: game.name, me: true, lane: 0, d: bot.d, y: bot.y, squash: bot.squash, boost: bot.boost > 0, shield: bot.shield, blink: bot.stumble > 0 && Math.floor(tSec * 12) % 2 });
+      for (const [u, d] of Object.entries(race)) {
+        if (u === uid) continue;
+        const info = names.get(u); if (!info || Math.abs(d - bot.d) > 80) continue;
+        keep.add(u);
+        run3d.setRunner(u, { blook: info.blook, name: info.name, ghost: true, lane: laneOf(u), d, y: 0 });
+      }
+      run3d.prune(keep);
+      run3d.render(dt, { d: bot.d, y: bot.y, obstacles: obstaclesNear(bot.d - 3, bot.d + 70), boost: bot.boost > 0 });
+      distEl.textContent = `${Math.floor(bot.d)} m`;
+      return;
+    }
     const { ctx, w, h } = view;
     view.begin();
     ctx.save();
@@ -319,12 +350,51 @@ export function mountPlayer(game) {
     ctx.fillText(`${Math.floor(bot.d)} m`, 16, 12);
   });
 
-  return () => { stop(); ctl.destroy(); view.destroy(); unsubs.forEach((u) => u()); };
+  return () => { gone = true; if (run3d) run3d.destroy(); holder.remove(); stop(); ctl.destroy(); view.destroy(); unsubs.forEach((u) => u()); };
 }
 
 /* =========================================================== big screen */
 
-export function mountScreen(el, { ref }) {
+export function mountScreen(el, opts) {
+  if (!want3D()) return mountScreen2D(el, opts);
+  let cleanup = null; let gone = false;
+  Promise.all([loadThree(), import('./rr3d.js')]).then(([T, R]) => {
+    if (gone) return;
+    try { cleanup = mountScreen3D(el, opts, T, R); } catch { cleanup = mountScreen2D(el, opts); }
+  }).catch(() => { if (!gone) cleanup = mountScreen2D(el, opts); });
+  return () => { gone = true; if (cleanup) cleanup(); };
+}
+
+function mountScreen3D(el, { ref }, T, R) {
+  const canvas = h('canvas', { class: 'rr3-canvas' });
+  const board = h('div', { class: 'rr3-board' });
+  const holder = h('div', { class: 'rr3' }, canvas, board);
+  el.append(holder);
+  const run = R.createRun(T, canvas, { tv: true });
+  const shown = new Map(); let last = performance.now(); let key = '';
+  const lanes = [0, -1, 1, -2, 2];
+  const stop = loop(() => {}, () => {
+    const now = performance.now(); const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const list = ref.ranked().slice(0, 5);
+    const keep = new Set();
+    list.forEach((p, i) => {
+      const d = lerp(shown.get(p.uid) ?? (p.extra.d || 0), p.extra.d || 0, Math.min(1, dt * 2)); shown.set(p.uid, d);
+      keep.add(p.uid);
+      run.setRunner(p.uid, { blook: p.blook, name: `${i + 1}. ${p.name}`, lane: lanes[i], d, y: 0, speed: 10, boost: i === 0 });
+    });
+    run.prune(keep);
+    const lead = list[0] ? shown.get(list[0].uid) || 0 : 0;
+    run.render(dt, { d: lead });
+    const k = list.map((p) => `${p.uid}${Math.floor(p.extra.d || 0)}`).join('|');
+    if (k !== key) {
+      key = k;
+      board.replaceChildren(h('h3', {}, 'Robot Run'), ...list.map((p, i) => h('div', { class: 'rr3-row' }, h('b', {}, String(i + 1)), h('span', { class: 'grow' }, p.name), h('b', {}, `${Math.floor(p.extra.d || 0)} m`))));
+    }
+  });
+  return () => { stop(); run.destroy(); holder.remove(); };
+}
+
+function mountScreen2D(el, { ref }) {
   const view = makeCanvas(el);
   let t = 0;
   const shown = new Map();

@@ -144,9 +144,9 @@ export default async function Home() {
     h('div', { class: 'section-head' }, h('h2', {}, `${MODES.length} ways to play`)),
     h('div', { class: 'features reveal' },
       ...MODES.map((m) => h('div', { class: 'mode-card', style: { background: m.bg } },
-        modeArt(m.id),
-        h('h3', {}, m.name),
-        h('p', {}, m.tagline)))),
+        h('span', { class: 'mode-stage' }, h('span', { class: 'mode-spot' }), modeArt(m.id)),
+        h('span', { class: 'mode-text' }, h('h3', {}, m.name), h('p', {}, m.tagline)),
+        m.isNew ? h('span', { class: 'pro-tag is-new' }, 'NEW') : m.proOnly ? h('span', { class: 'pro-tag' }, 'PRO') : null))),
 
     installSlot,
     inviteSlot,

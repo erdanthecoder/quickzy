@@ -1607,3 +1607,28 @@ button.bcard.is-slot { color: var(--violet); border-color: var(--violet); backgr
 @media (prefers-reduced-motion: reduce) { .bno-orbit, .bno-orbit > span > span, .bno-ring, .bno-aurora i, .bno-shoot i, .founder-card, .fc-shine { animation: none; } }
 .profile-banner .founder-card { position: absolute; right: 22px; bottom: 18px; z-index: 2; }
 @media (max-width: 600px) { .profile-banner .founder-card { width: 128px; right: 10px; bottom: 10px; padding: 7px 9px; } .profile-banner .fc-title { font-size: 18px; } }
+/* ---- Game cards: a lit stage for the art, glass text, shine on hover ---- */
+.mode-pick { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.mode-opt, .mode-card { position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: 0; padding: 0; min-height: 0; overflow: hidden; border-radius: 22px; isolation: isolate; color: #fff; text-align: left;
+  box-shadow: 0 6px 0 rgba(0,0,0,.22), 0 14px 30px rgba(0,0,0,.18); transition: transform .18s var(--spring, cubic-bezier(.3,1.4,.5,1)), box-shadow .18s; }
+.mode-opt::after, .mode-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.35) 50%, transparent 65%); transform: translateX(-120%); transition: transform .7s ease; pointer-events: none; z-index: 3; }
+.mode-opt:hover::after, .mode-card:hover::after { transform: translateX(120%); }
+.mode-opt:hover, .mode-card:hover { transform: translateY(-5px) rotate(-.4deg); box-shadow: 0 10px 0 rgba(0,0,0,.2), 0 22px 40px rgba(0,0,0,.25); }
+.mode-opt:active { transform: translateY(2px); }
+.mode-stage { position: relative; display: grid; place-items: center; height: 118px; overflow: hidden; }
+.mode-spot { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 70% at 50% 60%, rgba(255,255,255,.38), transparent 70%), repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 10px, transparent 10px 20px); }
+.mode-opt .mode-art, .mode-card .mode-art { position: relative; inset: auto; right: auto; top: auto; width: 100px; height: 100px; filter: drop-shadow(0 8px 10px rgba(0,0,0,.35)); animation: mode-float 3.4s ease-in-out infinite; transition: transform .25s; }
+.mode-opt:hover .mode-art, .mode-card:hover .mode-art { transform: scale(1.12) rotate(-4deg); }
+@keyframes mode-float { 50% { translate: 0 -6px; } }
+.mode-text { position: relative; display: grid; gap: 3px; padding: 12px 14px 14px; flex: 1; background: linear-gradient(180deg, rgba(10,8,30,.25), rgba(10,8,30,.55)); backdrop-filter: blur(2px); }
+.mode-text b, .mode-text h3 { margin: 0; font: 400 1.35rem/1.1 var(--display, 'Lilita One'), system-ui; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.mode-text small, .mode-text p { margin: 0; font-size: .82rem; font-weight: 700; opacity: .92; line-height: 1.35; }
+.mode-opt .pro-tag, .mode-card .pro-tag { left: 10px; right: auto; top: 10px; z-index: 2; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+.mode-opt.is-on { outline: 4px solid #fff; outline-offset: 0; border-color: transparent; box-shadow: 0 0 0 8px rgba(107,76,255,.55), 0 14px 34px rgba(107,76,255,.45); transform: translateY(-3px); }
+.mode-opt.is-on .mode-art { animation-duration: 1.6s; }
+.mode-check { position: absolute; top: 10px; right: 10px; z-index: 2; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: #6b4cff; box-shadow: 0 3px 10px rgba(0,0,0,.3); animation: mode-pop .3s var(--spring, ease); }
+@keyframes mode-pop { from { transform: scale(0); } }
+.mode-opt.is-pro-only { filter: saturate(.55) brightness(.9); }
+.mode-card { min-height: 0; }
+@media (max-width: 600px) { .mode-stage { height: 92px; } .mode-opt .mode-art, .mode-card .mode-art { width: 76px; height: 76px; } .mode-text b, .mode-text h3 { font-size: 1.1rem; } }
+@media (prefers-reduced-motion: reduce) { .mode-opt .mode-art, .mode-card .mode-art { animation: none; } }

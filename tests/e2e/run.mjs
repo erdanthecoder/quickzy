@@ -302,7 +302,7 @@ if (which === 'arcade' || which === 'all') {
     const pin = await openLobby(name, () => (mode === 'skyrace' ? host.waitForSelector('.set-row:has-text("Game length") .pill:has-text("3 min")') : host.click('.set-row:has-text("Game length") button:has-text("3 min")')));
     const cara = await join(pin, 'Cara', { width: 390, height: 780 });
     const dev = await join(pin, 'Dev', { width: 900, height: 600 });
-    if (mode === 'train' && process.env.TRAIN3D) for (const pg of process.env.TRAIN3D === 'host' ? [host] : [dev]) await pg.evaluate(() => localStorage.setItem('quickzy.test.3d', '1'));
+    if (process.env.TEST3D) for (const pg of process.env.TEST3D === 'host' ? [host] : [dev]) await pg.evaluate(() => localStorage.setItem('quickzy.test.3d', '1'));
     await host.click('button:has-text("Start")');
     say(`${mode}: countdown and play`);
     await cara.waitForSelector('.hud', { timeout: 15000 });
@@ -318,8 +318,11 @@ if (which === 'arcade' || which === 'all') {
     // Each player gets their own random order, and a poll scores nothing by
     // design, so keep going until one scoring question has been answered.
     const ask = async (p) => {
-      await p.waitForSelector('.q-overlay[hidden]', { state: 'attached', timeout: 10000 });
-      await p.evaluate(() => { if (window.__quickzyAsk) window.__quickzyAsk(); });
+      // a question may already be open (out of energy): answer that one
+      if (!(await p.locator('.q-overlay:not([hidden]) .pad').count())) {
+        await p.waitForSelector('.q-overlay[hidden]', { state: 'attached', timeout: 10000 });
+        await p.evaluate(() => { if (window.__quickzyAsk) window.__quickzyAsk(); });
+      }
       await p.waitForSelector('.q-overlay:not([hidden]) .pad', { timeout: 5000 });
       await answer(p, true);
       const v = await p.waitForFunction(() => document.querySelector('.verdict h2')?.innerText, null, { timeout: 10000 });
