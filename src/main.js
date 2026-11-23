@@ -24,6 +24,8 @@ route('/play/:pin', () => import('./pages/play.js'), { chrome: false });
 route('/discover', () => import('./pages/discover.js'));
 route('/quiz/:id', () => import('./pages/quiz.js'));
 route('/practice/:id', () => import('./pages/practice.js'), { chrome: false });
+route('/app', () => import('./pages/app.js'), { chrome: false });
+route('/app/play/:id', () => import('./pages/practice.js').then((m) => ({ default: (ctx) => m.default({ ...ctx, params: { ...ctx.params, offline: true } }) })), { chrome: false });
 route('/new', () => import('./pages/create.js'), { auth: true });
 route('/create', () => import('./pages/editor.js'), { auth: true });
 route('/edit/:id', () => import('./pages/editor.js'), { auth: true });
@@ -81,6 +83,7 @@ function sidebar(path) {
       link('/discover', 'Discover', 'compass'),
       link('/channels', 'Channels', 'users'),
       link('/blooks', 'Blooks', 'star'),
+      link('/app', 'Quickzy app', 'download'),
       signed ? h('div', { class: 'side-sep' }) : null,
       signed ? link('/new', 'Create', 'plus') : null,
       signed ? link('/library', 'My quizzes', 'list') : null,
@@ -251,16 +254,22 @@ async function boot() {
   import('./services/invite.js').then((m) => m.captureRef()).catch(() => {});
   import('./ui/install.js').then((m) => m.setupInstall()).catch(() => {});
   fill(app, loader({ full: true }));
+  // the Quickzy app (/app) plays with no internet: it never waits long for the servers
+  const appOnly = location.pathname === '/app' || location.pathname.startsWith('/app/');
+  const servers = (async () => { await connect(); await session.start(); })();
   try {
-    await connect();
-    await session.start();
+    await (appOnly ? Promise.race([servers, new Promise((_, no) => setTimeout(() => no(new Error('offline')), navigator.onLine ? 5000 : 300))]) : servers);
   } catch (err) {
-    console.error(err);
-    fill(app, h('div', { class: 'page narrow' }, h('div', { class: 'card center stack', style: { marginTop: '12vh' } },
-      h('h2', {}, 'Quickzy could not connect'),
-      h('p', { class: 'muted' }, 'The game servers did not answer. Check your connection — if you are on a school network, it may be blocking them.'),
-      h('button', { class: 'btn btn-main', onclick: () => location.reload() }, 'Try again'))));
-    return;
+    if (!appOnly) {
+      console.error(err);
+      fill(app, h('div', { class: 'page narrow' }, h('div', { class: 'card center stack', style: { marginTop: '12vh' } },
+        h('h2', {}, navigator.onLine ? 'Quickzy could not connect' : 'You are offline'),
+        h('p', { class: 'muted' }, navigator.onLine ? 'The game servers did not answer. Check your connection — if you are on a school network, it may be blocking them.' : 'You can still play quizzes on your own in the Quickzy app.'),
+        h('div', { class: 'row', style: { justifyContent: 'center' } },
+          h('a', { class: 'btn btn-main', href: '/app', onclick: (e) => { e.preventDefault(); location.href = '/app'; } }, 'Play offline'),
+          h('button', { class: 'btn', onclick: () => location.reload() }, 'Try again')))));
+      return;
+    }
   }
   // know early whether this account is Pro (badges, flags, custom blooks)
   if (session.signedIn()) import('./services/plan.js').then((p) => p.myPlan()).catch(() => {});

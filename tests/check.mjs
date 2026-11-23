@@ -55,5 +55,12 @@ for (const id of ['lasertag', 'robotrun', 'obby', 'train', 'skyrace', 'treasure'
   for (const need of ['createHost', 'mountPlayer', 'mountScreen']) if (!ex.has(need)) { console.log(`mode ${id} lacks ${need}`); bad++; }
 }
 
+// the offline app's files are up to date (run: node tools/offline.mjs)
+{
+  const { buildLibrary, buildPrecache } = await import('../tools/offline.mjs');
+  if (readFileSync(join(root, 'src/offline/library.js'), 'utf8') !== buildLibrary()) { console.log('src/offline/library.js is out of date: run node tools/offline.mjs'); bad++; }
+  if (readFileSync(join(root, 'precache.js'), 'utf8') !== buildPrecache()) { console.log('precache.js is out of date: run node tools/offline.mjs'); bad++; }
+}
+
 console.log(bad ? `${bad} problem(s)` : `ok: ${files.length} modules, imports and icons all resolve`);
 process.exit(bad ? 1 : 0);

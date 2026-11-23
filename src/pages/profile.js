@@ -22,14 +22,6 @@ import { levelOf } from '../services/progress.js';
 import { OWNER_UID } from '../config.js';
 import { logo } from '../ui/icons.js';
 
-/** The ribbon emblem next to a name, like a partner badge. */
-function emblem(kind) {
-  if (kind === 'owner') return h('span', { class: 'emblem emblem-owner', title: 'Founder of Quickzy' }, h('span', { class: 'emblem-mark' }, logo()), h('b', {}, 'FOUNDER'), h('small', {}, 'Quickzy'));
-  if (kind === 'official') return h('span', { class: 'emblem emblem-official', title: 'Official Quickzy account' }, h('span', { class: 'emblem-mark' }, logo()), h('b', {}, 'OFFICIAL'), h('small', {}, 'Quickzy'));
-  if (kind === 'pro') return h('span', { class: 'emblem emblem-pro', title: 'Quickzy Pro member' }, h('b', {}, 'PRO'), h('small', {}, 'member'));
-  return null;
-}
-
 const fmt = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
 
 /** The Follow button; keeps the follower count next to it up to date. */
@@ -112,61 +104,37 @@ export default async function Profile({ params }) {
     ...[['content', 'Content'], ['ach', 'Achievements'], ['about', 'About']].map(([t, label]) => h('button', { 'data-t': t, onclick: () => { tab = t; drawBody(); } }, label)));
   drawBody();
 
-  // numbers count up when the profile opens
-  setTimeout(() => document.querySelectorAll('.profile-stats b').forEach((b) => {
-    const end = Number(String(b.textContent).replace(/\D/g, '')) || 0;
-    if (!end || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const t0 = performance.now(); const text = b.textContent;
-    const step = (now) => {
-      const k = Math.min(1, (now - t0) / 900); const v = Math.round(end * (1 - (1 - k) ** 3));
-      if (!b.isConnected) return;
-      b.textContent = k < 1 ? fmt(v) : text;
-      if (k < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }), 60);
-
   const earnedBadges = ach.filter((a) => a.done && ['met-owner', 'pro', 'famous', 'level-25', 'friend'].includes(a.id));
+  const role = owner ? 'Founder of Quickzy' : kind === 'official' ? 'Official Quickzy account' : kind === 'pro' ? 'Quickzy Pro' : null;
+  const joined = user.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null;
+  const share = async () => {
+    const url = `${location.origin}/u/${user.username}`;
+    try { if (navigator.share) await navigator.share({ title: user.displayName, url }); else { await navigator.clipboard.writeText(url); toast('Link copied'); } } catch { /* closed */ }
+  };
   return h('div', { class: 'page stack', style: { gap: '18px' } },
-    h('section', { class: `profile${owner ? ' is-owner' : ''}` },
-      h('div', { class: 'profile-banner' }, profileBanner(user.banner, { owner }), owner ? founderCard(user) : null),
-      h('div', { class: 'profile-main' },
-        h('div', { class: 'profile-avatar' }, blook(user.blook, owner ? 132 : 120), owner ? h('span', { class: 'profile-crown' }, icon('star', { size: 20 })) : null),
-        h('div', { class: 'profile-name' },
-          h('div', { class: 'row', style: { gap: '10px', alignItems: 'center' } },
-            h('h1', {}, user.displayName), badge ? nameBadges(badge) : null, emblem(kind)),
-          h('p', { class: 'muted', style: { margin: '2px 0 0' } }, `@${user.username}`),
-          earnedBadges.length ? h('div', { class: 'profile-earned' }, ...earnedBadges.map((a) => h('span', { class: 'earned-chip', style: { '--c': a.col } }, icon('trophy', { size: 12 }), a.title))) : null),
-        h('div', { class: 'profile-stats' },
-          h('div', {}, h('small', {}, 'Quizzes'), h('b', {}, fmt(quizzes.length))),
-          h('div', {}, h('small', {}, 'Plays'), h('b', {}, fmt(plays))),
-          h('div', {}, h('small', {}, 'Level'), h('b', {}, String(stats.level))),
-          hasChannel ? h('div', {}, h('small', {}, 'Followers'), countEl) : null),
-        h('div', { class: 'profile-action' }, mine
-          ? h('a', { class: 'btn', href: '/settings' }, icon('gear', { size: 18 }), 'Edit profile')
-          : hasChannel ? followButton(claim.uid, countEl) : null)),
+    h('section', { class: 'pf' },
+      h('div', { class: 'pf-cover' }, profileBanner(user.banner, { owner }), owner ? h('span', { class: 'pf-credit' }, 'Photo: Unsplash') : null),
+      h('div', { class: 'pf-head' },
+        h('div', { class: 'pf-avatar' }, blook(user.blook, 132)),
+        h('div', { class: 'pf-actions' },
+          h('button', { class: 'btn', title: 'Share profile', 'aria-label': 'Share profile', onclick: share }, icon('up', { size: 18 })),
+          mine ? h('a', { class: 'btn', href: '/settings' }, 'Edit profile') : hasChannel ? followButton(claim.uid, countEl) : null)),
+      h('div', { class: 'pf-id' },
+        h('h1', { class: 'pf-name' }, user.displayName, badge ? nameBadges(badge) : null),
+        h('div', { class: 'pf-handle' }, h('span', {}, `@${user.username}`),
+          role ? h('span', { class: 'pf-role' }, kind === 'pro' ? null : logo(), role) : null),
+        user.bio ? h('p', { class: 'pf-bio' }, user.bio) : null,
+        h('div', { class: 'pf-meta' },
+          owner ? h('span', {}, icon('globe', { size: 15 }), 'Kyrgyzstan') : null,
+          joined ? h('span', {}, icon('clock', { size: 15 }), `Joined ${joined}`) : null,
+          h('span', {}, icon('star', { size: 15 }), `Level ${stats.level}`)),
+        h('div', { class: 'pf-counts' },
+          hasChannel ? h('span', {}, countEl, followers === 1 ? 'follower' : 'followers') : null,
+          h('span', {}, h('b', {}, fmt(quizzes.length)), quizzes.length === 1 ? 'quiz' : 'quizzes'),
+          h('span', {}, h('b', {}, fmt(plays)), plays === 1 ? 'play' : 'plays')),
+        earnedBadges.length ? h('div', { class: 'pf-earned' }, ...earnedBadges.map((a) => h('span', { style: { '--c': a.col } }, icon('trophy', { size: 12 }), a.title))) : null),
       tabs),
     body);
-}
-
-/* ------------------------------------------------------- founder card */
-
-/** A holographic card that tilts with the pointer: the founder's ID. */
-function founderCard(user) {
-  const card = h('div', { class: 'founder-card', 'aria-label': 'Founder of Quickzy' },
-    h('div', { class: 'fc-shine' }),
-    h('div', { class: 'fc-top' }, h('span', { class: 'fc-logo' }, logo()), h('b', {}, 'QUICKZY')),
-    h('div', { class: 'fc-title' }, 'FOUNDER'),
-    h('div', { class: 'fc-name' }, user.displayName),
-    h('div', { class: 'fc-foot' }, h('span', {}, 'No. 001'), h('span', {}, 'Since 2026'), h('span', {}, '🇰🇬')));
-  card.addEventListener('pointermove', (e) => {
-    const r = card.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width; const y = (e.clientY - r.top) / r.height;
-    card.style.setProperty('--rx', `${(0.5 - y) * 22}deg`); card.style.setProperty('--ry', `${(x - 0.5) * 26}deg`);
-    card.style.setProperty('--mx', `${x * 100}%`); card.style.setProperty('--my', `${y * 100}%`);
-  });
-  card.addEventListener('pointerleave', () => { card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg'); });
-  return card;
 }
 
 /* --------------------------------------------------------- all channels */
