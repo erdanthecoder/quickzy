@@ -101,32 +101,19 @@ export function shape(i, size = 34) {
 
 export const SHAPE_NAMES = ['bolt', 'drop', 'star', 'hex', 'ring', 'square'];
 
-/**
- * The logo mark: a chunky Q whose tail is a lightning bolt (quiz + quick),
- * the bolt breaking out past the tile's edge.
- */
+/** The logo mark: a Q with a friendly face and a yellow tail. */
 let logoSeq = 0;
-const round2 = (n) => Math.round(n * 100) / 100;
-/** One quarter of the Q's ring (an annulus slice), as a path. */
-function ringPart(cx, cy, r1, r2, a0, a1) {
-  const p = (rad, a) => `${round2(cx + rad * Math.cos(a * Math.PI / 180))} ${round2(cy + rad * Math.sin(a * Math.PI / 180))}`;
-  return `M${p(r2, a0)} A${r2} ${r2} 0 0 1 ${p(r2, a1)} L${p(r1, a1)} A${r1} ${r1} 0 0 0 ${p(r1, a0)} Z`;
-}
 
 /** The Quickzy mark (1.2): a Q whose ring is the four answer colours and
  *  whose tail is a lightning bolt, on a night-violet tile. */
 export function logoSVG(id = 'q') {
-  const cx = 29; const cy = 28;
-  const cols = ['#ff4772', '#2f9bff', '#ffcd1f', '#12c9a6'];
-  const ring = [180, 270, 0, 90].map((a, i) => `<path d="${ringPart(cx, cy, 9, 19.5, a + 4, a + 86)}" fill="${cols[i]}"/>`).join('');
-  return `<defs><linearGradient id="${id}a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a24a8"/><stop offset="1" stop-color="#17133f"/></linearGradient>`
-    + `<radialGradient id="${id}b" cx=".3" cy=".25" r=".8"><stop offset="0" stop-color="#7c5cff" stop-opacity=".9"/><stop offset="1" stop-color="#7c5cff" stop-opacity="0"/></radialGradient></defs>`
-    + `<rect x="2" y="5" width="60" height="57" rx="17" fill="#0e0b2b"/>`
-    + `<rect x="2" y="2" width="60" height="57" rx="17" fill="url(#${id}a)"/>`
-    + `<rect x="2" y="2" width="60" height="57" rx="17" fill="url(#${id}b)"/>`
-    + ring
-    + `<path d="M36 35 L52 33 L44.5 42.5 L57 42 L35 62 L41.5 47.5 L32.5 48 Z" fill="#fff" stroke="#17133f" stroke-width="2.6" stroke-linejoin="round"/>`
-    + `<path d="M52 7.5 l1.7 4.3 4.3 1.7 -4.3 1.7 -1.7 4.3 -1.7 -4.3 -4.3 -1.7 4.3 -1.7 Z" fill="#ffe45c"/>`;
+  // the Quickzy mark (1.3): a friendly Q that smiles, with a yellow tail
+  return `<defs><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a3ff0"/><stop offset="1" stop-color="#3a24b8"/></linearGradient></defs>`
+    + `<rect x="2" y="2" width="60" height="60" rx="16" fill="url(#${id}g)"/>`
+    + '<circle cx="30" cy="30" r="15.5" fill="none" stroke="#fff" stroke-width="7.5"/>'
+    + '<path d="M37.5 37.5 L48 48" stroke="#ffcd1f" stroke-width="8" stroke-linecap="round"/>'
+    + '<circle cx="25.2" cy="28" r="2.4" fill="#fff"/><circle cx="34.8" cy="28" r="2.4" fill="#fff"/>'
+    + '<path d="M25.5 34.2 q4.5 3.6 9 0" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>';
 }
 
 export function logo() {

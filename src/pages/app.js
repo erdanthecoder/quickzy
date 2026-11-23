@@ -33,6 +33,11 @@ export default async function QuickzyApp() {
   const installBtn = h('button', { class: 'app-install', type: 'button', hidden: true, onclick: () => import('../ui/install.js').then((m) => m.install()) }, icon('download', { size: 18 }), 'Install app');
   import('../ui/install.js').then((m) => { const d = () => { installBtn.hidden = !m.canInstall(); }; d(); m.onInstallChange(d); }).catch(() => {});
 
+  // Windows computers can download the real desktop app (it isn't shown inside that app)
+  const onWindows = /Windows/i.test(navigator.userAgent) && !/Electron/i.test(navigator.userAgent);
+  const winBtn = onWindows ? h('a', { class: 'app-win', href: '/download/Quickzy-Setup.exe', download: 'Quickzy-Setup.exe', title: 'If Windows says it protected your PC, choose More info, then Run anyway.' },
+    h('span', { 'aria-hidden': 'true', innerHTML: '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 5.5 10.5 4.5v7H3zM11.5 4.3 21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg>' }), 'Download for Windows') : null;
+
   const tabs = h('div', { class: 'app-tabs', role: 'tablist' });
   const grid = h('div', { class: 'app-grid' });
   const search = h('input', { class: 'app-search', type: 'search', placeholder: 'Search quizzes', 'aria-label': 'Search quizzes', oninput: (e) => { text = e.target.value.trim().toLowerCase(); draw(); } });
@@ -76,6 +81,7 @@ export default async function QuickzyApp() {
         h('a', { class: 'app-brand', href: '/app', 'aria-label': 'Quickzy app' }, logo(), wordmark()),
         status,
         h('div', { class: 'grow' }),
+        winBtn,
         installBtn,
         h('a', { class: 'app-site', href: '/' }, 'quickzy.web.app', icon('up', { size: 14 }))),
       h('section', { class: 'app-hero' },

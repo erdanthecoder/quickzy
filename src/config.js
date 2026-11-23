@@ -58,7 +58,7 @@ export const RELEASE_1_2 = Date.UTC(2026, 10, 21, 9, 0, 0);   // 12:00 PM (noon)
 export const released12 = (now = Date.now()) => now >= RELEASE_1_2;
 
 /** Shown in the sidebar and the What's new popup. */
-export const VERSION = released12() ? '1.2' : '1.1';
+export const VERSION = '1.3';
 
 /** Pro for free, given by the owner: ugemnomads. (The rules hold the same list.) */
 export const PRO_FREE = ['f4BZrMpjQnV2B7n3iKq68J8poJ63'];

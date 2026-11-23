@@ -10,6 +10,8 @@ export function videoClip(v, { autoplay = true, cls = '' } = {}) {
   const params = new URLSearchParams({
     start: String(c.start), end: String(c.end), autoplay: autoplay ? '1' : '0',
     rel: '0', modestbranding: '1', playsinline: '1',
+    // YouTube refuses to play embeds that do not say which site they are on
+    origin: location.origin, widget_referrer: location.origin, enablejsapi: '1',
   });
   return h('div', { class: `q-video ${cls}` },
     h('iframe', {
@@ -17,5 +19,7 @@ export function videoClip(v, { autoplay = true, cls = '' } = {}) {
       title: 'Video for this question', allow: 'autoplay; encrypted-media; picture-in-picture', allowfullscreen: true,
       referrerpolicy: 'strict-origin-when-cross-origin', loading: 'lazy',
     }),
-    h('small', { class: 'q-video-time' }, `${fmtTime(c.start)} – ${fmtTime(c.end)}`));
+    h('small', { class: 'q-video-time' }, `${fmtTime(c.start)} – ${fmtTime(c.end)}`,
+      // some videos are not allowed to play on other sites: this always works
+      h('a', { href: `https://www.youtube.com/watch?v=${c.id}&t=${c.start}s`, target: '_blank', rel: 'noopener' }, ' · Open on YouTube')));
 }

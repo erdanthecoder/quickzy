@@ -379,11 +379,42 @@ const SOUNDS = {
 // a little buzz on phones for the moments that matter (Android; iPhones ignore it)
 const BUZZ = { right: 35, wrong: [60, 50, 60], win: [30, 40, 30, 40, 90], boom: 70, tagged: [40, 30, 40], checkpoint: 25 };
 
+// Real recorded sound effects (Kenney, CC0 — assets/sfx). Each loads once;
+// until it has, the built-in version plays instead.
+const RECORDED = ['pick', 'tap', 'join', 'right', 'wrong', 'tick', 'countdown', 'go', 'reveal', 'laser', 'shoot', 'tagged', 'jump', 'land', 'bump', 'boost', 'boom', 'coin', 'checkpoint', 'fall', 'win', 'drum'];
+const LEVEL = { pick: 0.5, tap: 0.4, tick: 0.35, land: 0.5, shoot: 0.6, laser: 0.7, join: 0.8, coin: 0.8 };
+const clips = {};
+let loadingClips = false;
+function loadClips() {
+  if (loadingClips || !ctx) return;
+  loadingClips = true;
+  for (const name of RECORDED) {
+    fetch(`/assets/sfx/${name}.mp3`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('missing'))))
+      .then((data) => new Promise((ok, no) => ctx.decodeAudioData(data, ok, no)))
+      .then((buf) => { clips[name] = buf; }).catch(() => {});
+  }
+}
+function playClip(name) {
+  const b = clips[name];
+  if (!b) return false;
+  const s = ctx.createBufferSource(); s.buffer = b;
+  // never exactly the same twice, like a real thing being hit or clicked
+  s.playbackRate.value = 1 + rnd(-0.03, 0.03);
+  const g = ctx.createGain(); g.gain.value = (LEVEL[name] ?? 0.9) * rnd(0.9, 1);
+  s.connect(g); send(g, fx, name === 'win' || name === 'boom' ? 0.2 : 0.06);
+  s.start();
+  return true;
+}
+if (typeof window !== 'undefined') ['pointerdown', 'keydown'].forEach((ev) => window.addEventListener(ev, () => { if (audio()) loadClips(); }, { once: true, passive: true }));
+
 export function sfx(name) {
   if (BUZZ[name] && prefs().vibrate !== false && typeof navigator !== 'undefined' && navigator.vibrate) { try { navigator.vibrate(BUZZ[name]); } catch { /* not allowed yet */ } }
   if (!prefs().sound) return;
+  if (!audio()) return;
+  loadClips();
+  try { if (playClip(name)) return; } catch { /* fall back */ }
   const fn = SOUNDS[name];
-  if (fn && audio()) { try { fn(); } catch { /* audio not available */ } }
+  if (fn) { try { fn(); } catch { /* audio not available */ } }
 }
 
 /* ------------------------------------------------------------------ music */
@@ -402,12 +433,12 @@ const TRACKS = {
   menu: {
     bpm: 92, key: 60, swing: 0.14,
     chords: [[0, 4, 7, 11], [-3, 0, 4, 7], [-7, -3, 0, 4], [-5, -1, 2, 5]],
-    kick: 'x.........x.....', snare: '....x.......x...', hat: '..o...o...o...o.', shake: 'xoxoxoxoxoxoxoxo', clap: true,
-    bass: [0, N, N, N, N, N, 7, N, 0, N, N, 12, N, N, 7, N],
-    comp: 'epiano', compPat: '..x...x...x..x..',
-    lead: 'marimba',
-    leadA: [12, N, N, 16, N, N, 19, N, 16, N, 14, N, 12, N, N, N],
-    leadB: [19, N, 21, N, 19, N, 16, N, 14, N, 16, N, 11, N, N, N],
+    kick: '................', snare: '................', hat: '................', shake: '', clap: false,
+    bass: [0, N, N, N, N, N, N, N, 7, N, N, N, N, N, N, N],
+    comp: 'epiano', compPat: 'x.......x.......',
+    lead: 'epiano',
+    leadA: [N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N],
+    leadB: [19, N, N, N, 16, N, N, N, 14, N, N, N, 12, N, N, N],
   },
   // the lobby: funky, waiting for friends
   lobby: {
@@ -479,7 +510,7 @@ export function playMusic(scene = 'lobby') {
   const s = TRACKS[scene] || TRACKS.lobby;
   const bus = c.createGain();
   bus.gain.value = 0.0001;
-  bus.gain.exponentialRampToValueAtTime(0.42, c.currentTime + 1.5);
+  bus.gain.exponentialRampToValueAtTime(scene === 'menu' ? 0.22 : 0.28, c.currentTime + 1.5);
   bus.connect(master);
   const busWet = c.createGain(); busWet.gain.value = 0.3; bus.connect(busWet).connect(room);
   const drums = c.createGain(); drums.gain.value = 0.7; drums.connect(bus);

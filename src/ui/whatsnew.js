@@ -38,19 +38,30 @@ export const NEWS_12 = [
   ['star', '#17133f', 'A brand new logo', 'A Q made of the four answer colours, with a lightning tail.'],
 ];
 
-export const NEWS = VERSION === '1.2' ? NEWS_12 : NEWS_11;
+export const NEWS_13 = [
+  ['download', '#12c9a6', 'The Quickzy app plays offline', 'Install it on your phone or computer. 53 quizzes are built in, and every quiz you play solo is saved for no-internet play.'],
+  ['gear', '#2f9bff', 'Quickzy for Windows', 'A real desktop app. Download it from the Quickzy app page.'],
+  ['chart', '#b7472a', 'Presentation+, rebuilt like PowerPoint', 'A ribbon, 10 layouts, 8 design themes, transitions, speaker notes, pictures, and typing right on the slide.'],
+  ['volume', '#ff4772', 'Real sounds', 'Every click, right answer, laser and win is now a real recording.'],
+  ['home', '#6b4cff', 'A new home page', 'Questions in. Games out. Watch an example game play itself, and join with a PIN in one line.'],
+  ['star', '#ffcd1f', 'A friendlier logo', 'Meet the smiling Q.'],
+  ['list', '#a560ff', 'Blooks, organised', 'Shop, Collection, Custom and Levels tabs, with filters by rarity and pack.'],
+  ['user', '#17133f', 'Real-looking profiles', 'A cover photo, your bio, where you are from, and your followers.'],
+  ['play', '#ff8a2a', 'Train Travel, Laser Tag and Robot Run in 3D', 'Big-screen camera shots, neon arenas and a sunset city run.'],
+];
+
+export const NEWS = VERSION === '1.3' ? NEWS_13 : VERSION === '1.2' ? NEWS_12 : NEWS_11;
 
 export function showWhatsNew() {
   try { localStorage.setItem(KEY, VERSION); } catch { /* private mode */ }
   sfx('reveal');
   return modal((close) => [h('div', { class: 'wn' },
-    h('div', { class: 'wn-hero' }, logo(), h('div', {}, h('h2', {}, `Quickzy ${VERSION}`), h('p', { style: { margin: 0, fontWeight: 800, opacity: 0.9 } }, 'The biggest update yet'))),
+    h('div', { class: 'wn-hero' }, logo(), h('div', {}, h('h2', {}, `Quickzy ${VERSION}`), h('p', { style: { margin: 0, fontWeight: 800, opacity: 0.9 } }, VERSION === '1.3' ? 'Questions in. Games out.' : 'The biggest update yet'))),
     h('ul', { class: 'wn-list' }, ...NEWS.map(([ic, col, title, text]) => h('li', {},
       h('span', { class: 'wn-ic', style: { background: col } }, icon(ic, { size: 18 })), h('div', {}, h('b', {}, title), h('small', {}, text))))),
     h('div', { class: 'row' },
       h('button', { class: 'btn grow', onclick: () => { close(); playFilm(); } }, icon('play', { size: 16 }), `Watch the ${VERSION} film`),
-      VERSION !== '1.2' && isOwner() ? h('button', { class: 'btn grow', onclick: () => { close(); playFilm('1.2'); } }, icon('star', { size: 16 }), 'Preview 1.2 (only you)') : null,
-      VERSION === '1.2' || isOwner() ? h('button', { class: 'btn grow', onclick: () => { close(); import('./film12b.js').then((s) => s.playStory()); } }, icon('play', { size: 16 }), 'Watch the teacher\'s story') : null,
+      h('button', { class: 'btn grow', onclick: () => { close(); playFilm('1.2'); } }, icon('play', { size: 16 }), 'The 1.2 film'),
       h('button', { class: 'btn btn-main grow', onclick: () => close() }, "Let's play")))]);
 }
 
@@ -68,6 +79,8 @@ export function maybeShowWhatsNew() {
 
 /** The film for this version: 1.2 is the 3D Sky Race film; 1.1 the plane film. */
 export function playFilm(version = VERSION) {
+  // 1.3: Questions in. Games out.
+  if (version === '1.3') return import('./film13.js').then((f) => f.playFilm13());
   // 1.2: the Sky Race film, then the teacher's story (once)
   if (version === '1.2') return import('./film12.js').then((f) => f.playFilm12({ pilot: pilotBlook() }))
     .then(() => import('./film12b.js')).then((s) => (s.storySeen() ? null : s.playStory()));

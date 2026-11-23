@@ -300,26 +300,45 @@ function reveal({ id, duplicate, refund }, box) {
 // ones not found yet
 const SETS = [['Flags', 'Flags (exclusive)'], ['Winter', 'Winter (limited edition)'], ['Rails', 'Wild Rails'], ['Pets', 'Pets'], ['Farm', 'Farm'], ['Wild', 'Wild'], ['Snacks', 'Snacks'], ['Space', 'Space'], ['Magic', 'Magic']];
 
-function catalog() {
+// the catalog's filters, kept while you open boxes or switch tabs
+const view = { tab: 'shop', rarity: 'all', owned: false, text: '' };
+
+function catalog(redraw) {
   const m = progress.me();
   const have = BLOOKS.filter((b) => progress.owns(b.id)).length;
+  const match = (b) => (view.rarity === 'all' || rarityOf(b.id).id === view.rarity)
+    && (!view.owned || progress.owns(b.id))
+    && (!view.text || (progress.owns(b.id) && blookName(b.id, nameMap()).toLowerCase().includes(view.text)));
   const groups = SETS.map(([set, label]) => {
-    const list = BLOOKS.filter((b) => b.set === set)
-      .sort((x, y) => ORDER.indexOf(rarityOf(x.id).id) - ORDER.indexOf(rarityOf(y.id).id));
-    const got = list.filter((b) => progress.owns(b.id)).length;
-    return h('div', { class: 'stack', style: { gap: '8px' } },
-      h('h3', { class: 'row', style: { gap: '8px' } }, label, h('span', { class: `pill${got === list.length ? ' pill-ok' : ''}` }, `${got}/${list.length}`)),
-      h('div', { class: 'card-grid' }, ...list.map((b) => blookCard(b.id, {
+    const all = BLOOKS.filter((b) => b.set === set);
+    const list = all.filter(match).sort((x, y) => ORDER.indexOf(rarityOf(x.id).id) - ORDER.indexOf(rarityOf(y.id).id));
+    if (!list.length) return null;
+    const got = all.filter((b) => progress.owns(b.id)).length;
+    return h('section', { class: 'set-panel' },
+      h('header', {},
+        h('h3', {}, label),
+        h('div', { class: 'set-meter', title: `${got} of ${all.length} found` }, h('i', { style: { width: `${Math.round((got / all.length) * 100)}%` } })),
+        h('span', { class: `set-count${got === all.length ? ' is-done' : ''}` }, got === all.length ? 'Complete' : `${got} / ${all.length}`)),
+      h('div', { class: 'card-grid set-grid' }, ...list.map((b) => blookCard(b.id, {
         owned: progress.owns(b.id),
         count: m.owned[b.id] || 0,
         onclick: progress.owns(b.id) ? () => useBlook(b.id) : null,
       }))));
-  });
-  return h('section', { class: 'stack' },
-    h('div', { class: 'row spread' }, h('h2', {}, 'Catalog'), h('span', { class: 'pill' }, `${have} of ${BLOOKS.length} found`)),
-    h('div', { class: 'xp-bar' }, h('i', { style: { width: `${Math.round((have / BLOOKS.length) * 100)}%` } })),
-    h('p', { class: 'muted', style: { margin: 0 } }, 'Every blook in Quickzy. Black shadows are the ones you have not found yet. Tap one you own to use it in games.'),
-    ...groups);
+  }).filter(Boolean);
+  const chip = (id, label, colour) => h('button', { type: 'button', class: `chip${view.rarity === id ? ' is-on' : ''}`, style: colour ? { '--c': colour } : null, onclick: () => { view.rarity = id; redraw(); } }, colour ? h('i', { class: 'chip-dot' }) : null, label);
+  const search = h('input', { class: 'input bk-search', type: 'search', placeholder: 'Find a blook you own', value: view.text, oninput: (e) => { view.text = e.target.value.trim().toLowerCase(); redraw(true); } });
+  return h('div', { class: 'stack', style: { gap: '14px' } },
+    h('div', { class: 'bk-progress' },
+      h('div', {}, h('b', {}, `${have} of ${BLOOKS.length}`), h('small', {}, 'blooks found')),
+      h('div', { class: 'xp-bar grow' }, h('i', { style: { width: `${Math.round((have / BLOOKS.length) * 100)}%` } }))),
+    h('div', { class: 'bk-filters' },
+      h('div', { class: 'row', style: { gap: '6px' } }, chip('all', 'All'), ...RARITIES.map((r) => chip(r.id, r.name, r.colour))),
+      h('div', { class: 'row', style: { gap: '8px' } },
+        search,
+        h('label', { class: 'bk-owned' }, h('input', { type: 'checkbox', checked: view.owned, onchange: (e) => { view.owned = e.target.checked; redraw(); } }), 'Only mine'))),
+    groups.length ? h('div', { class: 'stack', style: { gap: '14px' } }, ...groups)
+      : h('div', { class: 'card flat center' }, h('p', { class: 'muted', style: { margin: 0 } }, 'No blooks match. Try another filter.')),
+    h('p', { class: 'muted small', style: { margin: 0 } }, 'Shadows are blooks you have not found yet. Tap one you own to use it in games.'));
 }
 
 async function useBlook(id) {
@@ -413,15 +432,29 @@ export default async function Blooks() {
   }
   await whenProfile();
   await myPlan();     // so Pro perks (all custom slots, flags) are known before drawing
-  const root = h('div', { class: 'page stack', style: { gap: '22px' } });
-  const draw = () => fill(root,
-    h('h1', {}, 'Blooks'),
-    header(),
-    h('h2', {}, 'Boxes'),
-    boxes(draw),
-    customs(draw),
-    catalog(),
-    roadmap());
+  const root = h('div', { class: 'page stack', style: { gap: '18px' } });
+  const TABS = [['shop', 'Shop', 'star'], ['collection', 'Collection', 'list'], ['custom', 'Custom', 'edit'], ['levels', 'Levels', 'trophy']];
+  const body = h('div', { class: 'bk-body' });
+  const tabs = h('div', { class: 'bk-tabs', role: 'tablist' });
+  const drawBody = () => {
+    fill(tabs, ...TABS.map(([id, label, ic]) => h('button', { type: 'button', role: 'tab', 'aria-selected': String(view.tab === id), class: view.tab === id ? 'is-on' : '', onclick: () => { view.tab = id; sfx('tap'); drawBody(); } }, icon(ic, { size: 16 }), label)));
+    if (view.tab === 'shop') fill(body, boxes(draw));
+    else if (view.tab === 'collection') {
+      // typing in the search box keeps its focus
+      const focused = document.activeElement && document.activeElement.classList.contains('bk-search');
+      fill(body, catalog(drawBody));
+      if (focused) { const el = body.querySelector('.bk-search'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    } else if (view.tab === 'custom') fill(body, customs(draw));
+    else fill(body, roadmap());
+  };
+  const draw = () => {
+    fill(root,
+      h('div', { class: 'row spread' }, h('h1', { style: { margin: 0 } }, 'Blooks')),
+      header(),
+      tabs,
+      body);
+    drawBody();
+  };
   draw();
   return root;
 }

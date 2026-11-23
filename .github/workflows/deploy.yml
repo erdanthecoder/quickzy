@@ -64,10 +64,36 @@ jobs:
             quickzy-site.zip
           retention-days: 30
 
+  windows:
+    name: Build the Windows app
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build Quickzy-Setup.exe (the app, with a copy of the site for offline play)
+        shell: bash
+        run: |
+          cd desktop
+          mkdir site
+          cp -r ../index.html ../manifest.webmanifest ../precache.js ../assets ../src ../styles ../vendor site/
+          npm install --no-audit --no-fund
+          npx electron-builder --win nsis --x64 --publish never
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quickzy-windows
+          path: desktop/dist/Quickzy-Setup.exe
+          retention-days: 30
+
   firebase:
     name: Publish to Firebase Hosting
-    needs: test
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [test, windows]
+    # the site still goes out if only the Windows build failed
+    if: always() && needs.test.result == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       PROJECT: akylduukodo
@@ -79,6 +105,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Put the Windows app on the site
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: quickzy-windows
+          path: download
       - name: Sign in with the service account
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AKYLDUUKODO }}
