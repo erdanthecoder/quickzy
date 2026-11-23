@@ -18,6 +18,7 @@ import { claimGame, levelInfo, me as progressMe } from '../services/progress.js'
 import { sfx, playMusic, stopMusic } from '../game/sound.js';
 import { confetti, celebrate } from '../ui/confetti.js';
 import { cover, authorLine, pageTitle } from './parts.js';
+import { getOffline, saveOffline } from '../services/offline.js';
 import NotFound from './notfound.js';
 
 const BEST_KEY = 'quickzy.best';
@@ -51,11 +52,14 @@ function said(q, c) {
 }
 
 export default async function Practice({ params }) {
-  const quiz = await getQuiz(params.id).catch(() => null);
+  // in the Quickzy app (/app/play/…) the quiz comes from this device, so it plays with no internet
+  const offline = Boolean(params.offline);
+  const saved = offline ? await getOffline(params.id) : null;
+  const quiz = offline ? saved && saved.quiz : await getQuiz(params.id).catch(() => null);
   if (!quiz) return NotFound();
-  pageTitle(`Practise ${quiz.title}`);
+  pageTitle(offline ? quiz.title : `Practise ${quiz.title}`);
 
-  if (!signedIn()) {
+  if (!offline && !signedIn()) {
     return h('div', { class: 'page narrow' }, h('div', { class: 'card center stack', style: { justifyItems: 'center' } },
       h('h2', {}, 'Sign in to play solo'),
       h('p', { class: 'muted' }, 'Solo games are marked on your own device, so they need an account. It is free, and your XP and coins count towards your blooks.'),
@@ -63,8 +67,10 @@ export default async function Practice({ params }) {
         h('a', { class: 'btn btn-main', href: `/signup?next=/practice/${quiz.id}` }, 'Sign up'),
         h('a', { class: 'btn', href: `/login?next=/practice/${quiz.id}` }, 'Sign in'))));
   }
-  const key = await getKey(quiz.id);
+  const key = offline ? saved.key : await getKey(quiz.id);
   if (!key) return NotFound();
+  // every quiz you play is kept on this device for the Quickzy app
+  if (!offline) saveOffline(quiz, key);
   const qs = quiz.questions || [];
 
   const root = h('div', { class: 'solo' });
@@ -80,12 +86,15 @@ export default async function Practice({ params }) {
     fill(root, h('div', { class: 'page narrow stack', style: { gap: '16px' } },
       h('div', { class: 'card', style: { padding: 0, overflow: 'hidden' } }, c,
         h('div', { class: 'stack', style: { padding: '18px 20px 20px' } },
+          offline ? h('a', { class: 'app-back', href: '/app' }, icon('down', { size: 16 }), 'All quizzes') : null,
           h('h1', {}, quiz.title),
-          authorLine(quiz, { size: 26 }),
+          offline ? h('p', { class: 'muted', style: { margin: 0 } }, quiz.description || (quiz.authorName ? `by ${quiz.authorName}` : '')) : authorLine(quiz, { size: 26 }),
           h('div', { class: 'row' },
             h('span', { class: 'pill' }, icon('list', { size: 14 }), `${qs.length} questions`),
             h('span', { class: 'pill' }, icon('bolt', { size: 14 }), 'Faster = more points'),
-            best ? h('span', { class: 'pill pill-zing' }, icon('trophy', { size: 14 }), `Your best: ${fmt(best)}`) : null),
+            best ? h('span', { class: 'pill pill-zing' }, icon('trophy', { size: 14 }), `Your best: ${fmt(best)}`) : null,
+            offline ? null : h('span', { class: 'pill pill-ok' }, icon('download', { size: 14 }), 'Saved for offline')),
+          offline ? h('h3', { class: 'app-pick' }, 'Choose a game mode') : null,
           h('div', { class: 'solo-modes' }, ...SOLO_MODES.map(([id, emoji, name, text, col]) => {
             const ok = id !== 'bubble' || qs.some((q) => q.type === 'mc' || q.type === 'tf');
             const mb = bests()[id === 'classic' ? quiz.id : `${quiz.id}:${id}`];
@@ -94,7 +103,7 @@ export default async function Practice({ params }) {
             h('span', { class: 'solo-mode-ic' }, emoji), h('b', {}, name), h('small', {}, ok ? text : 'Needs multiple-choice questions'),
             mb ? h('span', { class: 'solo-mode-best' }, icon('trophy', { size: 12 }), fmt(mb)) : null);
           })),
-          h('a', { class: 'btn btn-block', href: `/host/${quiz.id}` }, icon('users', { size: 18 }), 'Host it live for a group instead')))));
+          offline ? null : h('a', { class: 'btn btn-block', href: `/host/${quiz.id}` }, icon('users', { size: 18 }), 'Host it live for a group instead')))));
   }
 
   /* -------------------------------------------------------------- game */
@@ -356,7 +365,8 @@ export default async function Practice({ params }) {
     let claimed = [];
     try { claimed = JSON.parse(localStorage.getItem('quickzy.claimed') || '[]'); } catch { claimed = []; }
     const already = claimed.includes(claimKey);
-    (already ? Promise.resolve(null) : claimGame(claimKey, { s: score, c: right, r: 1 }, 1)).then((r) => {
+    if (offline) fill(reward, h('p', { class: 'muted small' }, 'Played in the Quickzy app. Your best score is saved on this device.'));
+    else (already ? Promise.resolve(null) : claimGame(claimKey, { s: score, c: right, r: 1 }, 1)).then((r) => {
       if (r) { try { localStorage.setItem('quickzy.claimed', JSON.stringify([...claimed, claimKey].slice(-200))); } catch { /* ignore */ } }
       if (!r) { fill(reward, h('p', { class: 'muted small' }, 'Rewards for this quiz are collected once a day. Try another quiz to earn more.')); return; }
       const info = levelInfo(progressMe().xp);
@@ -379,7 +389,8 @@ export default async function Practice({ params }) {
         reward,
         h('div', { class: 'row', style: { justifyContent: 'center' } },
           h('button', { class: 'btn btn-main', onclick: () => run() }, icon('shuffle', { size: 18 }), 'Play again'),
-          h('a', { class: 'btn', href: '/discover' }, icon('compass', { size: 18 }), 'More quizzes'))),
+          h('button', { class: 'btn', onclick: () => intro() }, icon('list', { size: 18 }), 'Other modes'),
+          h('a', { class: 'btn', href: offline ? '/app' : '/discover' }, icon('compass', { size: 18 }), 'More quizzes'))),
       h('h2', {}, 'Review'),
       h('ol', { class: 'review' }, ...log.map((x) => h('li', { class: x.poll ? 'is-poll' : x.ok ? 'is-ok' : 'is-bad' },
         h('span', { class: 'mark' }, icon(x.poll ? 'chart' : x.ok ? 'check' : 'close', { size: 18, stroke: 3 })),

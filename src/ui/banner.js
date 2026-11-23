@@ -2,8 +2,6 @@
 // picture (an https link), and the owner's animated founder banner.
 
 import { h, svg } from './dom.js';
-import { blook } from './blooks.js';
-import { logo } from './icons.js';
 
 const scene = (bg, shapes) => ({ bg, shapes });
 export const BANNERS = {
@@ -53,19 +51,15 @@ export function profileBanner(choice, { owner = false } = {}) {
   return h('div', { class: 'bn', style: { background: b.bg } }, shapes(b.shapes));
 }
 
-/** The founder's banner: deep space, an aurora, shooting stars, and blooks orbiting the logo. */
+/**
+ * The founder's banner: a real photograph of mountain valleys, like the
+ * Tian Shan at home. Photo: Unsplash (free licence), kept on our own server.
+ */
 function ownerBanner() {
-  const orbit = ['kyrgyzstan', 'dragon', 'unicorn', 'robot', 'astronaut', 'fox'];
-  return h('div', { class: 'bn bn-owner' },
-    h('div', { class: 'bno-aurora' }, h('i'), h('i'), h('i')),
-    h('div', { class: 'bno-stars' }, ...Array.from({ length: 46 }, (_, i) => h('i', { style: { '--x': `${(i * 37) % 100}%`, '--y': `${(i * 53) % 100}%`, '--d': `${(i % 7) * 0.4}s`, '--s': `${1 + (i % 3)}px` } }))),
-    h('div', { class: 'bno-shoot' }, h('i'), h('i'), h('i')),
-    h('div', { class: 'bno-word', 'aria-hidden': 'true' }, 'FOUNDER'),
-    shapes('mountains'),
-    h('div', { class: 'bno-core' },
-      h('div', { class: 'bno-ring' }),
-      h('div', { class: 'bno-orbit' }, ...orbit.map((id, i) => h('span', { style: { '--i': i, '--n': orbit.length } }, h('span', {}, blook(id, 40))))),
-      h('div', { class: 'bno-logo' }, logo())));
+  const img = h('img', { src: '/assets/founder-banner.jpg', alt: 'Snowy mountains above a green river valley', decoding: 'async' });
+  const el = h('div', { class: 'bn bn-real', style: { background: 'linear-gradient(180deg, #8fb4d9, #c9d6e3 55%, #6b8f5e)' } }, img);
+  img.addEventListener('error', () => { el.append(shapes('mountains')); img.remove(); });
+  return el;
 }
 
 /** A small preview of each banner, for the picker in Settings. */

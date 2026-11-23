@@ -27,6 +27,9 @@ const watch = (page, who) => {
     if (m.type() === 'error' || /permission|refused|denied/i.test(m.text())) errors.push(`[${who}] ${step}: ${m.text().slice(0, 300)}`);
   });
 };
+const watchApp = (page) => {
+  page.on('pageerror', (e) => errors.push(`[app] ${step}: ${e.message}`));
+};
 const say = (s) => { step = s; console.log(`- ${s}`); };
 const fail = (why) => { throw new Error(`${step}: ${why}`); };
 
@@ -506,13 +509,13 @@ if ((which === 'owner' || which === 'all') && !EMULATOR) {
   await host.goto(`${BASE}/`);
   const hostChannel = await host.locator('a.side-card').getAttribute('href');
   await own.goto(`${BASE}${hostChannel}`);
-  await own.waitForSelector('.profile .follow-btn:has-text("Follow")');
-  const before = Number(await own.locator('.profile-stats b[data-n]').first().getAttribute('data-n'));
+  await own.waitForSelector('.pf .follow-btn:has-text("Follow")');
+  const before = Number(await own.locator('.pf-counts b[data-n]').first().getAttribute('data-n'));
   await own.click('.follow-btn');
   await own.waitForSelector('.follow-btn:has-text("Following")');
   await own.reload();
   await own.waitForSelector('.follow-btn:has-text("Following")');
-  const after = Number(await own.locator('.profile-stats b[data-n]').first().getAttribute('data-n'));
+  const after = Number(await own.locator('.pf-counts b[data-n]').first().getAttribute('data-n'));
   if (after !== before + 1) fail(`followers ${before} -> ${after}`);
   await own.goto(`${BASE}/channels`);
   await own.waitForSelector('text=New from channels you follow');
@@ -554,7 +557,7 @@ if ((which === 'owner' || which === 'all') && !EMULATOR) {
   await host.locator('.set-row', { hasText: 'Have a channel' }).locator('.switch').click();
   await host.waitForSelector('text=Your channel is off');
   await own.goto(`${BASE}${hostChannel}`);
-  await own.waitForSelector('.profile h1');
+  await own.waitForSelector('.pf h1');
   if (await own.locator('.follow-btn').count()) fail('follow button shown for a profile with no channel');
   await host.goto(`${BASE}/settings`);
   await host.locator('.set-row', { hasText: 'Have a channel' }).locator('.switch').click();
@@ -629,7 +632,7 @@ if (which === 'account' || which === 'all') {
 
   say('Pro members wear the gold PRO badge');
   await host.goto(`${BASE}/u/quizmaster`);
-  await host.waitForSelector('.profile-name .verified.is-pro');
+  await host.waitForSelector('.pf-name .verified.is-pro');
   await host.evaluate(async () => {
     const { net, session } = window.__quickzy;
     await net.store.del('members', session.me().uid);
@@ -639,14 +642,14 @@ if (which === 'account' || which === 'all') {
   say('verified badge after three full published quizzes');
   await host.goto(`${BASE}/u/quizmaster`);
   await host.waitForSelector('h1:has-text("Professor Q")');
-  if (await host.locator('.profile-name .verified').count()) fail('verified too early');
+  if (await host.locator('.pf-name .verified').count()) fail('verified too early');
   await host.evaluate(async (id) => {
     const q = await import('/src/services/quizzes.js');
     const full = await q.loadForEditing(id);
     for (const t of ['Copy one', 'Copy two']) await q.saveQuiz({ ...full, id: null, title: t }, { publish: true });
   }, quizId);
   await host.goto(`${BASE}/u/quizmaster`);
-  await host.waitForSelector('.profile-name .verified');
+  await host.waitForSelector('.pf-name .verified');
   await host.waitForSelector('.quiz-card .verified');
 
   say('make with AI: paste a chatbot reply, get a quiz');
@@ -708,6 +711,48 @@ if (which === 'account' || which === 'all') {
   await host.waitForSelector('.big-score');
   await host.waitForSelector('.review li');
   await host.screenshot({ path: `${SHOTS}/solo-end.png`, fullPage: true });
+
+  say('quickzy app: the quiz just played is saved, and plays with no servers');
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const app = await ctx.newPage();
+    watchApp(app);
+    // copy this device's saved quizzes into the new phone, then cut it off from every server
+    const saved = await host.evaluate(() => localStorage.getItem('quickzy.offline'));
+    await ctx.addInitScript((v) => localStorage.setItem('quickzy.offline', v), saved);
+    await app.route('**/__dev/**', (r) => r.abort());
+    await app.route('https://www.gstatic.com/**', (r) => r.abort());
+    await app.goto(`${BASE}/app`);
+    await app.waitForSelector('.app-tabs button.is-on:has-text("Your quizzes")');
+    await app.waitForSelector('.app-tile');
+    await app.screenshot({ path: `${SHOTS}/app-home.png` });
+    // the official library ships inside the app
+    await app.click('.app-tabs button:has-text("Quickzy library")');
+    await app.fill('.app-search', 'capitals');
+    await app.click('.app-tile:has-text("World Capitals")');
+    await app.click('.solo-mode:has-text("Flashcards")');
+    await app.waitForSelector('.fc-card');
+    await app.goto(`${BASE}/app`);
+    // the quiz played above: a whole game, marked on the phone
+    await app.click('.app-tile >> nth=0');
+    await app.waitForSelector('.solo-mode:has-text("Speed Run")');
+    await app.screenshot({ path: `${SHOTS}/app-modes.png` });
+    await app.click('.solo-mode:has-text("Classic")');
+    for (let i = 0; i < 14; i++) {
+      const next = await Promise.race([
+        app.waitForSelector('.solo-q .pad', { timeout: 15000 }).then(() => 'q'),
+        app.waitForSelector('.big-score', { timeout: 15000 }).then(() => 'end'),
+      ]);
+      if (next === 'end') break;
+      await answer(app, true);
+      await app.waitForSelector('.play-screen.is-verdict');
+      await app.click('.play-screen button:has-text("Next")');
+    }
+    await app.waitForSelector('.big-score');
+    await app.waitForSelector('text=Played in the Quickzy app');
+    await app.screenshot({ path: `${SHOTS}/app-end.png` });
+    await ctx.close();
+  }
 
   say('blooks: open boxes with starting coins');
   await host.goto(`${BASE}/blooks`);

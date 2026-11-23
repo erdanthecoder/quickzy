@@ -252,7 +252,7 @@ function mountPlayer2D(game) {
     ctl.update();
     if (!game.asking) {
       if (ctl.tapped('coal')) getCoal();
-      if (ctl.tapped('action')) sfx('go');               // the whistle
+      if (ctl.tapped('action')) sfx('whistle');               // the whistle
     } else ctl.clear();
     // look around the cab, lean out of the window
     yaw = lerp(yaw, ctl.x * 0.9, 0.08);
@@ -676,7 +676,7 @@ function mountPlayer3D(game, holder, W, T) {
     ctl.update();
     if (!game.asking) {
       if (ctl.tapped('coal')) getCoal();
-      if (ctl.tapped('action')) sfx('go');
+      if (ctl.tapped('action')) sfx('whistle');
     } else ctl.clear();
     // arrows / WASD / the stick: look left and right, lean out (up), look back (down)
     yaw = lerp(yaw, ctl.x * 1.15 + (ctl.y > 0.3 ? Math.PI * 0.92 * Math.sign(ctl.x || 1) : 0), 0.07);
