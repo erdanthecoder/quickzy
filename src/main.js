@@ -5,7 +5,7 @@ import { icon, logo, wordmark, verifiedBadge } from './ui/icons.js';
 import { OWNER_UID } from './config.js';
 import { site, EVENTS } from './services/site.js';
 import { blook } from './ui/blooks.js';
-import { loader } from './ui/loader.js';
+import { loader, bootStep } from './ui/loader.js';
 import { connect, net } from './net/index.js';
 import * as session from './services/session.js';
 import { levelOf as levelOfXp } from './services/progress.js';
@@ -248,7 +248,7 @@ async function boot() {
   fill(app, loader({ full: true }));
   // the Quickzy app (/app) plays with no internet: it never waits long for the servers
   const appOnly = location.pathname === '/app' || location.pathname.startsWith('/app/');
-  const servers = (async () => { await connect(); await session.start(); })();
+  const servers = (async () => { bootStep(0.3, 'Connecting to Quickzy…'); await connect(); bootStep(0.62, 'Signing you in…'); await session.start(); bootStep(0.86, 'Opening your page…'); })();
   try {
     await (appOnly ? Promise.race([servers, new Promise((_, no) => setTimeout(() => no(new Error('offline')), navigator.onLine ? 5000 : 300))]) : servers);
   } catch (err) {
