@@ -255,7 +255,9 @@ export default async function Editor({ params, query = {} }) {
       const err = h('p', { class: 'error-text' });
       const read = () => cleanVideo({ id: youTubeId(link.value), start: parseTime(from.value), end: parseTime(to.value) });
       const show = () => { const v = read(); preview.replaceChildren(...(v ? [videoClip(v, { autoplay: false })] : [])); };
-      [link, from, to].forEach((x) => x.addEventListener('change', show));
+      // the preview appears as soon as a link is pasted, not only after leaving the box
+      let wait = 0;
+      [link, from, to].forEach((x) => { x.addEventListener('change', show); x.addEventListener('input', () => { clearTimeout(wait); wait = setTimeout(show, 400); }); });
       show();
       const use = () => {
         if (!youTubeId(link.value)) { err.textContent = 'Paste a YouTube link.'; return; }

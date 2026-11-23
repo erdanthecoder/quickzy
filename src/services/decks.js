@@ -13,28 +13,50 @@
 import { net } from '../net/index.js';
 import { me, signedIn } from './session.js';
 
+// [kind, name, icon]. The first seven are slide layouts, like PowerPoint's;
+// the last three are live: the audience answers on their phones.
 export const KINDS = [
-  ['title', 'Title', 'star'], ['content', 'Content', 'list'], ['poll', 'Fun poll', 'chart'],
-  ['quiz', 'Quiz question', 'check'], ['guess', 'Guess the number', 'hash'],
+  ['title', 'Title slide', 'star'], ['section', 'Section header', 'flag'], ['content', 'Title and content', 'list'],
+  ['two', 'Two columns', 'shuffle'], ['image', 'Picture with caption', 'camera'], ['quote', 'Quote', 'type'], ['big', 'Big number', 'hash'],
+  ['poll', 'Live poll', 'chart'], ['quiz', 'Quiz question', 'check'], ['guess', 'Guess the number', 'toggle'],
 ];
+export const TEXT_KINDS = ['title', 'section', 'content', 'two', 'image', 'quote', 'big'];
+export const LIVE_KINDS = ['poll', 'quiz', 'guess'];
+// design themes: the whole presentation wears one (see slides.js for the looks)
+export const THEMES = ['clean', 'midnight', 'paper', 'ocean', 'sunset', 'forest', 'kyrgyz', 'quickzy'];
+export const TRANSITIONS = ['none', 'fade', 'push', 'zoom', 'flip'];
 export const MAX_SLIDES = 40;
 
-export function blank(t = 'content') {
-  if (t === 'title') return { t, head: 'My presentation', body: 'By me', img: '', bg: 0 };
-  if (t === 'poll') return { t, head: 'What do you think?', opts: ['Yes', 'No', 'Maybe'], bg: 2 };
-  if (t === 'quiz') return { t, head: 'Which is right?', opts: ['A', 'B', 'C', 'D'], ans: 0, bg: 1 };
-  if (t === 'guess') return { t, head: 'How many…?', min: 0, max: 100, unit: '', ans: 50, bg: 3 };
-  return { t: 'content', head: 'A new slide', body: 'Write your points here.\nOne per line.', img: '', bg: 4 };
+export function blank(t = 'content', th = 'clean') {
+  const base = { th, fx: 'fade', notes: '' };
+  if (t === 'title') return { ...base, t, head: 'My presentation', body: 'Your name · Today', img: '', bg: 0 };
+  if (t === 'section') return { ...base, t, head: 'Part one', body: 'What this part is about', bg: 0 };
+  if (t === 'two') return { ...base, t, head: 'Two sides', body: 'First point\nSecond point', body2: 'Another point\nOne more', bg: 0 };
+  if (t === 'image') return { ...base, t, head: 'A picture says it all', img: '', bg: 0 };
+  if (t === 'quote') return { ...base, t, head: 'Someone famous', body: 'A great quote goes here.', bg: 0 };
+  if (t === 'big') return { ...base, t, head: '42', body: 'The one number to remember', bg: 0 };
+  if (t === 'poll') return { ...base, t, head: 'What do you think?', opts: ['Yes', 'No', 'Maybe'], bg: 2 };
+  if (t === 'quiz') return { ...base, t, head: 'Which is right?', opts: ['A', 'B', 'C', 'D'], ans: 0, bg: 1 };
+  if (t === 'guess') return { ...base, t, head: 'How many…?', min: 0, max: 100, unit: '', ans: 50, bg: 3 };
+  return { ...base, t: 'content', head: 'A new slide', body: 'Write your points here\nOne per line', img: '', bg: 0 };
 }
 
 const clip = (v, n) => String(v ?? '').slice(0, n);
-// a picture link, or a small picture brought in from PowerPoint
+// a picture link, or a small picture from PowerPoint or your computer
 const okImg = (v) => (typeof v === 'string' && (/^https:\/\/[^\s"'<>]{8,290}$/.test(v) || (/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(v) && v.length < 125000)) ? v : '');
 /** Keep a slide to its own fields and sizes. */
 export function cleanSlide(s) {
   const t = KINDS.some((k) => k[0] === s.t) ? s.t : 'content';
-  const base = { t, head: clip(s.head, 140), bg: Math.max(0, Math.min(5, Number(s.bg) || 0)) };
-  if (t === 'title' || t === 'content') return { ...base, body: clip(s.body, 600), img: okImg(s.img) };
+  // slides from before themes keep their old colourful look
+  const base = {
+    t, head: clip(s.head, 140), bg: Math.max(0, Math.min(5, Number(s.bg) || 0)),
+    th: THEMES.includes(s.th) ? s.th : 'quickzy', fx: TRANSITIONS.includes(s.fx) ? s.fx : 'fade', notes: clip(s.notes, 1000),
+  };
+  if (TEXT_KINDS.includes(t)) {
+    const out = { ...base, body: clip(s.body, 600), img: okImg(s.img) };
+    if (t === 'two') out.body2 = clip(s.body2, 600);
+    return out;
+  }
   if (t === 'poll' || t === 'quiz') {
     const opts = (s.opts || []).map((o) => clip(o, 60)).filter((o) => o.trim()).slice(0, 6);
     const out = { ...base, opts: opts.length >= 2 ? opts : ['Yes', 'No'] };
@@ -77,6 +99,8 @@ export async function startShow(deck) {
 export function publicSlide(s, reveal) {
   const out = { ...s };
   if (!reveal) delete out.ans;
+  // speaker notes are the presenter's; pictures stay on the big screen
+  delete out.notes; delete out.img;
   return out;
 }
 
