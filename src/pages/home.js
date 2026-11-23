@@ -57,8 +57,8 @@ export default async function Home() {
   const installSlot = h('div');
   import('../ui/install.js').then((m) => {
     const draw = () => fill(installSlot, m.canInstall() ? h('div', { class: 'install-card' },
-      icon('download', { size: 22 }), h('div', { class: 'grow' }, h('b', {}, 'Get the Quickzy app'), h('small', {}, 'One tap from your home screen. Free.')),
-      h('button', { class: 'btn btn-main btn-sm', onclick: () => m.install() }, 'Install')) : null);
+      icon('download', { size: 22 }), h('div', { class: 'grow' }, h('b', {}, 'Get the Quickzy app'), h('small', {}, 'Play quizzes anywhere, even with no internet. Free.')),
+      h('a', { class: 'btn btn-main btn-sm', href: '/app' }, 'Get it')) : null);
     draw(); m.onInstallChange(draw);
   }).catch(() => {});
   import('../services/invite.js').then((m) => fill(inviteSlot, m.inviteCard())).catch(() => {});

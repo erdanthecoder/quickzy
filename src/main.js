@@ -57,13 +57,6 @@ route('*', () => import('./pages/notfound.js'));
 
 const isOn = (path, href) => (href === '/' ? path === '/' : path.startsWith(href)) ? 'is-on' : '';
 
-/** "Install the app", shown only when the browser can do it. */
-function installLink() {
-  const btn = h('button', { class: 'side-install', type: 'button', hidden: true, onclick: () => import('./ui/install.js').then((m) => m.install()) }, icon('download', { size: 16 }), h('span', {}, 'Install the app'));
-  import('./ui/install.js').then((m) => { const draw = () => { btn.hidden = !m.canInstall(); }; draw(); m.onInstallChange(draw); }).catch(() => {});
-  return btn;
-}
-
 /** The left sidebar on bigger screens: calm, short, and everything in reach. */
 function sidebar(path) {
   const { user, profile } = { user: session.me(), profile: session.myProfile() };
@@ -92,7 +85,6 @@ function sidebar(path) {
       h('a', { href: '/pro', class: `side-link side-pro ${isOn(path, '/pro')}` }, verifiedBadge(null, 'pro'), h('span', {}, 'Quickzy Pro')),
       user && user.uid === OWNER_UID ? h('a', { href: '/owner', class: `side-link nav-owner ${isOn(path, '/owner')}` }, verifiedBadge(null, 'owner'), h('span', {}, 'Owner panel')) : null),
     h('div', { class: 'side-end' },
-      installLink(),
       signed && profile
         ? h('a', { class: 'side-card', href: `/u/${profile.username}`, 'aria-label': 'Your profile' },
           blook(profile.blook),

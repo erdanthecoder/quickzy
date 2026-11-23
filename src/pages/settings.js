@@ -310,7 +310,7 @@ function installRow() {
   const r = h('div');
   import('../ui/install.js').then((m) => {
     const draw = () => fill(r, m.installed() ? row('Quickzy app', 'You are using the Quickzy app. Nice!', h('span', { class: 'pill pill-ok' }, icon('check', { size: 14 }), 'Installed'))
-      : m.canInstall() ? row('Quickzy app', 'Put Quickzy on your home screen and open it like an app.', h('button', { class: 'btn btn-sm btn-main', onclick: () => m.install() }, icon('download', { size: 16 }), 'Install')) : null);
+      : m.canInstall() ? row('Quickzy app', 'Play quizzes anywhere, even with no internet.', h('a', { class: 'btn btn-sm btn-main', href: '/app' }, icon('download', { size: 16 }), 'Get it')) : null);
     draw(); m.onInstallChange(draw);
   }).catch(() => {});
   return r;

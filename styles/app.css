@@ -1660,3 +1660,6 @@ button.bcard.is-slot { color: var(--violet); border-color: var(--violet); backgr
   .app-tile-text b { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .app-phone { animation: none; } }
+.app-win { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 999px; font-weight: 800; font-size: 14px; color: #fff; text-decoration: none; background: linear-gradient(180deg, #2b8cff, #0067d8); box-shadow: 0 6px 20px rgba(0,103,216,.35); }
+.app-win span { display: inline-grid; }
+@media (max-width: 720px) { .app-win { display: none; } }
