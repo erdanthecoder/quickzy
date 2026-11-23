@@ -1946,3 +1946,35 @@ button.bcard.is-slot { color: var(--violet); border-color: var(--violet); backgr
 .f12-title.f13-title { place-content: end center; padding-bottom: 11vh; }
 .f13-title h1 { text-shadow: 0 4px 30px rgba(0,0,0,.35); }
 .f13-title h1 { font: 900 clamp(48px, 10vw, 120px) Inter, system-ui; letter-spacing: -3px; }
+
+/* ---- Loading (1.3): the logo draws itself; a real progress bar ---- */
+.ld-mark { display: inline-block; filter: drop-shadow(0 10px 24px rgba(58,36,184,.35)); }
+.ld-ring { stroke-dasharray: 100; stroke-dashoffset: 100; animation: ld-ring 2.4s cubic-bezier(.65,0,.35,1) infinite; }
+.ld-tail { transform-origin: 37.5px 37.5px; animation: ld-tail 2.4s cubic-bezier(.3,1.4,.5,1) infinite; }
+.ld-smile { stroke-dasharray: 10; stroke-dashoffset: 10; animation: ld-smile 2.4s ease infinite; }
+.ld-eyes { transform-origin: 30px 28px; animation: ld-blink 2.4s ease infinite; }
+@keyframes ld-ring { 0% { stroke-dashoffset: 100; } 45%, 85% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -100; } }
+@keyframes ld-tail { 0%, 35% { transform: scale(0); } 50%, 88% { transform: scale(1); } 100% { transform: scale(0); } }
+@keyframes ld-smile { 0%, 45% { stroke-dashoffset: 10; } 60%, 88% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 10; } }
+@keyframes ld-blink { 0%, 40% { opacity: 0; transform: scaleY(1); } 48% { opacity: 1; } 70% { transform: scaleY(1); } 73% { transform: scaleY(.1); } 76%, 88% { transform: scaleY(1); opacity: 1; } 100% { opacity: 0; } }
+.loader:not(.ld-boot) { gap: 14px; }
+.loader:not(.ld-boot) .loader-tipbox { border: none; background: none; padding: 0; max-width: 360px; }
+.loader:not(.ld-boot) .loader-tip { color: var(--ink-2); font-weight: 600; font-size: 14px; min-height: 2.8em; }
+.ld-boot { position: relative; min-height: 100vh; min-height: 100dvh; padding: 0; gap: 0; grid-template-rows: 1fr auto; color: #fff; overflow: hidden;
+  background: radial-gradient(1100px 700px at 50% 38%, #241a6b 0%, #120d36 45%, #090620 100%); }
+.ld-glow { position: absolute; left: 50%; top: 38%; width: 520px; height: 520px; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(107,76,255,.35), transparent 65%); filter: blur(10px); animation: ld-breathe 4s ease-in-out infinite; pointer-events: none; }
+@keyframes ld-breathe { 50% { transform: translate(-50%, -50%) scale(1.12); opacity: .75; } }
+.ld-center { position: relative; display: grid; justify-items: center; align-content: center; gap: 18px; }
+.ld-word .logo-word { font-size: 2.3rem; color: #fff; }
+.ld-progress { width: min(320px, 72vw); display: grid; gap: 8px; margin-top: 8px; }
+.ld-track { height: 4px; border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden; }
+.ld-track i { display: block; height: 100%; width: 100%; transform-origin: left; transform: scaleX(0); border-radius: inherit; background: linear-gradient(90deg, #8b73ff, #ffcd1f); box-shadow: 0 0 12px rgba(255,205,31,.6); }
+.ld-row { display: flex; justify-content: space-between; font: 600 13px Inter, Nunito, system-ui; color: rgba(255,255,255,.65); }
+.ld-pct { font-variant-numeric: tabular-nums; }
+.ld-foot { position: relative; display: grid; justify-items: center; gap: 14px; padding: 0 20px calc(22px + env(safe-area-inset-bottom)); text-align: center; }
+.ld-tip { max-width: 440px; display: grid; gap: 4px; }
+.ld-tip b { font: 700 11px Inter, system-ui; letter-spacing: .12em; text-transform: uppercase; color: #ffcd1f; }
+.ld-tip .loader-tip { color: rgba(255,255,255,.82); font-weight: 600; font-size: 15px; }
+.ld-foot small { color: rgba(255,255,255,.4); font-weight: 600; font-size: 12px; }
+[data-motion='calm'] .ld-ring, [data-motion='calm'] .ld-tail, [data-motion='calm'] .ld-smile, [data-motion='calm'] .ld-eyes, [data-motion='calm'] .ld-glow { animation: none; stroke-dashoffset: 0; opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .ld-ring, .ld-tail, .ld-smile, .ld-eyes, .ld-glow { animation: none; stroke-dashoffset: 0; opacity: 1; transform: none; } }
