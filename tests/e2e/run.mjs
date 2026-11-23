@@ -780,6 +780,11 @@ if (which === 'account' || which === 'all') {
   await host.goto(`${BASE}/blooks`);
   // solo play above earned XP too, so the level is at least 3
   await host.waitForFunction(() => Number(document.querySelector('.level-badge b')?.textContent) >= 3);
+  await host.click('.bk-tabs button:has-text("Collection")');
+  await host.waitForSelector('.set-panel');
+  await host.click('.bk-filters .chip:has-text("Legendary")');
+  await host.waitForSelector('.set-panel');
+  await host.click('.bk-tabs button:has-text("Custom")');
   await host.click('button.bcard.is-slot');
   await host.click('.modal .part-btn:has-text("happy")');
   await host.locator('.modal .part-btn').first().click();
