@@ -3,7 +3,7 @@
 // teaches something instead of just spinning.
 
 import { h } from './dom.js';
-import { wordmark } from './icons.js';
+import { logo, wordmark } from './icons.js';
 import { VERSION } from '../config.js';
 
 export const TIPS = [
@@ -27,17 +27,9 @@ export const TIPS = [
 /** A tip to start on, different each visit. */
 const firstTip = () => Math.floor(Math.random() * TIPS.length);
 
-/** The logo, drawing itself: the ring is traced, the face appears, the eyes blink. */
+/** The logo, gently bouncing while things load. */
 function drawingMark(size) {
-  const el = h('span', { class: 'ld-mark', style: { width: `${size}px`, height: `${size}px` }, 'aria-hidden': 'true' });
-  el.innerHTML = '<svg viewBox="0 0 64 64" width="100%" height="100%">'
-    + '<defs><linearGradient id="ldg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a3ff0"/><stop offset="1" stop-color="#3a24b8"/></linearGradient></defs>'
-    + '<rect x="2" y="2" width="60" height="60" rx="16" fill="url(#ldg)"/>'
-    + '<circle class="ld-ring" cx="30" cy="30" r="15.5" fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round" pathLength="100" transform="rotate(-90 30 30)"/>'
-    + '<path class="ld-tail" d="M37.5 37.5 L48 48" stroke="#ffcd1f" stroke-width="8" stroke-linecap="round"/>'
-    + '<g class="ld-eyes"><circle cx="25.2" cy="28" r="2.4" fill="#fff"/><circle cx="34.8" cy="28" r="2.4" fill="#fff"/></g>'
-    + '<path class="ld-smile" d="M25.5 34.2 q4.5 3.6 9 0" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" pathLength="10"/>'
-    + '</svg>';
+  const el = h('span', { class: 'ld-mark ld-bounce', style: { width: `${size}px`, height: `${size}px` }, 'aria-hidden': 'true' }, logo());
   return el;
 }
 

@@ -8,12 +8,12 @@
 //   3. A laptop on the rocks: Quickzy for Windows.
 //   4. Three slides hang in the air and flip through the new themes:
 //      Presentation+, rebuilt like PowerPoint.
-//   5. The new logo, the smiling Q, puts itself together in the sky.
+//   5. The Quickzy logo flies in over the mountains.
 //   6. The update card.
 // If 3D can't start (old device, no WebGL, offline), the update card shows.
 
 import { h } from './dom.js';
-import { logo, icon } from './icons.js';
+import { logo, icon, logoSVG } from './icons.js';
 import { celebrate } from './confetti.js';
 import { sfx, playMusic, stopMusic } from '../game/sound.js';
 import { NEWS_13 } from './whatsnew.js';
@@ -36,15 +36,19 @@ function screenTex(T, w, hh, draw) {
 }
 const FONT = 'Nunito, system-ui, sans-serif';
 
+// the real logo, as a picture the canvases can draw (loaded before the film starts)
+let logoImg = null;
+function loadLogo() {
+  return new Promise((ok) => {
+    const img = new Image();
+    img.onload = () => { logoImg = img; ok(); };
+    img.onerror = () => ok();
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">${logoSVG('f13')}</svg>`)}`;
+  });
+}
 function drawLogo(g, x, y, s) {
-  g.save(); g.translate(x, y); g.scale(s / 64, s / 64);
-  const grad = g.createLinearGradient(0, 2, 0, 62); grad.addColorStop(0, '#5a3ff0'); grad.addColorStop(1, '#3a24b8');
-  g.fillStyle = grad; g.beginPath(); g.roundRect(2, 2, 60, 60, 16); g.fill();
-  g.strokeStyle = '#fff'; g.lineWidth = 7.5; g.beginPath(); g.arc(30, 30, 15.5, 0, Math.PI * 2); g.stroke();
-  g.strokeStyle = '#ffcd1f'; g.lineWidth = 8; g.lineCap = 'round'; g.beginPath(); g.moveTo(37.5, 37.5); g.lineTo(48, 48); g.stroke();
-  g.fillStyle = '#fff'; g.beginPath(); g.arc(25.2, 28, 2.4, 0, 7); g.arc(34.8, 28, 2.4, 0, 7); g.fill();
-  g.lineWidth = 2.4; g.beginPath(); g.moveTo(25.5, 34.2); g.quadraticCurveTo(30, 37.8, 34.5, 34.2); g.stroke();
-  g.restore();
+  if (logoImg) { g.drawImage(logoImg, x, y, s, s); return; }
+  g.fillStyle = '#3a24a8'; g.beginPath(); g.roundRect(x, y, s, s, s * 0.27); g.fill();
 }
 
 /** The phone's screen: the Quickzy app, offline, with a question. */
@@ -149,7 +153,7 @@ export function playFilm13() {
     skip.onclick = () => showCard();
     if (document.documentElement.dataset.motion === 'calm') { showCard(); return; }
 
-    Promise.all([import('../game/arcade/three.js').then((m) => m.loadThree()), import('../game/modes/train3d.js')])
+    Promise.all([import('../game/arcade/three.js').then((m) => m.loadThree()), import('../game/modes/train3d.js'), loadLogo()])
       .then(([T, W]) => { if (!done) stopAll = run(T, W); })
       .catch(() => showCard());
 
@@ -201,24 +205,19 @@ export function playFilm13() {
         return g;
       });
 
-      // the logo, built in 3D: ring, eyes, smile and the yellow tail
+      // the logo: a thick tile with the real logo on its face, flying in from pieces of light
       const logoG = new T.Group();
-      const white = new T.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.35, roughness: 0.3 });
-      const yellow = new T.MeshStandardMaterial({ color: 0xffcd1f, emissive: 0xffb000, emissiveIntensity: 0.4, roughness: 0.3 });
-      // the rounded tile, like the real logo
-      const sh = new T.Shape(); const r = 8; const e = 15;
+      const faceTex = screenTex(T, 512, 512, (g, w) => drawLogo(g, 0, 0, w));
+      const sh = new T.Shape(); const r = 8.5; const e = 15;
       sh.moveTo(-e + r, -e); sh.lineTo(e - r, -e); sh.quadraticCurveTo(e, -e, e, -e + r); sh.lineTo(e, e - r); sh.quadraticCurveTo(e, e, e - r, e);
       sh.lineTo(-e + r, e); sh.quadraticCurveTo(-e, e, -e, e - r); sh.lineTo(-e, -e + r); sh.quadraticCurveTo(-e, -e, -e + r, -e);
       const tileGeo = new T.ExtrudeGeometry(sh, { depth: 2.4, bevelEnabled: true, bevelSize: 0.6, bevelThickness: 0.6, bevelSegments: 3 });
-      tileGeo.translate(0, 0, -4);
-      const tile = new T.Mesh(tileGeo, new T.MeshStandardMaterial({ color: 0x4b31d6, roughness: 0.4, metalness: 0.2 }));
-      const ring = new T.Mesh(new T.TorusGeometry(7.75, 1.9, 24, 64), white);
-      const eyeL = new T.Mesh(new T.SphereGeometry(1.2, 20, 14), white); eyeL.position.set(-2.4, 1, 1);
-      const eyeR = eyeL.clone(); eyeR.position.x = 2.4;
-      const smile = new T.Mesh(new T.TorusGeometry(2.6, 0.6, 12, 32, Math.PI * 0.8), white); smile.rotation.z = Math.PI * 1.1; smile.position.set(0, -1.2, 1);
-      const tail = new T.Mesh(new T.CapsuleGeometry(1.9, 5, 8, 16), yellow); tail.rotation.z = Math.PI / 4; tail.position.set(6.8, -6.8, 1.2);
-      logoG.add(tile, ring, eyeL, eyeR, smile, tail);
-      const parts = [tile, ring, eyeL, eyeR, smile, tail].map((m) => ({ m, home: m.position.clone(), from: new T.Vector3((Math.random() - 0.5) * 120, (Math.random() - 0.2) * 80, -60 - Math.random() * 80) }));
+      tileGeo.translate(0, 0, -3.4);
+      const tile = new T.Mesh(tileGeo, new T.MeshStandardMaterial({ color: 0x241a6b, roughness: 0.35, metalness: 0.3 }));
+      const face = new T.Mesh(new T.PlaneGeometry(31, 31), new T.MeshBasicMaterial({ map: faceTex.tex, transparent: true, toneMapped: false }));
+      face.position.z = 0.02;
+      logoG.add(tile, face);
+      const parts = [tile, face].map((m) => ({ m, home: m.position.clone(), from: new T.Vector3(0, -40, -120) }));
       const logoAt = at(-820, 0, 46);
       logoG.position.copy(logoAt);
       logoG.visible = false;

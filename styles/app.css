@@ -1978,3 +1978,8 @@ button.bcard.is-slot { color: var(--violet); border-color: var(--violet); backgr
 .ld-foot small { color: rgba(255,255,255,.4); font-weight: 600; font-size: 12px; }
 [data-motion='calm'] .ld-ring, [data-motion='calm'] .ld-tail, [data-motion='calm'] .ld-smile, [data-motion='calm'] .ld-eyes, [data-motion='calm'] .ld-glow { animation: none; stroke-dashoffset: 0; opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { .ld-ring, .ld-tail, .ld-smile, .ld-eyes, .ld-glow { animation: none; stroke-dashoffset: 0; opacity: 1; transform: none; } }
+.ld-mark .logo-mark { width: 100%; height: 100%; }
+.ld-bounce { animation: ld-bounce 1.6s cubic-bezier(.3,1.4,.5,1) infinite; }
+@keyframes ld-bounce { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-10px) rotate(-6deg); } 55% { transform: translateY(0) rotate(3deg) scale(1.04, .96); } }
+@media (prefers-reduced-motion: reduce) { .ld-bounce { animation: none; } }
+[data-motion='calm'] .ld-bounce { animation: none; }

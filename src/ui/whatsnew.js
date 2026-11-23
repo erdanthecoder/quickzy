@@ -44,7 +44,6 @@ export const NEWS_13 = [
   ['chart', '#b7472a', 'Presentation+, rebuilt like PowerPoint', 'A ribbon, 10 layouts, 8 design themes, transitions, speaker notes, pictures, and typing right on the slide.'],
   ['volume', '#ff4772', 'Real sounds', 'Every click, right answer, laser and win is now a real recording.'],
   ['home', '#6b4cff', 'A new home page', 'Questions in. Games out. Watch an example game play itself, and join with a PIN in one line.'],
-  ['star', '#ffcd1f', 'A friendlier logo', 'Meet the smiling Q.'],
   ['list', '#a560ff', 'Blooks, organised', 'Shop, Collection, Custom and Levels tabs, with filters by rarity and pack.'],
   ['user', '#17133f', 'Real-looking profiles', 'A cover photo, your bio, where you are from, and your followers.'],
   ['play', '#ff8a2a', 'Train Travel, Laser Tag and Robot Run in 3D', 'Big-screen camera shots, neon arenas and a sunset city run.'],
