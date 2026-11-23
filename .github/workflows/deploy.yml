@@ -107,7 +107,7 @@ jobs:
           node-version: '20'
       - name: Put the Windows app on the site
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: quickzy-windows
           path: download
