@@ -111,6 +111,13 @@ jobs:
         with:
           name: quickzy-windows
           path: download
+      - name: Zip the Windows app (Firebase's free plan does not host .exe files)
+        continue-on-error: true
+        run: |
+          if [ -f download/Quickzy-Setup.exe ]; then
+            (cd download && zip -q Quickzy-Windows.zip Quickzy-Setup.exe && rm Quickzy-Setup.exe)
+          fi
+          ls -la download || true
       - name: Sign in with the service account
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AKYLDUUKODO }}
