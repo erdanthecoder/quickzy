@@ -19,9 +19,23 @@ export function route(pattern, loader, opts = {}) {
 export function onRoute(fn) { onRender = fn; }
 
 export function navigate(path, { replace = false } = {}) {
-  if (path === location.pathname + location.search) return render();
+  const [base, hash = ''] = String(path).split('#');
+  const here = location.pathname + location.search;
+  // same page, another #part: just move there (the page listens for it)
+  if (hash && base === here) {
+    if (location.hash !== `#${hash}`) { history[replace ? 'replaceState' : 'pushState'](history.state, '', `#${hash}`); window.dispatchEvent(new HashChangeEvent('hashchange')); }
+    jumpTo(hash);
+    return Promise.resolve();
+  }
+  if (path === here) return render();
   history[replace ? 'replaceState' : 'pushState'](null, '', path);
-  return render();
+  return render().then(() => { if (hash) setTimeout(() => jumpTo(hash), 60); });
+}
+
+/** Scroll to the part of the page a #link names, once it is there. */
+function jumpTo(hash) {
+  const el = document.getElementById(decodeURIComponent(hash));
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 export function back(fallback = '/') {
@@ -31,9 +45,11 @@ export function back(fallback = '/') {
 
 let seq = 0;
 
+let drawn = '';
 export async function render() {
   const mine = ++seq;
   const path = location.pathname;
+  drawn = location.pathname + location.search;
   let match = null;
   for (const r of routes) {
     const m = path.match(r.re);
@@ -64,7 +80,8 @@ document.addEventListener('click', (e) => {
   const url = new URL(a.href, location.href);
   if (url.origin !== location.origin || url.pathname.startsWith('/__dev')) return;
   e.preventDefault();
-  navigate(url.pathname + url.search);
+  navigate(url.pathname + url.search + url.hash);
 });
 
-window.addEventListener('popstate', () => render());
+// Back and Forward: a new page draws again; only a new #part does not
+window.addEventListener('popstate', () => { if (location.pathname + location.search !== drawn) render(); });

@@ -10,7 +10,9 @@
 
 export const firebaseConfig = {
   apiKey: 'AIzaSyDXrMgT80j7-0M-Uwx4MRzKHTfX5LdPRsU',
-  authDomain: 'akylduukodo.firebaseapp.com',
+  // Google sign-in says "continue to quickzy.web.app" on the main site (its
+  // /__/auth/handler is a registered redirect); elsewhere the project address
+  authDomain: typeof location !== 'undefined' && location.hostname === 'quickzy.web.app' ? 'quickzy.web.app' : 'akylduukodo.firebaseapp.com',
   databaseURL: 'https://akylduukodo-default-rtdb.firebaseio.com',
   projectId: 'akylduukodo',
   storageBucket: 'akylduukodo.firebasestorage.app',
