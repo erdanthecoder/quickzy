@@ -57,7 +57,7 @@ const recent = (who: { auth_time: number }) => Date.now() / 1000 - who.auth_time
 function serviceAccount() {
   const raw = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
   if (!raw) throw new Fail('auth/operation-not-allowed', 503);
-  const sa = JSON.parse(raw);
+  const sa = JSON.parse(raw.trim());
   if (sa.project_id !== PROJECT) throw new Fail('auth/operation-not-allowed', 503);
   return sa;
 }
@@ -142,7 +142,14 @@ async function checkCode(uid: string, code: string) {
 
 async function route(path: string, req: Request, body: any, origin: string) {
   if (path === 'health') {
-    try { serviceAccount(); return { ready: true }; } catch { return { ready: false }; }
+    // says what is wrong with the secret, never what is in it
+    const raw = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
+    if (!raw) return { ready: false, why: 'missing' };
+    let sa: any;
+    try { sa = JSON.parse(raw.trim()); } catch { return { ready: false, why: 'not-json' }; }
+    if (sa.project_id !== PROJECT) return { ready: false, why: 'other-project' };
+    if (!sa.private_key || !sa.client_email) return { ready: false, why: 'incomplete' };
+    return { ready: true };
   }
 
   const rpID = new URL(origin).hostname;
