@@ -11,6 +11,8 @@ import { popularQuizzes, quizzesBy } from '../services/quizzes.js';
 import { OFFICIAL_UID } from '../config.js';
 import { quizCard, cover, authorLine } from './parts.js';
 import { ornamentBand } from '../ui/ornament.js';
+import { NEWS, NEWS_12, NEWS_11, playFilm } from '../ui/whatsnew.js';
+import { VERSION } from '../config.js';
 
 export function joinBox() {
   const pin = h('input', {
@@ -61,7 +63,7 @@ export default async function Home() {
       h('a', { class: 'btn btn-main btn-sm', href: '/app' }, 'Get it')) : null);
     draw(); m.onInstallChange(draw);
   }).catch(() => {});
-  import('../services/invite.js').then((m) => fill(inviteSlot, m.inviteCard())).catch(() => {});
+  import('../services/invite.js').then((m) => fill(inviteSlot, m.inviteLinkCard())).catch(() => {});
   quizzesBy(OFFICIAL_UID).then((list) => {
     if (!list.length) return;
     const day = Math.floor(Date.now() / 86400000);
@@ -140,6 +142,8 @@ export default async function Home() {
       h('a', { class: 'hm-tile hm-tile-safe', href: '/teachers' },
         h('small', {}, 'For schools'), h('h3', {}, 'No ads. No chat. No accounts for kids.'), h('p', {}, 'Players only see names and scores, and hosts can remove anyone.'))),
 
+    whatsNew(),
+
     installSlot,
     inviteSlot,
 
@@ -156,6 +160,20 @@ export default async function Home() {
           h('a', { href: '/terms' }, 'Terms'), h('a', { href: '/privacy' }, 'Privacy'))),
       h('small', {}, `© ${new Date().getFullYear()} Quickzy. All rights reserved.`)),
   );
+}
+
+/** The changelog, right on the home page: this version first, older ones folded away. */
+function whatsNew() {
+  const list = (items) => h('ul', { class: 'cl-list' }, ...items.map(([ic, col, title, text]) => h('li', {},
+    h('span', { class: 'cl-ic', style: { background: col } }, icon(ic, { size: 18 })), h('div', {}, h('b', {}, title), h('p', {}, text)))));
+  const older = [['1.2', NEWS_12], ['1.1', NEWS_11]].filter(([v]) => v !== VERSION);
+  const film = h('button', { class: 'btn btn-sm', onclick: () => playFilm() }, icon('play', { size: 16 }), `Watch the ${VERSION} film`);
+  return h('section', { class: 'cl reveal', id: 'whats-new' },
+    h('div', { class: 'cl-head' },
+      h('div', {}, h('span', { class: 'cl-ver' }, `Quickzy ${VERSION}`), h('h2', { class: 'hm-h2' }, "What's new")),
+      film),
+    list(NEWS),
+    ...older.map(([v, items]) => h('details', { class: 'cl-old' }, h('summary', {}, `Quickzy ${v}`, h('small', {}, `${items.length} changes`)), list(items))));
 }
 
 /** "Got a PIN?" on one line, right under the headline. */

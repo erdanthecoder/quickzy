@@ -97,6 +97,29 @@ export function inviteCard({ compact = false } = {}) {
     h('button', { class: 'btn btn-main', onclick: () => shareInvite() }, 'Invite'));
 }
 
+/** The invite link right on the page: see it, copy it, or share it. No popup. */
+export function inviteLinkCard() {
+  const url = inviteLink();
+  const box = h('input', { class: 'input inv-url', value: url, readonly: true, 'aria-label': 'Your invite link', onfocus: (e) => e.target.select() });
+  const copy = h('button', { class: 'btn btn-main', type: 'button' }, 'Copy link');
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(url); } catch { box.select(); document.execCommand && document.execCommand('copy'); }
+    sfx('pick');
+    copy.textContent = 'Copied!';
+    copy.classList.add('is-done');
+    setTimeout(() => { copy.textContent = 'Copy link'; copy.classList.remove('is-done'); }, 1800);
+  });
+  const share = navigator.share ? h('button', { class: 'btn', type: 'button', onclick: () => shareInvite() }, 'Share') : null;
+  return h('section', { class: 'inv' },
+    h('div', { class: 'inv-art' }, blook('buddy', 72)),
+    h('div', { class: 'inv-body' },
+      h('h2', {}, 'Invite friends'),
+      h('p', {}, signedIn()
+        ? `Send this link. When a friend joins, you get ${INVITER_COINS} coins and the Buddy blook, and they get ${NEW_FRIEND_COINS} coins.`
+        : 'Send this link to a friend. Sign in first to earn coins for every friend who joins.'),
+      h('div', { class: 'inv-row' }, box, copy, share)));
+}
+
 let settling = null;
 /** Settle once the profile has loaded (and only one at a time). */
 export async function whenReady(session) {

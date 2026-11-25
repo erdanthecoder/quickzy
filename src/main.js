@@ -98,8 +98,6 @@ function sidebar(path) {
         : signed ? null
           : h('div', { class: 'side-auth' }, h('a', { class: 'btn btn-main btn-sm', href: '/signup' }, 'Sign up free'), h('a', { class: 'btn btn-dark btn-sm', href: '/login' }, 'Sign in')),
       h('div', { class: 'side-tools' },
-        tool(`What's new in ${VERSION}`, 'bolt', () => import('./ui/whatsnew.js').then((m) => m.showWhatsNew())),
-        tool('Invite friends', 'users', () => import('./services/invite.js').then((m) => m.shareInvite())),
         music,
         h('a', { class: `side-tool ${isOn(path, '/settings')}`, href: '/settings', title: 'Settings', 'aria-label': 'Settings' }, icon('gear', { size: 18 })))));
 }

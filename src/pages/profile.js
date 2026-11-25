@@ -18,7 +18,8 @@ import NotFound from './notfound.js';
 import { profileBanner } from '../ui/banner.js';
 import { ACHIEVEMENTS, statsFor, earned } from '../services/achievements.js';
 import { isPro } from '../services/plan.js';
-import { levelOf } from '../services/progress.js';
+import { levelOf, levelInfo } from '../services/progress.js';
+import { rarityOf, blookName } from '../ui/blooks.js';
 import { OWNER_UID } from '../config.js';
 import { logo } from '../ui/icons.js';
 
@@ -79,7 +80,13 @@ export default async function Profile({ params }) {
     tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('is-on', b.dataset.t === tab));
     if (tab === 'content') {
       const list = [...quizzes].sort(sort === 'top' ? (a, b) => (b.plays || 0) - (a.plays || 0) : (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      const star = quizzes.length > 2 ? [...quizzes].sort((a, b) => (b.plays || 0) - (a.plays || 0))[0] : null;
       fill(body,
+        mine ? checklist() : null,
+        star && (star.plays || 0) > 0 ? h('a', { class: 'pf-star', href: `/quiz/${star.id}` },
+          h('span', { class: 'pf-star-tag' }, icon('trophy', { size: 14 }), 'Most played'),
+          h('b', {}, star.title),
+          h('small', {}, `${fmt(star.plays || 0)} plays · ${plural((star.questions || []).length || star.count || 0, 'question')}`)) : null,
         quizzes.length > 1 ? h('div', { class: 'row', style: { gap: '6px' } },
           ...[['top', 'Most played'], ['new', 'Newest']].map(([id, label]) => h('button', { class: `chip${sort === id ? ' is-on' : ''}`, onclick: () => { sort = id; drawBody(); } }, label))) : null,
         quizzes.length ? h('div', { class: 'grid' }, ...list.map((q) => quizCard(q)))
@@ -97,8 +104,35 @@ export default async function Profile({ params }) {
           h('div', {}, icon('star', { size: 18 }), h('span', {}, `Level ${levelOf(user.xp || 0)}`)),
           h('div', {}, icon('users', { size: 18 }), h('span', {}, `${plural(followers, 'follower')}`)),
           user.createdAt ? h('div', {}, icon('clock', { size: 18 }), h('span', {}, `Joined ${new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`)) : null,
-          h('div', {}, blook(user.blook, 22), h('span', {}, `${stats.blooks} blooks collected`)))));
+          h('div', {}, blook(user.blook, 22), h('span', {}, `${stats.blooks} blooks collected`)))),
+        collection());
     }
+  };
+  // the rarest blooks this person owns, best first
+  const collection = () => {
+    const known = (id) => !['Blook', 'Custom'].includes(blookName(id));
+    const ids = Object.keys(user.owned || {}).filter((id) => known(id) && id !== user.blook);
+    const top = [user.blook, ...ids.sort((a, b) => rarityOf(a).chance - rarityOf(b).chance)].slice(0, 12);
+    return h('div', { class: 'card stack pf-collect' },
+      h('b', {}, 'Blook collection'),
+      h('div', { class: 'pf-collect-row' }, ...top.map((id) => h('span', { class: 'pf-collect-item', title: blookName(id), style: { '--rc': rarityOf(id).colour } }, blook(id, 48)))));
+  };
+  // only on your own profile: what would make it look finished
+  const checklist = () => {
+    const steps = [
+      [Boolean(user.bio), 'Write a bio', '/settings#profile'],
+      [Boolean(user.banner && user.banner !== 'sky'), 'Pick a banner', '/settings#profile'],
+      [quizzes.length > 0, 'Publish a quiz', '/new'],
+      [followers > 0, 'Get your first follower', null],
+    ];
+    const done = steps.filter(([ok]) => ok).length;
+    if (done === steps.length) return null;
+    return h('div', { class: 'pf-todo' },
+      h('div', { class: 'pf-todo-head' }, h('b', {}, 'Finish your profile'), h('small', {}, `${done} of ${steps.length} done`)),
+      h('div', { class: 'pf-todo-bar' }, h('i', { style: { width: `${(done / steps.length) * 100}%` } })),
+      h('div', { class: 'pf-todo-list' }, ...steps.map(([ok, label, href]) => (href && !ok
+        ? h('a', { href, class: 'pf-todo-item' }, icon('plus', { size: 14 }), label)
+        : h('span', { class: `pf-todo-item${ok ? ' is-done' : ''}` }, icon(ok ? 'check' : 'clock', { size: 14 }), label)))));
   };
   const tabs = h('div', { class: 'profile-tabs' },
     ...[['content', 'Content'], ['ach', 'Achievements'], ['about', 'About']].map(([t, label]) => h('button', { 'data-t': t, onclick: () => { tab = t; drawBody(); } }, label)));
@@ -109,7 +143,7 @@ export default async function Profile({ params }) {
   const joined = user.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null;
   const share = async () => {
     const url = `${location.origin}/u/${user.username}`;
-    try { if (navigator.share) await navigator.share({ title: user.displayName, url }); else { await navigator.clipboard.writeText(url); toast('Link copied'); } } catch { /* closed */ }
+    try { if (navigator.share) await navigator.share({ title: user.displayName, url }); else { await navigator.clipboard.writeText(url); toast('Profile link copied', 'ok'); } } catch { /* closed */ }
   };
   return h('div', { class: 'page stack', style: { gap: '18px' } },
     h('section', { class: 'pf' },
@@ -118,7 +152,7 @@ export default async function Profile({ params }) {
         h('div', { class: 'pf-avatar' }, blook(user.blook, 132)),
         h('div', { class: 'pf-actions' },
           h('button', { class: 'btn', title: 'Share profile', 'aria-label': 'Share profile', onclick: share }, icon('up', { size: 18 })),
-          mine ? h('a', { class: 'btn', href: '/settings' }, 'Edit profile') : hasChannel ? followButton(claim.uid, countEl) : null)),
+          mine ? h('a', { class: 'btn', href: '/settings#profile' }, icon('edit', { size: 16 }), 'Edit profile') : hasChannel ? followButton(claim.uid, countEl) : null)),
       h('div', { class: 'pf-id' },
         h('h1', { class: 'pf-name' }, user.displayName, badge ? nameBadges(badge) : null),
         h('div', { class: 'pf-handle' }, h('span', {}, `@${user.username}`),
@@ -126,12 +160,13 @@ export default async function Profile({ params }) {
         user.bio ? h('p', { class: 'pf-bio' }, user.bio) : null,
         h('div', { class: 'pf-meta' },
           owner ? h('span', {}, icon('globe', { size: 15 }), 'Kyrgyzstan') : null,
-          joined ? h('span', {}, icon('clock', { size: 15 }), `Joined ${joined}`) : null,
-          h('span', {}, icon('star', { size: 15 }), `Level ${stats.level}`)),
+          joined ? h('span', {}, icon('clock', { size: 15 }), `Joined ${joined}`) : null),
         h('div', { class: 'pf-counts' },
           hasChannel ? h('span', {}, countEl, followers === 1 ? 'follower' : 'followers') : null,
           h('span', {}, h('b', {}, fmt(quizzes.length)), quizzes.length === 1 ? 'quiz' : 'quizzes'),
           h('span', {}, h('b', {}, fmt(plays)), plays === 1 ? 'play' : 'plays')),
+        (() => { const li = levelInfo(user.xp || 0); return h('div', { class: 'pf-level', title: `${li.into} / ${li.need} XP to level ${li.level + 1}` },
+          h('span', {}, `Level ${li.level}`), h('div', { class: 'pf-level-bar' }, h('i', { style: { width: `${Math.round(li.frac * 100)}%` } })), h('small', {}, li.need ? `${Math.round(li.frac * 100)}%` : 'Max')); })(),
         earnedBadges.length ? h('div', { class: 'pf-earned' }, ...earnedBadges.map((a) => h('span', { style: { '--c': a.col } }, icon('trophy', { size: 12 }), a.title))) : null),
       tabs),
     body);

@@ -32,12 +32,14 @@ export function blookPicker(current, onPick) {
     onclick: () => { current = id; draw(); onPick(id); },
   }, blook(id), h('small', {}, blookName(id)))));
   draw();
-  return h('div', { class: 'stack', style: { gap: '8px' } }, grid,
+  const el = h('div', { class: 'stack', style: { gap: '8px' } }, grid,
     h('a', { href: '/blooks', class: 'small' }, 'Get more blooks from boxes'));
+  el.set = (id) => { current = id; draw(); };
+  return el;
 }
 
 function section(title, ...rows) {
-  const ic = { Profile: 'user', Account: 'key', Security: 'shield', 'Quickzy Pro': 'star', 'More settings': 'gear', 'Sound & screen': 'volume', 'Trusted quiz maker': 'check', 'Your badge': 'shield', 'Your badges': 'shield' }[title] || 'gear';
+  const ic = { Profile: 'user', Account: 'key', 'Account & password': 'key', 'Display & games': 'eye', 'Your data': 'download', About: 'info', Security: 'shield', 'Quickzy Pro': 'star', 'More settings': 'gear', 'Sound & screen': 'volume', 'Trusted quiz maker': 'check', 'Your badge': 'shield', 'Your badges': 'shield' }[title] || 'gear';
   const id = `set-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`;
   return h('section', { class: 'card stack set-card', id },
     h('h2', { class: 'set-title' }, h('span', { class: 'set-ic' }, icon(ic, { size: 18 })), title), ...rows);
@@ -58,25 +60,63 @@ function hero() {
     h('div', { class: 'set-head-stats' },
       h('div', {}, h('b', {}, String(info.level)), h('small', {}, 'Level')),
       h('div', {}, h('b', {}, m.coins.toLocaleString()), h('small', {}, 'Coins')),
-      h('div', {}, h('b', {}, String(usableBlooks().length)), h('small', {}, 'Blooks'))));
+      h('div', {}, h('b', {}, String(usableBlooks().length)), h('small', {}, 'Blooks'))),
+    h('a', { class: 'btn btn-sm set-head-view', href: `/u/${p.username}` }, icon('user', { size: 16 }), 'View profile'));
 }
 
 const slug = (label) => `set-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`;
-/** The settings menu on the left (a row of tabs on phones); it follows the scroll. */
-function jumpTabs(list) {
-  const nav = h('nav', { class: 'set-nav', 'aria-label': 'Settings sections' }, ...list.map(([label, ic]) => h('a', {
-    href: `#${slug(label)}`, class: 'set-tab', 'data-for': slug(label),
-    onclick: (e) => { e.preventDefault(); document.getElementById(slug(label))?.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
-  }, icon(ic, { size: 17 }), h('span', {}, label))));
-  setTimeout(() => {
-    if (!('IntersectionObserver' in window)) return;
-    const io = new IntersectionObserver((es) => es.forEach((e) => {
-      if (!e.isIntersecting) return;
-      nav.querySelectorAll('.set-tab').forEach((t) => t.classList.toggle('is-on', t.dataset.for === e.target.id));
-    }), { rootMargin: '-20% 0px -70% 0px' });
-    list.forEach(([label]) => { const el = document.getElementById(slug(label)); if (el) io.observe(el); });
-  }, 50);
-  return nav;
+
+/**
+ * The settings menu: one pane at a time, so nothing is a long scroll.
+ * The pane is kept in the address (#security), so Back and links work.
+ * Typing in the search box shows every matching setting from every pane.
+ */
+function settingsShell(panes) {
+  const ids = panes.map((p) => p.key);
+  const pick = () => { const k = location.hash.slice(1); return ids.includes(k) ? k : ids[0]; };
+  let on = pick();
+  const tabs = panes.map((p) => h('a', {
+    href: `#${p.key}`, class: 'set-tab', 'data-for': p.key,
+    onclick: (e) => { e.preventDefault(); history.replaceState(history.state, '', `#${p.key}`); show(p.key); },
+  }, icon(p.icon, { size: 17 }), h('span', {}, p.label)));
+  const search = h('input', { class: 'input set-search', type: 'search', placeholder: 'Search settings', 'aria-label': 'Search settings' });
+  const none = h('p', { class: 'muted set-none', hidden: true }, 'No setting matches that.');
+  const bodies = panes.map((p) => h('div', { class: 'set-pane stack', 'data-pane': p.key, style: { gap: '18px' } }, ...p.body));
+  const show = (key) => {
+    on = key;
+    search.value = '';
+    filter();
+    tabs.forEach((t) => t.classList.toggle('is-on', t.dataset.for === key));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const filter = () => {
+    const q = search.value.trim().toLowerCase();
+    let hits = 0;
+    bodies.forEach((b) => {
+      if (!q) {
+        b.hidden = b.dataset.pane !== on;
+        b.querySelectorAll('.set-row, .set-card').forEach((el) => { el.hidden = false; });
+        return;
+      }
+      b.hidden = false;
+      b.querySelectorAll('.set-card').forEach((card) => {
+        const rows = [...card.querySelectorAll('.set-row')];
+        let any = card.querySelector('.set-title').textContent.toLowerCase().includes(q);
+        rows.forEach((r) => { const m = any || r.textContent.toLowerCase().includes(q); r.hidden = !m; if (m) hits += 1; });
+        if (!rows.length && any) hits += 1;
+        card.hidden = !any && !rows.some((r) => !r.hidden);
+      });
+    });
+    none.hidden = !q || hits > 0;
+    tabs.forEach((t) => t.classList.toggle('is-on', !q && t.dataset.for === on));
+  };
+  search.addEventListener('input', filter);
+  const onHash = () => { if (!search.isConnected) { window.removeEventListener('hashchange', onHash); return; } const k = pick(); if (k !== on) show(k); };
+  window.addEventListener('hashchange', onHash);
+  show(on);
+  return h('div', { class: 'set-layout' },
+    h('nav', { class: 'set-nav', 'aria-label': 'Settings sections' }, search, ...tabs),
+    h('div', { class: 'set-main' }, none, ...bodies));
 }
 
 function row(title, text, control) {
@@ -88,14 +128,24 @@ function row(title, text, control) {
 function profileSection() {
   const p = session.myProfile();
   let chosen = p.blook;
-  const preview = h('div', {}, blook(chosen));
-  preview.firstChild.style.width = '96px'; preview.firstChild.style.height = '96px';
+  const preview = h('div', { class: 'set-avatar' }, blook(chosen, 96));
   const name = input({ value: p.displayName, maxlength: 30 });
   const user = input({ value: p.username, maxlength: LIMITS.usernameMax, autocapitalize: 'off', spellcheck: 'false' });
   const userHint = h('small', { class: 'hint' }, `quickzy.web.app/u/${p.username}`);
   const errorBox = h('p', { class: 'error-text', role: 'alert' });
   const save = h('button', { class: 'btn btn-main' }, 'Save profile');
+  const undo = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Undo');
+  const status = h('span', { class: 'set-save-note' }, 'All changes saved');
+  const bar = h('div', { class: 'set-savebar' }, status, h('div', { class: 'row' }, undo, save));
+  const extra = bannerAndBio(p, () => dirty());
 
+  const dirty = () => {
+    const now = session.myProfile() || p;
+    const changed = name.value.trim() !== now.displayName || user.value.trim() !== now.username || chosen !== now.blook || extra.changed(now);
+    bar.classList.toggle('is-dirty', changed);
+    status.textContent = changed ? 'You have unsaved changes' : 'All changes saved';
+    return changed;
+  };
   const checkName = debounce(async () => {
     const v = user.value.trim().toLowerCase();
     const bad = session.validUsername(v);
@@ -106,13 +156,24 @@ function profileSection() {
     fill(userHint, taken ? 'That username is taken.' : `Available: quickzy.web.app/u/${v}`);
     userHint.className = taken ? 'error-text' : 'hint';
   }, 350);
-  user.addEventListener('input', () => { user.value = user.value.toLowerCase().replace(/[^a-z0-9_]/g, ''); checkName(); });
+  user.addEventListener('input', () => { user.value = user.value.toLowerCase().replace(/[^a-z0-9_]/g, ''); checkName(); dirty(); });
+  name.addEventListener('input', dirty);
+  undo.addEventListener('click', () => {
+    const now = session.myProfile() || p;
+    name.value = now.displayName; user.value = now.username; chosen = now.blook;
+    fill(preview, blook(chosen, 96)); extra.reset(now); picker.set(chosen);
+    fill(userHint, `quickzy.web.app/u/${now.username}`); userHint.className = 'hint'; fill(errorBox);
+    dirty();
+  });
 
   save.addEventListener('click', busy(save, async () => {
     fill(errorBox);
+    const more = extra.value();
+    if (more.error) { fill(errorBox, more.error); return; }
     try {
       const before = session.myProfile();
       await session.updateProfile({ displayName: name.value, blook: chosen });
+      if (more.banner !== (before.banner || 'sky') || more.bio !== (before.bio || '')) await session.patchProfile({ banner: more.banner, bio: more.bio });
       if (user.value.trim() !== before.username) await session.changeUsername(user.value.trim());
       const after = session.myProfile();
       if (after.displayName !== before.displayName || after.username !== before.username || after.blook !== before.blook) {
@@ -120,26 +181,29 @@ function profileSection() {
       }
       net.auth.setDisplayName(after.displayName).catch(() => {});
       toast('Profile saved', 'ok');
+      sfx('coin');
       fill(userHint, `quickzy.web.app/u/${after.username}`); userHint.className = 'hint';
+      dirty();
     } catch (err) {
       fill(errorBox, err.message && !err.code ? err.message : explain(err));
     }
   }));
 
+  const picker = blookPicker(chosen, (id) => { chosen = id; fill(preview, blook(id, 96)); sfx('pick'); dirty(); });
   return section('Profile',
     h('div', { class: 'profile-head' }, preview,
       h('div', { class: 'grow stack', style: { minWidth: '220px' } },
         field('Display name', name, 'Shown on your quizzes and profile.'),
         h('label', { class: 'field' }, h('span', {}, 'Username'), user, userHint))),
+    extra.el,
+    h('h3', { style: { margin: '6px 0 0' } }, 'Your blook'),
+    picker,
     row('Have a channel', 'On: people can follow you and see your channel in Channels. Off: just a plain profile.',
       toggle(p.channel !== false, async (on) => {
         try { await session.patchProfile({ channel: on }); toast(on ? 'Your channel is on' : 'Your channel is off', 'ok'); } catch (err) { toast(explain(err), 'bad'); }
       })),
-    bannerAndBio(p),
-    h('h3', {}, 'Your blook'),
-    blookPicker(chosen, (id) => { chosen = id; fill(preview, blook(id)); preview.firstChild.style.width = '96px'; preview.firstChild.style.height = '96px'; sfx('pick'); }),
     errorBox,
-    h('div', { class: 'row end' }, save));
+    bar);
 }
 
 /** The owner picks which badges to wear next to their name. */
@@ -242,7 +306,7 @@ function accountSection() {
   const out = h('button', { class: 'btn btn-sm' }, icon('logout', { size: 16 }), 'Sign out');
   out.addEventListener('click', busy(out, async () => { await net.auth.signOut(); toast('Signed out'); navigate('/', { replace: true }); }));
 
-  return section('Account',
+  return section('Account & password',
     verifyRow,
     row('Signed in with', [hasGoogle && 'Google', hasPassword && 'email and password'].filter(Boolean).join(' and ') || 'email', null),
     passRow,
@@ -332,7 +396,7 @@ function proveItsYou(why) {
 /** Turn on 2-step verification: scan the QR code, type a code to prove it works. */
 async function turnOnTwoStep(redraw) {
   const u = session.me();
-  if (!u.emailVerified) { toast('Confirm your email address first (in Account, just above).', 'bad'); return; }
+  if (!u.emailVerified) { toast('Confirm your email address first (More settings → Account & password).', 'bad'); return; }
   let setup;
   try { setup = await net.auth.mfa.start(); } catch (err) {
     if (err.code !== 'auth/requires-recent-login') { toast(explain(err), 'bad'); return; }
@@ -535,15 +599,21 @@ function moreSection() {
     try { ['quickzy.offline', 'quickzy.best', 'quickzy.prefs', 'quickzy.claimed'].forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
     toast('This device was cleared'); setTimeout(() => location.reload(), 600);
   } }, 'Clear');
-  return section('More settings',
-    row('Text size', 'Make words bigger across Quickzy.', segmented([['normal', 'Normal'], ['large', 'Large'], ['larger', 'Larger']], p.textSize || 'normal', (v) => session.setPrefs({ textSize: v }))),
-    row('Lite games', 'Use the simpler 2D look in Laser Tag, Robot Run and Train Travel. Better on old or slow devices.', toggle(Boolean(p.lite), (v) => session.setPrefs({ lite: v }))),
-    row('Loading tips', 'Show a "Did you know?" tip while Quickzy loads.', toggle(p.tips !== false, (v) => session.setPrefs({ tips: v }))),
-    row('Ask before leaving a game', 'Stops you leaving a live game by accident.', toggle(p.confirmLeave !== false, (v) => session.setPrefs({ confirmLeave: v }))),
-    row('Download your data', 'Your profile, quizzes and game reports in one file.', dl),
-    row('Clear this device', 'Offline quizzes, best scores and settings saved in this browser.', clear),
-    row(`Quickzy ${VERSION}`, 'Get the newest version straight away.', update),
-    row('Legal', h('span', {}, h('a', { href: '/terms' }, 'Terms of use'), ' · ', h('a', { href: '/privacy' }, 'Privacy notice')), null));
+  const copyLink = h('button', { class: 'btn btn-sm', onclick: () => import('../services/invite.js').then((m) => navigator.clipboard.writeText(m.inviteLink())).then(() => toast('Invite link copied', 'ok')).catch(() => {}) }, icon('copy', { size: 16 }), 'Copy link');
+  return [
+    section('Display & games',
+      row('Text size', 'Make words bigger across Quickzy.', segmented([['normal', 'Normal'], ['large', 'Large'], ['larger', 'Larger']], p.textSize || 'normal', (v) => session.setPrefs({ textSize: v }))),
+      row('Lite games', 'Use the simpler 2D look in Laser Tag, Robot Run and Train Travel. Better on old or slow devices.', toggle(Boolean(p.lite), (v) => session.setPrefs({ lite: v }))),
+      row('Loading tips', 'Show a "Did you know?" tip while Quickzy loads.', toggle(p.tips !== false, (v) => session.setPrefs({ tips: v }))),
+      row('Ask before leaving a game', 'Stops you leaving a live game by accident.', toggle(p.confirmLeave !== false, (v) => session.setPrefs({ confirmLeave: v })))),
+    section('Your data',
+      row('Invite link', 'Your personal link. Friends who join with it give you coins.', copyLink),
+      row('Download your data', 'Your profile, quizzes and game reports in one file.', dl),
+      row('Clear this device', 'Offline quizzes, best scores and settings saved in this browser.', clear)),
+    section('About',
+      row(`Quickzy ${VERSION}`, h('span', {}, 'Get the newest version straight away. ', h('a', { href: '/#whats-new' }, "See what's new")), update),
+      row('Legal', h('span', {}, h('a', { href: '/terms' }, 'Terms of use'), ' · ', h('a', { href: '/privacy' }, 'Privacy notice')), null)),
+  ];
 }
 
 function deviceSection() {
@@ -595,45 +665,50 @@ export default async function Settings({ query }) {
     h('p', { style: { margin: '6px 0 14px', opacity: 0.9 } }, 'Pick a name and a blook, then make your first quiz.'),
     h('a', { class: 'btn btn-main', href: '/create' }, icon('plus'), 'Make a quiz')) : null;
   const signedUp = !session.me().isAnonymous;
-  const menu = [['Profile', 'user'], ['Account', 'key'], signedUp && ['Security', 'shield'], signedUp && ['Quickzy Pro', 'star'], ['Sound & screen', 'volume'], ['More settings', 'gear']].filter(Boolean);
+  const panes = [
+    { key: 'profile', label: 'Profile', icon: 'user', body: [profileSection(), verifiedSection()] },
+    signedUp && { key: 'security', label: 'Security', icon: 'shield', body: [securitySection()] },
+    signedUp && { key: 'pro', label: 'Quickzy Pro', icon: 'star', body: [proSection()] },
+    { key: 'sound', label: 'Sound & screen', icon: 'volume', body: [deviceSection()] },
+    { key: 'more', label: 'More settings', icon: 'gear', body: [accountSection(), ...moreSection()] },
+  ].filter(Boolean);
   return h('div', { class: 'page set-page' },
     h('div', { class: 'set-titlebar' }, h('h1', {}, 'Settings')),
     hero(),
     welcome,
-    h('div', { class: 'set-layout' },
-      jumpTabs(menu),
-      h('div', { class: 'set-main stack', style: { gap: '18px' } },
-        profileSection(),
-        verifiedSection(),
-        accountSection(),
-        signedUp ? securitySection() : null,
-        signedUp ? proSection() : null,
-        deviceSection(),
-        moreSection())));
+    settingsShell(panes));
 }
 
-/** Profile banner (a scene or your own picture) and a short bio. */
-function bannerAndBio(p) {
+/** Profile banner (a scene or your own picture) and a short bio; saved with the profile. */
+function bannerAndBio(p, onChange) {
   let pick = validBanner(p.banner) || 'sky';
   const grid = h('div', { class: 'banner-pick' });
   const url = input({ value: pick.startsWith('https://') ? pick : '', placeholder: 'https://… (a picture link)', maxlength: 290 });
-  const draw = () => fill(grid, ...BANNER_IDS.map((id) => h('button', { type: 'button', class: id === pick ? 'is-on' : '', 'aria-label': BANNERS[id].name, onclick: () => { pick = id; url.value = ''; draw(); } },
+  const draw = () => fill(grid, ...BANNER_IDS.map((id) => h('button', { type: 'button', class: id === pick ? 'is-on' : '', 'aria-label': BANNERS[id].name, onclick: () => { pick = id; url.value = ''; draw(); onChange(); } },
     bannerThumb(id), h('span', {}, BANNERS[id].name))));
   draw();
   const bio = h('textarea', { class: 'input', rows: 2, maxlength: 160, placeholder: 'A few words about you (shown on your profile)' }, p.bio || '');
-  const save = h('button', { class: 'btn' }, 'Save banner and bio');
-  save.addEventListener('click', busy(save, async () => {
+  const left = h('small', { class: 'hint' });
+  const count = () => { left.textContent = `${160 - bio.value.length} letters left`; };
+  count();
+  bio.addEventListener('input', () => { count(); onChange(); });
+  url.addEventListener('input', onChange);
+  const value = () => {
     const link = url.value.trim();
     const banner = link ? validBanner(link) : pick;
-    if (link && !banner) { toast('Use a picture link that starts with https://', 'bad'); return; }
+    if (link && !banner) return { error: 'Use a picture link that starts with https://' };
     const text = bio.value.trim().slice(0, 160);
-    if (text && !isClean(text)) { toast('Please write something kinder in your bio.', 'bad'); return; }
-    try { await session.patchProfile({ banner, bio: text }); toast('Profile updated', 'ok'); sfx('coin'); } catch (err) { toast(explain(err), 'bad'); }
-  }));
-  return h('div', { class: 'stack', style: { gap: '10px' } },
-    h('h3', { style: { margin: '6px 0 0' } }, 'Profile banner'),
-    grid,
-    field('Or use your own picture', url, 'Paste a link to a picture (https). Keep it friendly: everyone can see it.'),
-    field('Bio', bio),
-    h('div', { class: 'row end' }, save));
+    if (text && !isClean(text)) return { error: 'Please write something kinder in your bio.' };
+    return { banner, bio: text };
+  };
+  return {
+    el: h('div', { class: 'stack', style: { gap: '10px' } },
+      h('label', { class: 'field' }, h('span', {}, 'Bio'), bio, left),
+      h('h3', { style: { margin: '6px 0 0' } }, 'Profile banner'),
+      grid,
+      field('Or use your own picture', url, 'Paste a link to a picture (https). Keep it friendly: everyone can see it.')),
+    value,
+    changed: (now) => { const v = value(); return Boolean(v.error) || v.banner !== (validBanner(now.banner) || 'sky') || v.bio !== (now.bio || ''); },
+    reset: (now) => { pick = validBanner(now.banner) || 'sky'; url.value = pick.startsWith('https://') ? pick : ''; bio.value = now.bio || ''; count(); draw(); },
+  };
 }
