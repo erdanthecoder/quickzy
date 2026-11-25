@@ -73,7 +73,8 @@ const slug = (label) => `set-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`;
  */
 function settingsShell(panes) {
   const ids = panes.map((p) => p.key);
-  const pick = () => { const k = location.hash.slice(1); return ids.includes(k) ? k : ids[0]; };
+  const pick = () => { const k = location.hash.slice(1).split('/')[0]; return ids.includes(k) ? k : ids[0]; };
+  const sub = () => location.hash.slice(1).split('/')[1] || '';
   let on = pick();
   const tabs = panes.map((p) => h('a', {
     href: `#${p.key}`, class: 'set-tab', 'data-for': p.key,
@@ -82,16 +83,19 @@ function settingsShell(panes) {
   const search = h('input', { class: 'input set-search', type: 'search', placeholder: 'Search settings', 'aria-label': 'Search settings' });
   const none = h('p', { class: 'muted set-none', hidden: true }, 'No setting matches that.');
   const bodies = panes.map((p) => h('div', { class: 'set-pane stack', 'data-pane': p.key, style: { gap: '18px' } }, ...p.body));
-  const show = (key) => {
+  const show = (key, part = '') => {
     on = key;
     search.value = '';
     filter();
+    const pane = panes.find((p) => p.key === key);
+    if (pane && pane.open) pane.open(part);
     tabs.forEach((t) => t.classList.toggle('is-on', t.dataset.for === key));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const filter = () => {
     const q = search.value.trim().toLowerCase();
     let hits = 0;
+    bodies.forEach((b) => b.classList.toggle('is-searching', Boolean(q)));
     bodies.forEach((b) => {
       if (!q) {
         b.hidden = b.dataset.pane !== on;
@@ -111,9 +115,9 @@ function settingsShell(panes) {
     tabs.forEach((t) => t.classList.toggle('is-on', !q && t.dataset.for === on));
   };
   search.addEventListener('input', filter);
-  const onHash = () => { if (!search.isConnected) { window.removeEventListener('hashchange', onHash); return; } const k = pick(); if (k !== on) show(k); };
+  const onHash = () => { if (!search.isConnected) { window.removeEventListener('hashchange', onHash); return; } show(pick(), sub()); };
   window.addEventListener('hashchange', onHash);
-  show(on);
+  show(on, sub());
   return h('div', { class: 'set-layout' },
     h('nav', { class: 'set-nav', 'aria-label': 'Settings sections' }, search, ...tabs),
     h('div', { class: 'set-main' }, none, ...bodies));
@@ -601,19 +605,43 @@ function moreSection() {
   } }, 'Clear');
   const copyLink = h('button', { class: 'btn btn-sm', onclick: () => import('../services/invite.js').then((m) => navigator.clipboard.writeText(m.inviteLink())).then(() => toast('Invite link copied', 'ok')).catch(() => {}) }, icon('copy', { size: 16 }), 'Copy link');
   return [
-    section('Display & games',
+    ['display', 'Display & games', 'eye', 'Text size, lite games, loading tips', section('Display & games',
       row('Text size', 'Make words bigger across Quickzy.', segmented([['normal', 'Normal'], ['large', 'Large'], ['larger', 'Larger']], p.textSize || 'normal', (v) => session.setPrefs({ textSize: v }))),
       row('Lite games', 'Use the simpler 2D look in Laser Tag, Robot Run and Train Travel. Better on old or slow devices.', toggle(Boolean(p.lite), (v) => session.setPrefs({ lite: v }))),
       row('Loading tips', 'Show a "Did you know?" tip while Quickzy loads.', toggle(p.tips !== false, (v) => session.setPrefs({ tips: v }))),
-      row('Ask before leaving a game', 'Stops you leaving a live game by accident.', toggle(p.confirmLeave !== false, (v) => session.setPrefs({ confirmLeave: v })))),
-    section('Your data',
+      row('Ask before leaving a game', 'Stops you leaving a live game by accident.', toggle(p.confirmLeave !== false, (v) => session.setPrefs({ confirmLeave: v }))))],
+    ['data', 'Your data', 'download', 'Invite link, download your data, clear this device', section('Your data',
       row('Invite link', 'Your personal link. Friends who join with it give you coins.', copyLink),
       row('Download your data', 'Your profile, quizzes and game reports in one file.', dl),
-      row('Clear this device', 'Offline quizzes, best scores and settings saved in this browser.', clear)),
-    section('About',
+      row('Clear this device', 'Offline quizzes, best scores and settings saved in this browser.', clear))],
+    ['about', 'About', 'info', `Quickzy ${VERSION}, updates, legal`, section('About',
       row(`Quickzy ${VERSION}`, h('span', {}, 'Get the newest version straight away. ', h('a', { href: '/#whats-new' }, "See what's new")), update),
-      row('Legal', h('span', {}, h('a', { href: '/terms' }, 'Terms of use'), ' · ', h('a', { href: '/privacy' }, 'Privacy notice')), null)),
+      row('Legal', h('span', {}, h('a', { href: '/terms' }, 'Terms of use'), ' · ', h('a', { href: '/privacy' }, 'Privacy notice')), null))],
   ];
+}
+
+/** More settings: a list of buttons; each one opens its own page, with Back. */
+function morePane(parts) {
+  const views = parts.map(([key, label, , , card]) => h('div', { class: 'set-view stack', 'data-view': key, hidden: true },
+    h('button', { class: 'set-back', type: 'button', onclick: () => go('') }, icon('arrowLeft', { size: 16 }), 'More settings'),
+    card));
+  const menu = h('div', { class: 'card set-menu' },
+    h('h2', { class: 'set-title' }, h('span', { class: 'set-ic' }, icon('gear', { size: 18 })), 'More settings'),
+    ...parts.map(([key, label, ic, text]) => h('button', { class: 'set-link', type: 'button', onclick: () => go(key) },
+      h('span', { class: 'set-link-ic' }, icon(ic, { size: 18 })),
+      h('span', { class: 'grow' }, h('b', {}, label), h('small', {}, text)),
+      icon('arrowRight', { size: 18 }))));
+  const open = (key) => {
+    const known = parts.some(([k]) => k === key);
+    menu.hidden = known;
+    views.forEach((v) => { v.hidden = v.dataset.view !== key; });
+  };
+  const go = (key) => {
+    history.replaceState(history.state, '', key ? `#more/${key}` : '#more');
+    open(key);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  return { key: 'more', label: 'More settings', icon: 'gear', body: [menu, ...views], open };
 }
 
 function deviceSection() {
@@ -670,7 +698,8 @@ export default async function Settings({ query }) {
     signedUp && { key: 'security', label: 'Security', icon: 'shield', body: [securitySection()] },
     signedUp && { key: 'pro', label: 'Quickzy Pro', icon: 'star', body: [proSection()] },
     { key: 'sound', label: 'Sound & screen', icon: 'volume', body: [deviceSection()] },
-    { key: 'more', label: 'More settings', icon: 'gear', body: [accountSection(), ...moreSection()] },
+    morePane([['account', 'Account & password', 'key', 'Email, password, sign out, delete account', accountSection()],
+      ...moreSection()]),
   ].filter(Boolean);
   return h('div', { class: 'page set-page' },
     h('div', { class: 'set-titlebar' }, h('h1', {}, 'Settings')),

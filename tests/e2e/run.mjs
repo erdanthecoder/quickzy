@@ -806,7 +806,7 @@ if (which === 'account' || which === 'all') {
   await host.waitForSelector('text=is now your blook');
 
   say('change password, sign out, sign back in');
-  await host.goto(`${BASE}/settings#more`);
+  await host.goto(`${BASE}/settings#more/account`);
   await host.click('#set-account-password button:has-text("Change")');
   const pws = host.locator('.modal input[type=password]');
   await pws.nth(0).fill('Correct-Horse-9');
@@ -840,6 +840,7 @@ if (which === 'account' || which === 'all') {
   await host.waitForSelector('text=2-step verification is on');
   await host.waitForSelector('#set-security .pill:has-text("On")');
   await host.click('.set-tab[data-for="more"]');
+  await host.click('.set-link:has-text("Account & password")');
   await host.click('#set-account-password button:has-text("Sign out")');
   await host.waitForURL(`${BASE}/`);
   await host.goto(`${BASE}/login`);
@@ -861,7 +862,7 @@ if (which === 'account' || which === 'all') {
 
   say('delete the account and everything in it');
   const key2 = key;
-  await host.goto(`${BASE}/settings#more`);
+  await host.goto(`${BASE}/settings#more/account`);
   await host.click('#set-account-password button:has-text("Delete")');
   await host.locator('.modal input[type=password]').fill('Battery-Staple-42');
   await host.locator('.modal input[placeholder="DELETE"]').fill('DELETE');

@@ -2156,3 +2156,17 @@ a.pf-todo-item:hover { background: #ece7ff; }
 .cl { text-align: left; justify-items: stretch; }
 .cl > * { width: 100%; }
 .cl-head { text-align: left; }
+
+/* ---- More settings: a menu of buttons, each opening its own page ---- */
+.set-view[hidden], .set-menu[hidden] { display: none !important; }
+.set-pane.is-searching .set-view { display: grid !important; }
+.set-pane.is-searching .set-menu, .set-pane.is-searching .set-back { display: none !important; }
+.set-menu { padding: 20px 22px 10px; }
+.set-link { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 6px; border: 0; border-top: 1px solid var(--line); background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; border-radius: 0; }
+.set-link:hover { background: rgba(23,19,63,.035); }
+.set-link b { display: block; font: 600 15px var(--sans); }
+.set-link small { display: block; color: var(--ink-2); font-weight: 500; font-size: 13.5px; margin-top: 2px; }
+.set-link > svg { color: var(--ink-2); flex: none; }
+.set-link-ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: #f1eeff; color: #6b4cff; flex: none; }
+.set-back { justify-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px 6px 6px; border: 0; background: none; font: 600 14px var(--sans); color: #6b4cff; cursor: pointer; border-radius: 8px; }
+.set-back:hover { background: #f1eeff; }
