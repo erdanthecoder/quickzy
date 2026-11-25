@@ -14,7 +14,7 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, normalize, resolve } from 'node:path';
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes, createHash, createHmac } from 'node:crypto';
 
 const ROOT = resolve(process.argv[2] || process.cwd());
 const PORT = Number(process.env.PORT || 5173);
@@ -314,6 +314,21 @@ function storeOp(body) {
 const users = new Map();               // uid -> { uid, email, passHash, name, provider, verified, anonymous }
 const sessions = new Map();            // token -> uid
 const outbox = [];                     // emails "sent", for tests to read
+const sessionAt = new Map();           // token -> when that sign-in happened (ms)
+
+/* 2-step verification: real time-based codes (RFC 6238), like an authenticator app */
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+const base32 = (buf) => { let bits = ''; for (const b of buf) bits += b.toString(2).padStart(8, '0'); let out = ''; for (let i = 0; i + 5 <= bits.length; i += 5) out += B32[parseInt(bits.slice(i, i + 5), 2)]; return out; };
+const unbase32 = (str) => { let bits = ''; for (const c of str) bits += B32.indexOf(c).toString(2).padStart(5, '0'); const out = []; for (let i = 0; i + 8 <= bits.length; i += 8) out.push(parseInt(bits.slice(i, i + 8), 2)); return Buffer.from(out); };
+export function totp(secret, at = Date.now()) {
+  const ctr = Buffer.alloc(8); ctr.writeBigUInt64BE(BigInt(Math.floor(at / 30000)));
+  const mac = createHmac('sha1', unbase32(secret)).update(ctr).digest();
+  const o = mac[mac.length - 1] & 15;
+  return String(((mac.readUInt32BE(o) & 0x7fffffff) % 1000000)).padStart(6, '0');
+}
+const codeOk = (secret, code) => [-30000, 0, 30000].some((d) => totp(secret, Date.now() + d) === String(code || '').replace(/\D/g, ''));
+/** null when no code is needed (or it is right); otherwise the error to send */
+const needCode = (u, code) => (!u.totp ? null : code === undefined || code === null || code === '' ? 'auth/multi-factor-auth-required' : codeOk(u.totp.secret, code) ? null : 'auth/invalid-verification-code');
 
 const hash = (s) => createHash('sha256').update(`quickzy-dev:${s}`).digest('hex');
 
@@ -322,12 +337,16 @@ function publicUser(u) {
     uid: u.uid, email: u.email || null, displayName: u.name || null,
     emailVerified: Boolean(u.verified), isAnonymous: Boolean(u.anonymous),
     providers: u.provider ? [u.provider] : [],
+    mfa: u.totp ? [{ uid: 'totp', name: u.totp.name, kind: 'totp', at: u.totp.at }] : [],
+    lastSignIn: u.lastSignIn || null, created: u.created || null,
   };
 }
 
 function newSession(u) {
   const token = randomBytes(18).toString('hex');
   sessions.set(token, u.uid);
+  sessionAt.set(token, Math.floor(Date.now() / 1000) * 1000);
+  u.created ||= Date.now(); u.lastSignIn = Date.now();
   return { token, user: publicUser(u) };
 }
 
@@ -353,6 +372,8 @@ function authOp(path, body, token) {
     const email = String(body.email || '').toLowerCase();
     const u = [...users.values()].find((x) => x.email === email);
     if (!u || u.passHash !== hash(body.password)) return { error: 'auth/invalid-credential' };
+    const gate = needCode(u, body.code);
+    if (gate) return { error: gate };
     return newSession(u);
   }
   if (path === 'google') {
@@ -363,9 +384,11 @@ function authOp(path, body, token) {
       u = { uid: randomBytes(10).toString('hex'), email, provider: 'google.com', verified: true, name: body.name || 'Google Player' };
       users.set(u.uid, u);
     }
+    const gate = needCode(u, body.code);
+    if (gate) return { error: gate };
     return newSession(u);
   }
-  if (path === 'me') return me ? { user: publicUser(me) } : { user: null };
+  if (path === 'me') return me ? { user: publicUser(me), authTime: sessionAt.get(token) || null } : { user: null };
   if (path === 'signout') { sessions.delete(token); return { ok: true }; }
   if (path === 'reset') {
     const email = String(body.email || '').toLowerCase();
@@ -384,6 +407,8 @@ function authOp(path, body, token) {
   if (path === 'profile') { if (body.name !== undefined) me.name = body.name; return { user: publicUser(me) }; }
   if (path === 'password') {
     if (me.passHash !== hash(body.current)) return { error: 'auth/invalid-credential' };
+    const gate = needCode(me, body.code);
+    if (gate) return { error: gate };
     if (String(body.next || '').length < 8) return { error: 'auth/weak-password' };
     me.passHash = hash(body.next);
     return { ok: true };
@@ -397,8 +422,30 @@ function authOp(path, body, token) {
   }
   if (path === 'reauth') {
     if (me.provider === 'password' && me.passHash !== hash(body.password)) return { error: 'auth/invalid-credential' };
+    const gate = needCode(me, body.code);
+    if (gate) return { error: gate };
     me.reauthAt = Date.now();
+    sessionAt.set(token, Math.floor(Date.now() / 1000) * 1000);
     return { ok: true };
+  }
+  if (path === 'mfa-start') {
+    if (!me.verified) return { error: 'auth/unverified-email' };
+    if (!me.reauthAt || Date.now() - me.reauthAt > 5 * 60 * 1000) return { error: 'auth/requires-recent-login' };
+    const key = base32(randomBytes(20));
+    me.totpPending = key;
+    return { key, uri: `otpauth://totp/Quickzy:${encodeURIComponent(me.email)}?secret=${key}&issuer=Quickzy&algorithm=SHA1&digits=6&period=30` };
+  }
+  if (path === 'mfa-enroll') {
+    if (!me.totpPending) return { error: 'auth/missing-multi-factor-session' };
+    if (!codeOk(me.totpPending, body.code)) return { error: 'auth/invalid-verification-code' };
+    me.totp = { secret: me.totpPending, name: String(body.name || 'Authenticator app').slice(0, 40), at: Date.now() };
+    delete me.totpPending;
+    return { user: publicUser(me) };
+  }
+  if (path === 'mfa-remove') {
+    if (!me.reauthAt || Date.now() - me.reauthAt > 5 * 60 * 1000) return { error: 'auth/requires-recent-login' };
+    delete me.totp;
+    return { user: publicUser(me) };
   }
   if (path === 'delete') {
     if (!me.reauthAt || Date.now() - me.reauthAt > 5 * 60 * 1000) return { error: 'auth/requires-recent-login' };
@@ -488,9 +535,11 @@ createServer(async (req, res) => {
     if (p === '/__dev/store') return json(res, storeOp(body));
     if (p.startsWith('/__dev/auth/')) return json(res, authOp(p.slice('/__dev/auth/'.length), body, token));
     if (p === '/__dev/outbox') return json(res, outbox);
+    // tests: what an authenticator app would show right now for this account
+    if (p === '/__dev/totp') { const u = [...users.values()].find((x) => x.email === String(body.email || '').toLowerCase()); return json(res, { code: u && u.totp ? totp(u.totp.secret) : null }); }
     if (p === '/__dev/reset-all') {
       for (const k of Object.keys(live)) delete live[k];
-      docs.clear(); users.clear(); sessions.clear(); outbox.length = 0;
+      docs.clear(); users.clear(); sessions.clear(); sessionAt.clear(); outbox.length = 0;
       return json(res, { ok: true });
     }
     return json(res, { error: 'unknown' }, 404);

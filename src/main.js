@@ -265,6 +265,7 @@ async function boot() {
   }
   // know early whether this account is Pro (badges, flags, custom blooks)
   if (session.signedIn()) import('./services/plan.js').then((p) => p.myPlan()).catch(() => {});
+  guardSession();
   // the daily streak and its chest (not during the browser tests)
   if (session.signedIn() && !navigator.webdriver) {
     session.whenProfile().then(() => import('./services/streak.js')).then(async (m) => { const r = await m.checkIn(); if (r) setTimeout(() => m.showDaily(r), 1200); }).catch(() => {});
@@ -311,6 +312,41 @@ async function boot() {
   });
   loadBanner();
   render();
+}
+
+/**
+ * Account safety on this device:
+ *  - "Sign out everywhere": if the account was signed out on all devices after
+ *    this device last proved who it is, sign out here too;
+ *  - auto sign-out: after 30 minutes without use, when it is turned on.
+ */
+function guardSession() {
+  const u = session.me();
+  if (!u || u.isAnonymous || !net.auth.authTime) return;
+  Promise.all([net.store.get('signouts', u.uid).catch(() => null), net.auth.authTime().catch(() => null)]).then(async ([doc, at]) => {
+    if (doc && at && doc.before > at + 999) {
+      await net.auth.signOut().catch(() => {});
+      import('./ui/kit.js').then((k) => k.toast('Your account was signed out on all devices. Sign in again.', 'bad'));
+      navigate('/login', { replace: true });
+    }
+  }).catch(() => {});
+  const KEY = 'quickzy.lastActive';
+  const LIMIT = 30 * 60 * 1000;
+  const mark = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch { /* private mode */ } };
+  const check = async () => {
+    if (!session.prefs().autoLock || !session.signedIn() || (session.me() && session.me().isAnonymous)) return;
+    let last = 0;
+    try { last = Number(localStorage.getItem(KEY)) || 0; } catch { return; }
+    if (last && Date.now() - last > LIMIT) {
+      mark();
+      await net.auth.signOut().catch(() => {});
+      import('./ui/kit.js').then((k) => k.toast('Signed out after 30 minutes without use (you turned this on in Settings).'));
+      navigate('/login', { replace: true });
+    }
+  };
+  check().then(mark);
+  ['pointerdown', 'keydown'].forEach((ev) => addEventListener(ev, mark, { passive: true }));
+  setInterval(check, 60 * 1000);
 }
 
 boot();

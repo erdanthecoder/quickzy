@@ -287,7 +287,7 @@ export default async function Practice({ params }) {
         grad.addColorStop(0, '#ffffffee'); grad.addColorStop(0.25, `${b.col}cc`); grad.addColorStop(1, `${b.col}88`);
         g.fillStyle = grad; g.beginPath(); g.arc(x, y, b.r, 0, Math.PI * 2); g.fill();
         g.strokeStyle = '#ffffffaa'; g.lineWidth = 2; g.stroke();
-        g.fillStyle = '#fff'; g.font = `800 ${Math.max(13, b.r / 3.4)}px Nunito, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = '#fff'; g.font = `800 ${Math.max(13, b.r / 3.4)}px Figtree, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
         const words = String(b.label).split(' '); const lines = []; let line = '';
         for (const w of words) { if ((line + ' ' + w).trim().length > 12) { lines.push(line.trim()); line = w; } else line += ` ${w}`; }
         lines.push(line.trim());

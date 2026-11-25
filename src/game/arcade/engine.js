@@ -292,7 +292,7 @@ export function rr(ctx, x, y, w, h, r) {
 
 /** Name tag above a player. */
 export function nameTag(ctx, text, x, y, { bg = 'rgba(23,19,63,.75)', fg = '#fff', size = 12 } = {}) {
-  ctx.font = `800 ${size}px Nunito, system-ui, sans-serif`;
+  ctx.font = `800 ${size}px Figtree, system-ui, sans-serif`;
   const w = ctx.measureText(text).width + 12;
   ctx.fillStyle = bg;
   rr(ctx, x - w / 2, y - size - 6, w, size + 8, 7);

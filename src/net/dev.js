@@ -18,6 +18,7 @@ async function call(path, body = {}) {
   if (data && data.error) {
     const err = new Error(data.error);
     err.code = data.error;
+    err.data = data;
     throw err;
   }
   return data;
@@ -43,19 +44,36 @@ export async function create() {
     user = me.user;
   } catch { user = null; }
 
+  // 2-step verification: when the server asks for the code, the error carries
+  // finish(code), which repeats the same request with the code
+  const gated = async (path, body, done = (r) => r) => {
+    try { return done(await call(path, body)); } catch (err) {
+      if (err.code === 'auth/multi-factor-auth-required') err.finish = async (code) => done(await call(path, { ...body, code }));
+      throw err;
+    }
+  };
+
   const auth = {
     current: () => user,
     onChange(fn) { authListeners.add(fn); fn(user); return () => authListeners.delete(fn); },
     anon: async () => session(await call('auth/anon')),
-    google: async () => session(await call('auth/google', { email: sessionStorage.getItem('quickzy.dev.google') || undefined })),
+    google: () => gated('auth/google', { email: sessionStorage.getItem('quickzy.dev.google') || undefined }, session),
     signUp: async (email, password) => session(await call('auth/signup', { email, password })),
-    signIn: async (email, password) => session(await call('auth/signin', { email, password })),
+    signIn: (email, password) => gated('auth/signin', { email, password }, session),
     async signOut() { await call('auth/signout'); localStorage.removeItem(TOKEN_KEY); setUser(null); },
     sendReset: async (email) => { await call('auth/reset', { email }); },
     sendVerify: async () => { await call('auth/verify'); },
     async setDisplayName(name) { const r = await call('auth/profile', { name }); setUser(r.user); },
-    changePassword: async (current, next) => { await call('auth/password', { current, next }); },
-    reauth: async (password) => { await call('auth/reauth', { password }); },
+    changePassword: (current, next) => gated('auth/password', { current, next }),
+    reauth: (password) => gated('auth/reauth', { password }),
+    async authTime() { const r = await call('auth/me'); return r.authTime; },
+    mfa: {
+      async start() {
+        const r = await call('auth/mfa-start');
+        return { key: r.key, uri: r.uri, finish: async (code, name) => { const x = await call('auth/mfa-enroll', { code, name }); setUser(x.user); } };
+      },
+      async remove() { const x = await call('auth/mfa-remove'); setUser(x.user); },
+    },
     async deleteAccount() { await call('auth/delete'); localStorage.removeItem(TOKEN_KEY); setUser(null); },
     async reload() { const r = await call('auth/me'); setUser(r.user); return user; },
   };

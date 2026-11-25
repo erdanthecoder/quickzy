@@ -34,7 +34,7 @@ function screenTex(T, w, hh, draw) {
   redraw();
   return { tex, redraw };
 }
-const FONT = 'Nunito, system-ui, sans-serif';
+const FONT = 'Figtree, system-ui, sans-serif';
 
 // the real logo, as a picture the canvases can draw (loaded before the film starts)
 let logoImg = null;

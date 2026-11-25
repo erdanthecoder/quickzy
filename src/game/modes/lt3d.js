@@ -97,7 +97,7 @@ export function createArena(T, canvas, { W, H, walls, spawns, pickups, tv = fals
   /* players */
   const players = new Map();
   const labelTex = (text, bg, fg) => canvasTex(T, 512, 96, (g2, w) => {
-    g2.font = '900 44px Nunito, system-ui'; const tw = Math.min(w - 10, g2.measureText(text).width + 40);
+    g2.font = '900 44px Figtree, system-ui'; const tw = Math.min(w - 10, g2.measureText(text).width + 40);
     g2.fillStyle = bg; g2.beginPath(); g2.roundRect((w - tw) / 2, 14, tw, 68, 34); g2.fill();
     g2.fillStyle = fg; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.fillText(text, w / 2, 50);
   });

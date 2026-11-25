@@ -454,7 +454,7 @@ function mountPlayer2D(game) {
       for (let k = 0; k <= 10; k++) { const a = Math.PI * 0.8 + (k / 10) * Math.PI * 1.4; ctx.beginPath(); ctx.moveTo(gx + Math.cos(a) * gr * 0.78, gy + Math.sin(a) * gr * 0.78); ctx.lineTo(gx + Math.cos(a) * gr * 0.92, gy + Math.sin(a) * gr * 0.92); ctx.stroke(); }
       const a = Math.PI * 0.8 + Math.max(0, Math.min(1, frac)) * Math.PI * 1.4 + (moving ? Math.sin(t * 20) * 0.02 : 0);
       ctx.strokeStyle = '#c0161e'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + Math.cos(a) * gr * 0.8, gy + Math.sin(a) * gr * 0.8); ctx.stroke();
-      ctx.fillStyle = '#3a2a1a'; ctx.font = `800 ${Math.max(8, gr * 0.22)}px Nunito, system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#3a2a1a'; ctx.font = `800 ${Math.max(8, gr * 0.22)}px Figtree, system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(label, gx, gy + gr * 0.45);
     };
     const gr = Math.min(dashH * 0.32, w * 0.06);
@@ -468,7 +468,7 @@ function mountPlayer2D(game) {
       ctx.fillStyle = k % 3 ? '#151515' : '#2b2b2b'; ctx.beginPath(); ctx.ellipse(hx + 8, hy - 6, 9, 7, k, 0, Math.PI * 2); ctx.fill();
     }
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#f4ecd8';
-    ctx.font = `800 ${Math.max(12, Math.min(18, w * 0.022))}px Nunito, system-ui`;
+    ctx.font = `800 ${Math.max(12, Math.min(18, w * 0.022))}px Figtree, system-ui`;
     ctx.fillText(`Coal × ${coal}`, cx0, hh - Math.min(64, dashH * 0.7));
     // brass distance plate on the right
     const pw = Math.min(220, w * 0.26); const phh = Math.min(70, dashH * 0.7);
@@ -477,9 +477,9 @@ function mountPlayer2D(game) {
     ctx.fillStyle = pg; rr(ctx, plx, ply, pw, phh, 8); ctx.fill();
     ctx.strokeStyle = '#6a5016'; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = '#2a1d0a'; ctx.textAlign = 'center';
-    ctx.font = `400 ${Math.round(phh * 0.5)}px "Lilita One", system-ui`;
+    ctx.font = `400 ${Math.round(phh * 0.5)}px "Bricolage Grotesque", system-ui`;
     ctx.fillText(km(myM), plx + pw / 2, ply + phh * 0.62);
-    ctx.font = `800 ${Math.round(phh * 0.17)}px Nunito, system-ui`;
+    ctx.font = `800 ${Math.round(phh * 0.17)}px Figtree, system-ui`;
     ctx.fillText(moving ? 'FULL STEAM' : 'STOPPED · NEED COAL', plx + pw / 2, ply + phh * 0.88);
     // who is just ahead and just behind
     let ahead = null; let behind = null;
@@ -488,7 +488,7 @@ function mountPlayer2D(game) {
       if (d > myM && (!ahead || d < ahead[1])) ahead = [u, d];
       if (d <= myM && (!behind || d > behind[1])) behind = [u, d];
     }
-    ctx.font = '800 13px Nunito, system-ui'; ctx.textAlign = 'right';
+    ctx.font = '800 13px Figtree, system-ui'; ctx.textAlign = 'right';
     if (ahead) nameTag(ctx, `▲ ${names.get(ahead[0])?.name || '?'} ${km(ahead[1] - myM)} ahead`, w - side - 90, winTop + 18, { size: 12, bg: 'rgba(232,17,45,.85)' });
     if (behind) nameTag(ctx, `▼ ${names.get(behind[0])?.name || '?'} ${km(myM - behind[1])} behind`, w - side - 90, winTop + 42, { size: 12, bg: 'rgba(18,201,166,.9)' });
     if (!moving) {
@@ -562,18 +562,18 @@ function mountScreen2D(el, { ref }) {
     const vg = ctx.createRadialGradient(w / 2, hh / 2, Math.min(w, hh) * 0.3, w / 2, hh / 2, Math.max(w, hh) * 0.75);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, w, hh);
-    ctx.font = '800 15px Nunito, system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '800 15px Figtree, system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     if (Math.floor(t * 1.6) % 2 === 0) { ctx.fillStyle = '#ff2a2a'; ctx.beginPath(); ctx.arc(26, hh * 0.03, 6, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = '#fff';
     ctx.fillText(leader ? `REC  ·  CAM 1  ·  FOLLOWING THE LEADER: ${leader.name.toUpperCase()}  ·  ${km(lead)}` : 'REC  ·  CAM 1  ·  WAITING AT THE STATION', 40, hh * 0.03);
     // the standings, top right
     const bw = Math.min(300, w * 0.28); const bx = w - bw - 18; let by = hh * 0.08;
     ctx.fillStyle = 'rgba(15,12,40,.72)'; rr(ctx, bx, by, bw, 34 + list.length * 34, 12); ctx.fill();
-    ctx.fillStyle = '#ffcd1f'; ctx.font = '400 18px "Lilita One", system-ui'; ctx.fillText('Farthest trains', bx + 14, by + 18);
+    ctx.fillStyle = '#ffcd1f'; ctx.font = '400 18px "Bricolage Grotesque", system-ui'; ctx.fillText('Farthest trains', bx + 14, by + 18);
     by += 34;
     list.forEach((p, i) => {
       drawBlook(ctx, p.blook, bx + 26, by + 16, 24);
-      ctx.fillStyle = '#fff'; ctx.font = '800 14px Nunito, system-ui'; ctx.textAlign = 'left';
+      ctx.fillStyle = '#fff'; ctx.font = '800 14px Figtree, system-ui'; ctx.textAlign = 'left';
       ctx.fillText(`${i + 1}. ${p.name}`.slice(0, 18), bx + 46, by + 16);
       ctx.textAlign = 'right'; ctx.fillStyle = i === 0 ? '#ffcd1f' : '#cfd3ff';
       ctx.fillText(km(p.extra.m ?? p.score), bx + bw - 14, by + 16);

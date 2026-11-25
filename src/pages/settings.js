@@ -19,6 +19,9 @@ import { unfollowAll } from '../services/channels.js';
 import { myPlan } from '../services/plan.js';
 import { BANNERS, BANNER_IDS, bannerThumb, validBanner } from '../ui/banner.js';
 import { isClean } from '../services/names.js';
+import { withTwoStep } from '../ui/twostep.js';
+import { leakProblem } from '../services/password.js';
+import { qrSVG } from '../ui/qr.js';
 
 export function blookPicker(current, onPick) {
   const grid = h('div', { class: 'blook-grid', role: 'radiogroup', 'aria-label': 'Blook' });
@@ -34,7 +37,7 @@ export function blookPicker(current, onPick) {
 }
 
 function section(title, ...rows) {
-  const ic = { Profile: 'user', Account: 'key', 'Sound & screen': 'volume', 'Trusted quiz maker': 'check', 'Your badge': 'shield', 'Your badges': 'shield' }[title] || 'gear';
+  const ic = { Profile: 'user', Account: 'key', Security: 'shield', 'Sound & screen': 'volume', 'Trusted quiz maker': 'check', 'Your badge': 'shield', 'Your badges': 'shield' }[title] || 'gear';
   const id = `set-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`;
   return h('section', { class: 'card stack set-card', id },
     h('h2', { class: 'set-title' }, h('span', { class: 'set-ic' }, icon(ic, { size: 18 })), title), ...rows);
@@ -89,7 +92,7 @@ function profileSection() {
     const v = user.value.trim().toLowerCase();
     const bad = session.validUsername(v);
     if (bad) { fill(userHint, bad); userHint.className = 'error-text'; return; }
-    if (v === session.myProfile().username) { fill(userHint, `quickzy.web.app/u/${v}`); userHint.className = 'hint'; return; }
+    if (v === (session.myProfile() || {}).username) { fill(userHint, `quickzy.web.app/u/${v}`); userHint.className = 'hint'; return; }
     const taken = await net.store.get('usernames', v).catch(() => null);
     if (user.value.trim().toLowerCase() !== v) return;
     fill(userHint, taken ? 'That username is taken.' : `Available: quickzy.web.app/u/${v}`);
@@ -248,8 +251,11 @@ function changePassword() {
     go.addEventListener('click', busy(go, async () => {
       fill(errorBox);
       if (strength(next.input.value) < 1) { fill(errorBox, 'Pick a longer, less common password: at least 8 characters.'); return; }
+      if (next.input.value === current.input.value) { fill(errorBox, 'Pick a new password, not the one you have now.'); return; }
+      const leaked = await leakProblem(next.input.value);
+      if (leaked) { fill(errorBox, leaked); return; }
       try {
-        await net.auth.changePassword(current.input.value, next.input.value);
+        await withTwoStep(() => net.auth.changePassword(current.input.value, next.input.value));
         toast('Password changed', 'ok');
         close(true);
       } catch (err) { fill(errorBox, explain(err)); }
@@ -272,7 +278,7 @@ async function deleteAccount() {
       if (typed.value.trim() !== 'DELETE') { fill(errorBox, 'Type DELETE in capitals to confirm.'); return; }
       try {
         // prove it is really them first, so nothing is removed if this fails
-        await net.auth.reauth(hasPassword ? pw.input.value : undefined);
+        await withTwoStep(() => net.auth.reauth(hasPassword ? pw.input.value : undefined));
         const p = session.myProfile();
         for (const q of await myQuizzes()) await deleteQuiz(q.id);
         for (const r of await myReports()) await deleteReport(r.id);
@@ -291,6 +297,126 @@ async function deleteAccount() {
       h('div', { class: 'row end' }, h('button', { class: 'btn', onclick: () => close(false) }, 'Keep my account'), go)];
   });
   if (ok) { toast('Your account was deleted'); navigate('/', { replace: true }); }
+}
+
+/* ------------------------------------------------------------ security */
+
+/** Prove it is really them (password, or Google), with the code if 2-step is on. */
+function proveItsYou(why) {
+  const u = session.me();
+  const hasPassword = (u.providers || []).includes('password');
+  return modal((close) => {
+    const pw = hasPassword ? passwordInput({ autocomplete: 'current-password' }) : null;
+    const errorBox = h('p', { class: 'error-text', role: 'alert' });
+    const go = h('button', { class: 'btn btn-main' }, hasPassword ? 'Continue' : 'Continue with Google');
+    go.addEventListener('click', busy(go, async () => {
+      fill(errorBox);
+      if (pw && !pw.input.value) { fill(errorBox, 'Type your password.'); return; }
+      try { await withTwoStep(() => net.auth.reauth(pw ? pw.input.value : undefined)); close(true); } catch (err) { if (err.code !== 'auth/cancelled') fill(errorBox, explain(err)); }
+    }));
+    if (pw) pw.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go.click(); });
+    return [h('h2', {}, 'Check it is you'), h('p', { class: 'muted', style: { margin: 0 } }, why),
+      pw ? field('Your password', pw) : null, errorBox,
+      h('div', { class: 'row end' }, h('button', { class: 'btn', onclick: () => close(false) }, 'Cancel'), go)];
+  });
+}
+
+/** Turn on 2-step verification: scan the QR code, type a code to prove it works. */
+async function turnOnTwoStep(redraw) {
+  const u = session.me();
+  if (!u.emailVerified) { toast('Confirm your email address first (in Account, just above).', 'bad'); return; }
+  let setup;
+  try { setup = await net.auth.mfa.start(); } catch (err) {
+    if (err.code !== 'auth/requires-recent-login') { toast(explain(err), 'bad'); return; }
+    if (!(await proveItsYou('Before turning on 2-step verification, sign in again.'))) return;
+    try { setup = await net.auth.mfa.start(); } catch (e2) { toast(explain(e2), 'bad'); return; }
+  }
+  const done = await modal((close) => {
+    const qr = h('div', { class: 'tfa-qr' });
+    qrSVG(setup.uri, { margin: 1 }).then((el) => { el.setAttribute('aria-label', 'QR code for your authenticator app'); qr.replaceChildren(el); }).catch(() => {});
+    const key = h('code', { class: 'tfa-key' }, setup.key.replace(/(.{4})/g, '$1 ').trim());
+    const copy = h('button', { class: 'btn btn-sm btn-ghost', onclick: () => navigator.clipboard?.writeText(setup.key).then(() => toast('Key copied', 'ok')) }, icon('copy', { size: 14 }), 'Copy');
+    const code = input({ inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 7, placeholder: '123 456', class: 'input code-input' });
+    const errorBox = h('p', { class: 'error-text', role: 'alert' });
+    const go = h('button', { class: 'btn btn-main' }, 'Turn on');
+    go.addEventListener('click', busy(go, async () => {
+      fill(errorBox);
+      const v = code.value.replace(/\D/g, '');
+      if (v.length !== 6) { fill(errorBox, 'Type the 6-digit code your app shows.'); return; }
+      try { await setup.finish(v, 'Authenticator app'); close(true); } catch (err) { fill(errorBox, explain(err)); }
+    }));
+    return [h('div', { class: 'stack', style: { gap: '12px' } },
+      h('h2', {}, 'Turn on 2-step verification'),
+      h('ol', { class: 'tfa-steps' },
+        h('li', {}, 'Install an authenticator app on your phone: ', h('b', {}, 'Google Authenticator'), ', ', h('b', {}, 'Microsoft Authenticator'), ' or ', h('b', {}, 'Authy'), '.'),
+        h('li', {}, 'In the app, add an account and scan this code:'),
+        h('li', { class: 'tfa-scan' }, qr, h('div', { class: 'stack', style: { gap: '6px' } }, h('small', { class: 'muted' }, 'Can\'t scan? Type this key:'), key, copy)),
+        h('li', {}, 'Type the 6-digit code the app shows:', code)),
+      errorBox,
+      h('div', { class: 'row end' }, h('button', { class: 'btn', onclick: () => close(false) }, 'Cancel'), go))];
+  }, { wide: true });
+  if (done) { await session.refresh(); sfx('checkpoint'); toast('2-step verification is on. You will need your app to sign in.', 'ok'); redraw(); }
+}
+
+async function turnOffTwoStep(redraw) {
+  if (!(await confirm({ title: 'Turn off 2-step verification?', text: 'Anyone who learns your password could then sign in as you.', yes: 'Turn off', danger: true }))) return;
+  if (!(await proveItsYou('Before turning off 2-step verification, check it is you.'))) return;
+  try {
+    for (const f of session.me().mfa || []) await net.auth.mfa.remove(f.uid);
+    await session.refresh(); toast('2-step verification is off'); redraw();
+  } catch (err) { toast(explain(err), 'bad'); }
+}
+
+/** Sign out every other phone and computer: they must sign in again (with the code, if 2-step is on). */
+async function signOutEverywhere() {
+  if (!(await confirm({ title: 'Sign out everywhere else?', text: 'Every other phone, tablet and computer signed in to your account is signed out. This one stays signed in.', yes: 'Sign them out', danger: true }))) return;
+  if (!(await proveItsYou('To sign out your other devices, check it is you.'))) return;
+  try {
+    const before = await net.auth.authTime();
+    await net.store.set('signouts', session.me().uid, { before });
+    toast('Done. Every other device is signed out.', 'ok');
+  } catch (err) { toast(explain(err), 'bad'); }
+}
+
+function securitySection() {
+  const box = h('div', { class: 'stack', style: { gap: 0 } });
+  const draw = () => {
+    const u = session.me();
+    const hasPassword = (u.providers || []).includes('password');
+    const twoStep = (u.mfa || []).length > 0;
+    const p = session.prefs();
+    const checks = [
+      [u.emailVerified, 'Email confirmed'],
+      [twoStep, '2-step verification'],
+      [hasPassword || (u.providers || []).includes('google.com'), hasPassword ? 'Password set' : 'Google sign-in'],
+      [Boolean(p.autoLock), 'Auto sign-out'],
+    ];
+    const score = checks.filter(([ok]) => ok).length;
+    const when = (ms) => (ms ? new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not known');
+    fill(box,
+      h('div', { class: `sec-check is-${score >= 3 ? 'good' : score === 2 ? 'ok' : 'low'}` },
+        h('div', { class: 'sec-score' }, h('b', {}, `${score}/4`), h('small', {}, score >= 3 ? 'Well protected' : score === 2 ? 'Could be safer' : 'Needs attention')),
+        h('ul', {}, ...checks.map(([ok, label]) => h('li', { class: ok ? 'is-on' : '' }, icon(ok ? 'check' : 'close', { size: 14, stroke: 3 }), label)))),
+      row('2-step verification', 'When you sign in, Quickzy also asks for a 6-digit code from an app on your phone. Even someone with your password cannot get in.',
+        twoStep
+          ? h('div', { class: 'row' }, h('span', { class: 'pill pill-ok' }, icon('shield', { size: 14 }), 'On'), h('button', { class: 'btn btn-sm btn-ghost', onclick: () => turnOffTwoStep(draw) }, 'Turn off'))
+          : h('button', { class: 'btn btn-sm btn-main', onclick: () => turnOnTwoStep(draw) }, icon('shield', { size: 16 }), 'Turn on')),
+      row('Sign out everywhere else', 'Lost a phone, or signed in on a school computer? Sign out every other device at once.',
+        h('button', { class: 'btn btn-sm', onclick: signOutEverywhere }, icon('logout', { size: 16 }), 'Sign out others')),
+      row('Auto sign-out on this device', 'Signs you out after 30 minutes without using Quickzy. Turn on for shared computers.',
+        toggle(Boolean(p.autoLock), (v) => { session.setPrefs({ autoLock: v }); try { localStorage.setItem('quickzy.lastActive', String(Date.now())); } catch { /* ignore */ } draw(); })),
+      row('Last sign-in', `${when(u.lastSignIn)} · account made ${when(u.created)}`, null),
+      h('details', { class: 'sec-tips' },
+        h('summary', {}, 'How Quickzy keeps your account safe'),
+        h('ul', {},
+          h('li', {}, 'New passwords are checked against passwords from known data leaks. Only a short scrambled piece ever leaves your device.'),
+          h('li', {}, 'Quickzy never asks for your password in a chat, an email or a game. Only on the Quickzy sign-in page.'),
+          h('li', {}, 'Answers to quizzes are kept apart: players can never read them.'),
+          h('li', {}, 'Every change to your account is checked on Quickzy\'s servers, not only in the app, so nobody can give themselves coins or Pro.'),
+          h('li', {}, 'Use a password you use nowhere else, and turn on 2-step verification.'))));
+  };
+  draw();
+  return section('Security', box);
 }
 
 function deviceSection() {
@@ -343,11 +469,12 @@ export default async function Settings({ query }) {
     h('a', { class: 'btn btn-main', href: '/create' }, icon('plus'), 'Make a quiz')) : null;
   return h('div', { class: 'page mid stack', style: { gap: '18px' } },
     hero(),
-    jumpTabs([['Profile', 'user'], ['Account', 'key'], ['Sound & screen', 'volume']]),
+    jumpTabs([['Profile', 'user'], ['Account', 'key'], ['Security', 'shield'], ['Sound & screen', 'volume']]),
     welcome,
     profileSection(),
     verifiedSection(),
     accountSection(),
+    session.me() && !session.me().isAnonymous ? securitySection() : null,
     deviceSection());
 }
 

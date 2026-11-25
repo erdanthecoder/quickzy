@@ -306,7 +306,7 @@ export function createWorld(T, canvas, { tv = false } = {}) {
   const smokeMat = new T.SpriteMaterial({ map: puff, color: 0xe9e9ee, transparent: true, opacity: 0.6, depthWrite: false });
   const puffs = [];
   const labelTex = (text, colour) => canvasTex(T, 512, 96, (g2, w, hh) => {
-    g2.font = '900 46px Nunito, system-ui'; const tw = Math.min(w - 10, g2.measureText(text).width + 40);
+    g2.font = '900 46px Figtree, system-ui'; const tw = Math.min(w - 10, g2.measureText(text).width + 40);
     g2.fillStyle = colour; const x = (w - tw) / 2;
     g2.beginPath(); g2.roundRect(x, 12, tw, 72, 36); g2.fill();
     g2.fillStyle = colour === '#ffcd1f' ? '#17133f' : '#fff'; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.fillText(text, w / 2, 50);

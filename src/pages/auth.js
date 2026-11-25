@@ -7,6 +7,8 @@ import { net, explain } from '../net/index.js';
 import { navigate } from '../router.js';
 import { signedIn, whenProfile } from '../services/session.js';
 import { pageTitle } from './parts.js';
+import { withTwoStep } from '../ui/twostep.js';
+import { leakProblem } from '../services/password.js';
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
@@ -55,7 +57,7 @@ function googleButton(next, errorBox) {
     fill(errorBox);
     try {
       const before = Date.now();
-      const u = await net.auth.google();
+      const u = await withTwoStep(() => net.auth.google());
       const profile = await whenProfile();
       const fresh = profile && profile.createdAt && profile.createdAt >= before - 60000;
       await afterSignIn(next, fresh && u);
@@ -92,7 +94,7 @@ function Login(query) {
     if (!EMAIL.test(e)) { fill(errorBox, 'Type the email address you signed up with.'); email.focus(); return; }
     if (!pw.input.value) { fill(errorBox, 'Type your password.'); pw.input.focus(); return; }
     try {
-      await net.auth.signIn(e, pw.input.value);
+      await withTwoStep(() => net.auth.signIn(e, pw.input.value));
       await afterSignIn(query.next, false);
     } catch (err) { fill(errorBox, explain(err)); }
   });
@@ -126,6 +128,8 @@ function Signup(query) {
     if (strength(pw.input.value) < 1) { fill(errorBox, 'Pick a longer, less common password: at least 8 characters.'); pw.input.focus(); return; }
     if (pw.input.value !== pw2.input.value) { fill(errorBox, 'The two passwords are different.'); pw2.input.focus(); return; }
     if (!agree.checked) { fill(errorBox, 'Tick the box to agree to the terms.'); return; }
+    const leaked = await leakProblem(pw.input.value);
+    if (leaked) { fill(errorBox, leaked); pw.input.focus(); return; }
     try {
       await net.auth.signUp(e, pw.input.value);
       net.auth.sendVerify().catch(() => {});

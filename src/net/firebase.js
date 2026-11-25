@@ -32,6 +32,7 @@ export async function create() {
 
   /* ------------------------------------------------------------ auth */
 
+  const factors = (u) => { try { return F.multiFactor(u).enrolledFactors.map((f) => ({ uid: f.uid, name: f.displayName || 'Authenticator app', kind: f.factorId, at: Date.parse(f.enrollmentTime) || null })); } catch { return []; } };
   const shape = (u) => (u ? {
     uid: u.uid,
     email: u.email || null,
@@ -39,7 +40,35 @@ export async function create() {
     emailVerified: Boolean(u.emailVerified),
     isAnonymous: Boolean(u.isAnonymous),
     providers: (u.providerData || []).map((p) => p.providerId),
+    mfa: factors(u),
+    lastSignIn: Date.parse(u.metadata && u.metadata.lastSignInTime) || null,
+    created: Date.parse(u.metadata && u.metadata.creationTime) || null,
   } : null);
+
+  /**
+   * Run a sign-in (or a re-check of who you are). When the account has
+   * 2-step verification, Firebase stops and asks for the code: the error then
+   * carries finish(code), which completes it. `after` runs once signed in.
+   */
+  async function gated(fn, after) {
+    try {
+      const r = await fn();
+      if (after) await after();
+      return shape((r && r.user) || fa.currentUser);
+    } catch (err) {
+      if (!err || err.code !== 'auth/multi-factor-auth-required') throw err;
+      const resolver = F.getMultiFactorResolver(fa, err);
+      const hint = resolver.hints.find((x) => x.factorId === 'totp') || resolver.hints[0];
+      const e = new Error('Two-step verification');
+      e.code = 'auth/multi-factor-auth-required';
+      e.finish = async (code) => {
+        const r = await resolver.resolveSignIn(F.TotpMultiFactorGenerator.assertionForSignIn(hint.uid, String(code).replace(/\D/g, '')));
+        if (after) await after();
+        return shape(r.user);
+      };
+      throw e;
+    }
+  }
 
   // wait for the persisted session before the app draws anything
   await new Promise((resolve) => {
@@ -55,25 +84,41 @@ export async function create() {
       provider.setCustomParameters({ prompt: 'select_account' });
       // a pop-up keeps working when the site and the auth domain differ,
       // which is the case on quickzy.web.app (auth domain akylduukodo.firebaseapp.com); a redirect does not reliably
-      return shape((await F.signInWithPopup(fa, provider)).user);
+      return gated(() => F.signInWithPopup(fa, provider));
     },
     signUp: async (email, password) => shape((await F.createUserWithEmailAndPassword(fa, email, password)).user),
-    signIn: async (email, password) => shape((await F.signInWithEmailAndPassword(fa, email, password)).user),
+    signIn: (email, password) => gated(() => F.signInWithEmailAndPassword(fa, email, password)),
     signOut: () => F.signOut(fa),
     // Firebase sends these emails itself: no mail server of our own is needed
     sendReset: (email) => F.sendPasswordResetEmail(fa, email, { url: `${location.origin}/login` }),
     sendVerify: () => F.sendEmailVerification(fa.currentUser, { url: `${location.origin}/settings` }),
     setDisplayName: (name) => F.updateProfile(fa.currentUser, { displayName: name }),
-    async changePassword(current, next) {
+    changePassword(current, next) {
       const u = fa.currentUser;
-      await F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, current));
-      await F.updatePassword(u, next);
+      return gated(() => F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, current)), () => F.updatePassword(fa.currentUser, next));
     },
     /** Prove it is really them before something drastic. */
-    async reauth(password) {
+    reauth(password) {
       const u = fa.currentUser;
-      if (password) await F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, password));
-      else await F.reauthenticateWithPopup(u, new F.GoogleAuthProvider());
+      return gated(() => (password ? F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, password)) : F.reauthenticateWithPopup(u, new F.GoogleAuthProvider())));
+    },
+    /** When this device last proved who it is (password, Google or code), in ms. */
+    async authTime() {
+      const r = await F.getIdTokenResult(fa.currentUser, true);
+      return Date.parse(r.authTime);
+    },
+    // 2-step verification with an authenticator app (time-based codes)
+    mfa: {
+      async start() {
+        const u = fa.currentUser;
+        const secret = await F.TotpMultiFactorGenerator.generateSecret(await F.multiFactor(u).getSession());
+        return {
+          key: secret.secretKey,
+          uri: secret.generateQrCodeUrl(u.email || 'Quickzy account', 'Quickzy'),
+          finish: async (code, name) => { await F.multiFactor(fa.currentUser).enroll(F.TotpMultiFactorGenerator.assertionForEnrollment(secret, String(code).replace(/\D/g, '')), name); },
+        };
+      },
+      remove: async (uid) => { await F.multiFactor(fa.currentUser).unenroll(uid); },
     },
     // call reauth() first: Firebase refuses to delete an account signed in long ago
     deleteAccount: async () => F.deleteUser(fa.currentUser),

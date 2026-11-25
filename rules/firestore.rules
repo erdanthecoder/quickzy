@@ -11,7 +11,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function account() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+    // "Sign out everywhere": a device that last proved who it is before that
+    // moment can no longer change anything, even with a stolen session
+    function lockedOut() {
+      return exists(/databases/$(database)/documents/signouts/$(request.auth.uid))
+        && get(/databases/$(database)/documents/signouts/$(request.auth.uid)).data.before > request.auth.token.auth_time * 1000;
+    }
+    function account() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous' && !lockedOut(); }
     function me(uid) { return signedIn() && request.auth.uid == uid; }
     function onlyKeys(keys) { return request.resource.data.keys().hasOnly(keys); }
     function str(v, max) { return v is string && v.size() <= max; }
@@ -26,6 +32,16 @@ service cloud.firestore {
         || request.auth.uid == 'f4BZrMpjQnV2B7n3iKq68J8poJ63'
         || (exists(/databases/$(database)/documents/members/$(request.auth.uid))
             && get(/databases/$(database)/documents/members/$(request.auth.uid)).data.until > request.time.toMillis());
+    }
+
+    // ------------------------------------------------------ sign out everywhere
+    // the moment every older sign-in stops working; only the account itself
+    // sets it, and only to the moment it last proved who it is
+    match /signouts/{uid} {
+      allow read: if me(uid);
+      allow create, update: if me(uid) && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.resource.data.keys().hasOnly(['before'])
+        && request.resource.data.before == request.auth.token.auth_time * 1000;
     }
 
     // ------------------------------------------------------------ profiles

@@ -317,10 +317,10 @@ export function mountPlayer(game) {
     ctx.restore();
     fx.draw(ctx);
     ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.font = '400 26px "Lilita One", system-ui';
+    ctx.font = '400 26px "Bricolage Grotesque", system-ui';
     ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 6;
     ctx.fillText(`${Math.floor(me.d)} m`, 14, 10);
-    ctx.font = '800 14px Nunito, system-ui';
+    ctx.font = '800 14px Figtree, system-ui';
     ctx.fillText(`Boosts: ${used}/${BOOSTS}`, 14, 42);
     ctx.shadowBlur = 0;
   });

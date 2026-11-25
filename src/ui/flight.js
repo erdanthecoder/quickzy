@@ -32,7 +32,7 @@ function planeSVG() {
     + '<rect x="70" y="52" width="12" height="9" rx="3" fill="#59f0ff"/><rect x="88" y="52" width="12" height="9" rx="3" fill="#59f0ff"/>'
     + '<rect x="150" y="52" width="12" height="9" rx="3" fill="#59f0ff"/>'
     + '<path d="M182 50 C192 52 202 56 208 62 L186 62 Z" fill="#17133f"/>'
-    + '<text x="80" y="74" font-family="Lilita One, sans-serif" font-size="11" fill="#6b4cff" text-anchor="middle">QUICKZY AIR</text>';
+    + '<text x="80" y="74" font-family="Bricolage Grotesque, sans-serif" font-size="11" fill="#6b4cff" text-anchor="middle">QUICKZY AIR</text>';
   return s;
 }
 
