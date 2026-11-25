@@ -6,6 +6,8 @@ export const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three
 let loading = null;
 export const loadThree = () => (loading ||= import(/* @vite-ignore */ THREE_URL));
 export function want3D() {
+  // Settings → More settings → Lite games: the simple 2D look, for slow devices
+  try { if (JSON.parse(localStorage.getItem('quickzy.prefs') || '{}').lite) return false; } catch { /* ignore */ }
   if (!navigator.webdriver) return true;
   try { return localStorage.getItem('quickzy.test.3d') === '1'; } catch { return false; }
 }

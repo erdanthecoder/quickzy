@@ -72,18 +72,22 @@ function sidebar(path) {
     h('a', { class: 'logo side-logo', href: '/', 'aria-label': 'Quickzy home' }, logo(), wordmark(), h('span', { class: 'ver' }, VERSION)),
     h('a', { class: 'btn btn-main side-join', href: '/join' }, icon('play', { size: 18 }), 'Join a game'),
     h('nav', { class: 'side-nav' },
-      link('/', 'Home', 'home'),
-      link('/discover', 'Discover', 'compass'),
-      link('/channels', 'Channels', 'users'),
-      link('/blooks', 'Blooks', 'star'),
-      signed ? h('div', { class: 'side-sep' }) : null,
-      signed ? link('/new', 'Create', 'plus') : null,
-      signed ? link('/library', 'My quizzes', 'list') : null,
-      signed ? link('/homework', 'Homework', 'book') : null,
-      h('div', { class: 'side-sep' }),
-      h('a', { href: '/pro', class: `side-link side-pro ${isOn(path, '/pro')}` }, verifiedBadge(null, 'pro'), h('span', {}, 'Quickzy Pro')),
-      link('/app', 'Quickzy app', 'download'),
-      user && user.uid === OWNER_UID ? h('a', { href: '/owner', class: `side-link nav-owner ${isOn(path, '/owner')}` }, verifiedBadge(null, 'owner'), h('span', {}, 'Owner panel')) : null),
+      h('div', { class: 'side-group' },
+        h('small', {}, 'Play'),
+        link('/', 'Home', 'home'),
+        link('/discover', 'Discover', 'compass'),
+        link('/channels', 'Channels', 'users'),
+        link('/blooks', 'Blooks', 'star')),
+      signed ? h('div', { class: 'side-group' },
+        h('small', {}, 'Create'),
+        link('/new', 'Create', 'plus'),
+        link('/library', 'My quizzes', 'list'),
+        link('/homework', 'Homework', 'book')) : null,
+      h('div', { class: 'side-group' },
+        h('small', {}, 'Quickzy'),
+        h('a', { href: '/pro', class: `side-link side-pro ${isOn(path, '/pro')}` }, verifiedBadge(null, 'pro'), h('span', {}, 'Quickzy Pro')),
+        link('/app', 'Quickzy app', 'download'),
+        user && user.uid === OWNER_UID ? h('a', { href: '/owner', class: `side-link nav-owner ${isOn(path, '/owner')}` }, verifiedBadge(null, 'owner'), h('span', {}, 'Owner panel')) : null)),
     h('div', { class: 'side-end' },
       signed && profile
         ? h('a', { class: 'side-card', href: `/u/${profile.username}`, 'aria-label': 'Your profile' },
@@ -213,6 +217,11 @@ async function loadBanner() {
     } }, icon('close', { size: 16 })));
 }
 
+let inLiveGame = false;
+addEventListener('beforeunload', (e) => {
+  if (inLiveGame && !navigator.webdriver && session.prefs().confirmLeave !== false) { e.preventDefault(); e.returnValue = ''; }
+});
+
 onRoute(async (match, mod, query, keep) => {
   if (match.opts.auth && !session.signedIn()) {
     navigate(`/login?next=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
@@ -220,6 +229,8 @@ onRoute(async (match, mod, query, keep) => {
   }
   const chrome = match.opts.chrome !== false;
   document.body.classList.toggle('in-game', !chrome);
+  // Settings → More settings → "Ask before leaving a game"
+  inLiveGame = /^\/(play|lobby)\//.test(location.pathname);
   pageRoot = h('main', { id: 'page' }, loader());
   app.classList.toggle('with-side', chrome);
   fill(app, chrome ? sidebar(location.pathname) : null, chrome ? topbar(location.pathname) : null, chrome ? countBar : null, chrome ? eventBar : null, chrome ? banner : null, pageRoot, chrome ? tabbar(location.pathname) : null);

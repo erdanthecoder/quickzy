@@ -439,7 +439,7 @@ if ((which === 'owner' || which === 'all') && !EMULATOR) {
   }
   await own.waitForSelector('text=Badges saved');
   await own.goto(`${BASE}/settings`);
-  await own.waitForFunction(() => document.querySelectorAll('.set-hero .badge-set .verified').length === 3);
+  await own.waitForFunction(() => document.querySelectorAll('.set-head .badge-set .verified').length === 3);
   await own.screenshot({ path: `${SHOTS}/owner-badges.png` });
 
   say('owner: the Owner link and panel');

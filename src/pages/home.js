@@ -154,7 +154,7 @@ export default async function Home() {
         h('b', {}, 'Quickzy'),
         h('nav', {}, h('a', { href: '/discover' }, 'Discover'), h('a', { href: '/app' }, 'App'), h('a', { href: '/teachers' }, 'For teachers'), h('a', { href: '/pro' }, 'Pro'),
           h('a', { href: '/terms' }, 'Terms'), h('a', { href: '/privacy' }, 'Privacy'))),
-      h('small', {}, `© ${new Date().getFullYear()} Quickzy · Made with care in Kyrgyzstan`)),
+      h('small', {}, `© ${new Date().getFullYear()} Quickzy. All rights reserved.`)),
   );
 }
 

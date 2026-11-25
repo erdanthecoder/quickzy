@@ -11,12 +11,12 @@ import * as session from '../services/session.js';
 import { myQuizzes, deleteQuiz, myReports, deleteReport, verifiedProgress, syncAuthor } from '../services/quizzes.js';
 import { strength } from './auth.js';
 import { pageTitle } from './parts.js';
-import { LIMITS, BADGES } from '../config.js';
+import { LIMITS, BADGES, VERSION, OWNER_UID, OFFICIAL_UID, PRO_FREE } from '../config.js';
 import { sfx } from '../game/sound.js';
 import { nameBadges } from '../ui/badges.js';
 import * as siteSvc from '../services/site.js';
 import { unfollowAll } from '../services/channels.js';
-import { myPlan } from '../services/plan.js';
+import { myPlan, membership, manageUrl, PRO_PERKS, PLANS, PRICE } from '../services/plan.js';
 import { BANNERS, BANNER_IDS, bannerThumb, validBanner } from '../ui/banner.js';
 import { isClean } from '../services/names.js';
 import { withTwoStep } from '../ui/twostep.js';
@@ -37,38 +37,46 @@ export function blookPicker(current, onPick) {
 }
 
 function section(title, ...rows) {
-  const ic = { Profile: 'user', Account: 'key', Security: 'shield', 'Sound & screen': 'volume', 'Trusted quiz maker': 'check', 'Your badge': 'shield', 'Your badges': 'shield' }[title] || 'gear';
+  const ic = { Profile: 'user', Account: 'key', Security: 'shield', 'Quickzy Pro': 'star', 'More settings': 'gear', 'Sound & screen': 'volume', 'Trusted quiz maker': 'check', 'Your badge': 'shield', 'Your badges': 'shield' }[title] || 'gear';
   const id = `set-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`;
   return h('section', { class: 'card stack set-card', id },
     h('h2', { class: 'set-title' }, h('span', { class: 'set-ic' }, icon(ic, { size: 18 })), title), ...rows);
 }
 
-/** The big card at the top: who you are, your level and coins. */
+/** The header: who is signed in. */
 function hero() {
   const p = session.myProfile();
   const u = session.me();
   const m = wallet();
   const info = levelInfo(m.xp);
   const special = BADGES[u.uid];
-  const big = blook(p.blook, 112);
-  return h('section', { class: 'set-hero' },
-    h('div', { class: 'set-hero-blook' }, big),
-    h('div', { class: 'grow stack', style: { gap: '6px', minWidth: '200px' } },
+  return h('section', { class: 'set-head' },
+    h('div', { class: 'set-head-avatar' }, blook(p.blook, 64)),
+    h('div', { class: 'grow', style: { minWidth: 0 } },
       h('h1', { class: 'row', style: { gap: '8px', margin: 0 } }, p.displayName, special ? nameBadges(special) : null),
-      h('div', { class: 'set-hero-sub' }, `@${p.username}`),
-      h('div', { class: 'row', style: { gap: '8px' } },
-        h('span', { class: 'set-chip' }, icon('star', { size: 14 }), `Level ${info.level}`),
-        h('span', { class: 'set-chip set-chip-gold' }, icon('bolt', { size: 14 }), `${m.coins.toLocaleString()} coins`),
-        h('span', { class: 'set-chip' }, icon('trophy', { size: 14 }), `${usableBlooks().length} blooks`)),
-      h('div', { class: 'set-xp' }, h('i', { style: { width: `${Math.round(info.frac * 100)}%` } })),
-      h('small', { style: { opacity: 0.8 } }, info.need ? `${info.into} / ${info.need} XP to level ${info.level + 1}` : 'Top level!')));
+      h('div', { class: 'set-head-sub' }, `@${p.username}`, u.email ? ` · ${u.email}` : '')),
+    h('div', { class: 'set-head-stats' },
+      h('div', {}, h('b', {}, String(info.level)), h('small', {}, 'Level')),
+      h('div', {}, h('b', {}, m.coins.toLocaleString()), h('small', {}, 'Coins')),
+      h('div', {}, h('b', {}, String(usableBlooks().length)), h('small', {}, 'Blooks'))));
 }
 
+const slug = (label) => `set-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+/** The settings menu on the left (a row of tabs on phones); it follows the scroll. */
 function jumpTabs(list) {
-  return h('nav', { class: 'set-tabs', 'aria-label': 'Settings sections' }, ...list.map(([label, ic]) => h('a', {
-    href: `#set-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`, class: 'set-tab',
-    onclick: (e) => { e.preventDefault(); document.getElementById(`set-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
-  }, icon(ic, { size: 16 }), label)));
+  const nav = h('nav', { class: 'set-nav', 'aria-label': 'Settings sections' }, ...list.map(([label, ic]) => h('a', {
+    href: `#${slug(label)}`, class: 'set-tab', 'data-for': slug(label),
+    onclick: (e) => { e.preventDefault(); document.getElementById(slug(label))?.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+  }, icon(ic, { size: 17 }), h('span', {}, label))));
+  setTimeout(() => {
+    if (!('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (!e.isIntersecting) return;
+      nav.querySelectorAll('.set-tab').forEach((t) => t.classList.toggle('is-on', t.dataset.for === e.target.id));
+    }), { rootMargin: '-20% 0px -70% 0px' });
+    list.forEach(([label]) => { const el = document.getElementById(slug(label)); if (el) io.observe(el); });
+  }, 50);
+  return nav;
 }
 
 function row(title, text, control) {
@@ -401,6 +409,8 @@ function securitySection() {
         twoStep
           ? h('div', { class: 'row' }, h('span', { class: 'pill pill-ok' }, icon('shield', { size: 14 }), 'On'), h('button', { class: 'btn btn-sm btn-ghost', onclick: () => turnOffTwoStep(draw) }, 'Turn off'))
           : h('button', { class: 'btn btn-sm btn-main', onclick: () => turnOnTwoStep(draw) }, icon('shield', { size: 16 }), 'Turn on')),
+      row('Passkeys', 'Sign in with your fingerprint, face or screen lock instead of a password. Passkeys cannot be guessed or stolen by fake websites.',
+        h('span', { class: 'pill' }, 'Coming soon')),
       row('Sign out everywhere else', 'Lost a phone, or signed in on a school computer? Sign out every other device at once.',
         h('button', { class: 'btn btn-sm', onclick: signOutEverywhere }, icon('logout', { size: 16 }), 'Sign out others')),
       row('Auto sign-out on this device', 'Signs you out after 30 minutes without using Quickzy. Turn on for shared computers.',
@@ -417,6 +427,92 @@ function securitySection() {
   };
   draw();
   return section('Security', box);
+}
+
+/* ----------------------------------------------------------- Quickzy Pro */
+
+function proSection() {
+  const u = session.me();
+  const box = h('div', { class: 'stack', style: { gap: 0 } }, h('p', { class: 'muted small', style: { margin: 0 } }, 'Checking your plan…'));
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+  Promise.all([myPlan(), membership(u.uid).catch(() => null), myQuizzes().catch(() => [])]).then(([plan, m, quizzes]) => {
+    const always = u.uid === OWNER_UID || u.uid === OFFICIAL_UID || PRO_FREE.includes(u.uid);
+    const used = quizzes.length;
+    const limits = h('div', { class: 'pro-limits' },
+      h('div', {}, h('small', {}, 'Quizzes'), h('b', {}, `${used} / ${plan.quizzes}`), h('i', { style: { '--w': `${Math.min(100, Math.round((used / plan.quizzes) * 100))}%` } })),
+      h('div', {}, h('small', {}, 'Players per game'), h('b', {}, `Up to ${plan.players}`)),
+      h('div', {}, h('small', {}, 'Game modes'), h('b', {}, `${plan.modes.length} of ${PLANS.pro.modes.length}`)),
+      h('div', {}, h('small', {}, 'Longest game'), h('b', {}, `${Math.max(...plan.minutes)} minutes`)));
+    if (plan.pro) {
+      const until = m && m.until ? Number(m.until) : 0;
+      const days = until ? Math.max(0, Math.ceil((until - Date.now()) / 86400000)) : 0;
+      const status = always ? 'Included with your account' : m && m.paid ? `Paid · active until ${fmtDate(until)}` : until ? `Gift from Quickzy · until ${fmtDate(until)}` : 'Active';
+      fill(box,
+        h('div', { class: 'pro-card is-pro' },
+          h('div', { class: 'pro-card-top' }, verifiedBadge(null, 'pro'), h('div', { class: 'grow' }, h('b', {}, 'You have Quickzy Pro'), h('small', {}, status)),
+            !always && until ? h('div', { class: 'pro-days' }, h('b', {}, String(days)), h('small', {}, days === 1 ? 'day left' : 'days left')) : null),
+          !always && until ? h('div', { class: 'pro-bar' }, h('i', { style: { width: `${Math.max(3, Math.min(100, Math.round((days / 365) * 100)))}%` } })) : null),
+        limits,
+        m && m.paid ? row('Subscription', 'Change your card, see receipts, or cancel. Pro stays on until the end of the time you paid for.',
+          h('a', { class: 'btn btn-sm', href: manageUrl(), target: '_blank', rel: 'noopener' }, 'Manage subscription')) : null,
+        row('What Pro gives you', PRO_PERKS.map((x) => x[1]).join(' · '), h('a', { class: 'btn btn-sm btn-ghost', href: '/pro' }, 'See Pro page')));
+    } else {
+      fill(box,
+        h('div', { class: 'pro-card' },
+          h('div', { class: 'pro-card-top' }, h('span', { class: 'pro-free-dot' }), h('div', { class: 'grow' }, h('b', {}, 'You are on the Free plan'), h('small', {}, `Quickzy Pro is ${PRICE} a year: more players, every game, instant publishing.`)),
+            h('a', { class: 'btn btn-main btn-sm', href: '/pro' }, 'Get Quickzy Pro'))),
+        limits);
+    }
+  }).catch(() => fill(box, h('p', { class: 'muted small', style: { margin: 0 } }, 'Your plan could not be loaded right now.')));
+  return section('Quickzy Pro', box);
+}
+
+/* --------------------------------------------------------- More settings */
+
+/** Everything in your account, as a file you can keep. */
+async function downloadMyData() {
+  const u = session.me();
+  const data = {
+    exported: new Date().toISOString(),
+    account: { uid: u.uid, email: u.email, emailVerified: u.emailVerified, signInWith: u.providers },
+    profile: session.myProfile(),
+    quizzes: await myQuizzes().catch(() => []),
+    reports: await myReports().catch(() => []),
+  };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  const a = h('a', { href: url, download: `quickzy-${session.myProfile().username || 'account'}.json` });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast('Your data was downloaded', 'ok');
+}
+
+function moreSection() {
+  const p = session.prefs();
+  const update = h('button', { class: 'btn btn-sm' }, icon('download', { size: 16 }), 'Check for updates');
+  update.addEventListener('click', busy(update, async () => {
+    try {
+      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+      if (reg) await reg.update();
+      toast('Getting the newest Quickzy…', 'ok');
+      setTimeout(() => location.reload(), 600);
+    } catch { location.reload(); }
+  }));
+  const dl = h('button', { class: 'btn btn-sm' }, icon('download', { size: 16 }), 'Download');
+  dl.addEventListener('click', busy(dl, downloadMyData));
+  const clear = h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => {
+    if (!(await confirm({ title: 'Clear this device?', text: 'Removes offline quizzes, best scores and settings saved on this device. Your account is not touched.', yes: 'Clear', danger: true }))) return;
+    try { ['quickzy.offline', 'quickzy.best', 'quickzy.prefs', 'quickzy.claimed'].forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+    toast('This device was cleared'); setTimeout(() => location.reload(), 600);
+  } }, 'Clear');
+  return section('More settings',
+    row('Text size', 'Make words bigger across Quickzy.', segmented([['normal', 'Normal'], ['large', 'Large'], ['larger', 'Larger']], p.textSize || 'normal', (v) => session.setPrefs({ textSize: v }))),
+    row('Lite games', 'Use the simpler 2D look in Laser Tag, Robot Run and Train Travel. Better on old or slow devices.', toggle(Boolean(p.lite), (v) => session.setPrefs({ lite: v }))),
+    row('Loading tips', 'Show a "Did you know?" tip while Quickzy loads.', toggle(p.tips !== false, (v) => session.setPrefs({ tips: v }))),
+    row('Ask before leaving a game', 'Stops you leaving a live game by accident.', toggle(p.confirmLeave !== false, (v) => session.setPrefs({ confirmLeave: v }))),
+    row('Download your data', 'Your profile, quizzes and game reports in one file.', dl),
+    row('Clear this device', 'Offline quizzes, best scores and settings saved in this browser.', clear),
+    row(`Quickzy ${VERSION}`, 'Get the newest version straight away.', update),
+    row('Legal', h('span', {}, h('a', { href: '/terms' }, 'Terms of use'), ' · ', h('a', { href: '/privacy' }, 'Privacy notice')), null));
 }
 
 function deviceSection() {
@@ -467,15 +563,22 @@ export default async function Settings({ query }) {
     h('h2', { style: { color: '#fff' } }, 'Welcome to Quickzy'),
     h('p', { style: { margin: '6px 0 14px', opacity: 0.9 } }, 'Pick a name and a blook, then make your first quiz.'),
     h('a', { class: 'btn btn-main', href: '/create' }, icon('plus'), 'Make a quiz')) : null;
-  return h('div', { class: 'page mid stack', style: { gap: '18px' } },
+  const signedUp = !session.me().isAnonymous;
+  const menu = [['Profile', 'user'], ['Account', 'key'], signedUp && ['Security', 'shield'], signedUp && ['Quickzy Pro', 'star'], ['Sound & screen', 'volume'], ['More settings', 'gear']].filter(Boolean);
+  return h('div', { class: 'page set-page' },
+    h('div', { class: 'set-titlebar' }, h('h1', {}, 'Settings')),
     hero(),
-    jumpTabs([['Profile', 'user'], ['Account', 'key'], ['Security', 'shield'], ['Sound & screen', 'volume']]),
     welcome,
-    profileSection(),
-    verifiedSection(),
-    accountSection(),
-    session.me() && !session.me().isAnonymous ? securitySection() : null,
-    deviceSection());
+    h('div', { class: 'set-layout' },
+      jumpTabs(menu),
+      h('div', { class: 'set-main stack', style: { gap: '18px' } },
+        profileSection(),
+        verifiedSection(),
+        accountSection(),
+        signedUp ? securitySection() : null,
+        signedUp ? proSection() : null,
+        deviceSection(),
+        moreSection())));
 }
 
 /** Profile banner (a scene or your own picture) and a short bio. */
