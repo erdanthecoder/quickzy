@@ -498,9 +498,9 @@ export function mountPlayer(game) {
       ctx.fillRect(0, 0, view.w, view.h);
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
-      ctx.font = '400 34px "Lilita One", system-ui';
+      ctx.font = '400 34px "Bricolage Grotesque", system-ui';
       ctx.fillText(killer ? `Tagged by ${killer}` : 'Tagged', view.w / 2, view.h / 2 - 10);
-      ctx.font = '800 16px Nunito, system-ui';
+      ctx.font = '800 16px Figtree, system-ui';
       ctx.fillText(`Back in ${Math.max(0, Math.ceil((deadUntil - live.now()) / 1000))}`, view.w / 2, view.h / 2 + 24);
     }
   });
@@ -599,7 +599,7 @@ function mountScreen2D(el, { ref, live }) {
       let y = 18;
       for (const f of host.feed.filter((x) => now - x.at < 5000).slice(-4)) {
         const text = `${f.a}  tagged  ${f.b}`;
-        ctx.font = '800 15px Nunito, system-ui';
+        ctx.font = '800 15px Figtree, system-ui';
         const w = ctx.measureText(text).width + 24;
         ctx.fillStyle = 'rgba(0,0,0,.55)';
         rr(ctx, view.w - w - 16, y, w, 30, 10); ctx.fill();

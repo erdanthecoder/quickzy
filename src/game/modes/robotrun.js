@@ -266,7 +266,7 @@ export function mountPlayer(game) {
     ctx.fillStyle = '#ffcd1f';
     ctx.fillRect(0, gy, w, 4);
     // distance marks every 50 m
-    ctx.font = '800 13px Nunito, system-ui'; ctx.textAlign = 'center';
+    ctx.font = '800 13px Figtree, system-ui'; ctx.textAlign = 'center';
     for (let m = Math.floor((bot.d - 10) / 50) * 50; m < bot.d + w / PX; m += 50) {
       if (m <= 0) continue;
       const x = botX + (m - bot.d) * PX;
@@ -346,7 +346,7 @@ export function mountPlayer(game) {
     ctx.restore();
     // distance in big type
     ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.font = '400 30px "Lilita One", system-ui';
+    ctx.font = '400 30px "Bricolage Grotesque", system-ui';
     ctx.fillText(`${Math.floor(bot.d)} m`, 16, 12);
   });
 
@@ -416,10 +416,10 @@ function mountScreen2D(el, { ref }) {
       const x = lerp(shown.get(p.uid) ?? left, target, 0.08);
       shown.set(p.uid, x);
       ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.font = `800 ${Math.min(16, lane * 0.3)}px Nunito, system-ui`;
+      ctx.font = `800 ${Math.min(16, lane * 0.3)}px Figtree, system-ui`;
       ctx.fillText(`${i + 1}. ${p.name}`, 12, y + lane / 2 - 2);
       drawBlook(ctx, p.blook, x, y + lane / 2 - 4 + Math.sin(t * 14 + i) * 2, lane * 0.75);
-      ctx.font = `800 ${Math.min(13, lane * 0.26)}px Nunito, system-ui`;
+      ctx.font = `800 ${Math.min(13, lane * 0.26)}px Figtree, system-ui`;
       ctx.textAlign = 'left';
       ctx.fillText(`${Math.floor(p.extra.d || 0)} m`, Math.min(x + lane * 0.45, w - 60), y + lane / 2 - 2);
     });

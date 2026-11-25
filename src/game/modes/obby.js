@@ -253,7 +253,7 @@ function drawLedge(ctx, f, x, y, t, alpha = 1) {
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     for (let i = 0; i < f.w; i += 40) ctx.fillRect(x + i, y + 4, 20, 4);
     if (f.kind !== 'ground') {
-      ctx.font = '400 15px "Lilita One", system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '400 15px "Bricolage Grotesque", system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = f.kind === 'summit' ? '#17133f' : '#fff';
       ctx.fillText(f.kind === 'summit' ? 'SUMMIT' : `LEVEL ${f.level + 1} · ${WORLDS[f.level].name.toUpperCase()}`, x + f.w / 2, y + 12);
     }
@@ -347,7 +347,7 @@ function drawProps(ctx, f, x, y, t) {
       ctx.fillStyle = '#ff4772'; ctx.beginPath(); ctx.arc(px + 4, y - 14, 2.5, 0, Math.PI * 2); ctx.arc(px - 6, y - 10, 2.5, 0, Math.PI * 2); ctx.fill();
     } else {
       ctx.fillStyle = '#8a5a2b'; ctx.fillRect(px - 2, y - 22, 4, 22); ctx.fillRect(px - 12, y - 24, 24, 9);
-      ctx.fillStyle = '#fff'; ctx.font = '700 7px Nunito, system-ui'; ctx.textAlign = 'center'; ctx.fillText('UP!', px, y - 17);
+      ctx.fillStyle = '#fff'; ctx.font = '700 7px Figtree, system-ui'; ctx.textAlign = 'center'; ctx.fillText('UP!', px, y - 17);
     }
   } else if (L === 1) {
     // mushrooms and tiny pines
@@ -696,7 +696,7 @@ export function mountPlayer(game) {
     drawBlook(ctx, game.blook, mx, myY, 22);
 
     ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.font = '400 26px "Lilita One", system-ui';
+    ctx.font = '400 26px "Bricolage Grotesque", system-ui';
     ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 6;
     ctx.fillText(`Level ${levelOfFloor(best) + 1} · ${best}/${TOP}`, 16, 12);
     ctx.shadowBlur = 0;
@@ -712,10 +712,10 @@ export function mountPlayer(game) {
       rr(ctx, -170, -52, 340, 104, 22); ctx.fill();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#ffcd1f';
-      ctx.font = '400 44px "Lilita One", system-ui';
+      ctx.font = '400 44px "Bricolage Grotesque", system-ui';
       ctx.fillText(banner.text, 0, -14);
       ctx.fillStyle = '#fff';
-      ctx.font = '800 18px Nunito, system-ui';
+      ctx.font = '800 18px Figtree, system-ui';
       ctx.fillText(banner.sub, 0, 28);
       ctx.restore();
     }
@@ -755,14 +755,14 @@ export function mountScreen(el, { ref }) {
       ctx.fillRect(0, y0, w, y1 - y0 + 1);
       ctx.fillStyle = 'rgba(0,0,0,.25)';
       ctx.fillRect(0, y1 - 3, w, 3);
-      ctx.font = '400 18px "Lilita One", system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.font = '400 18px "Bricolage Grotesque", system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
       ctx.fillStyle = WORLDS[l].ink;
       ctx.fillText(`${l + 1} · ${WORLDS[l].name}`, 14, y0 + 8);
     }
     ctx.fillStyle = '#17133f';
     ctx.fillRect(0, 0, w, top);
     ctx.fillStyle = '#ffcd1f';
-    ctx.font = '400 22px "Lilita One", system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '400 22px "Bricolage Grotesque", system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('SUMMIT', w / 2, top / 2);
     const list = ref.ranked().slice(0, 14);
     const x0 = 190;

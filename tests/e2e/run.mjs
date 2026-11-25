@@ -30,6 +30,17 @@ const watch = (page, who) => {
 const watchApp = (page) => {
   page.on('pageerror', (e) => errors.push(`[app] ${step}: ${e.message}`));
 };
+// what an authenticator app shows right now for a key (RFC 6238)
+const { createHmac } = await import('node:crypto');
+function totpNow(key) {
+  const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = ''; for (const c of key.toUpperCase()) bits += B32.indexOf(c).toString(2).padStart(5, '0');
+  const bytes = []; for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  const ctr = Buffer.alloc(8); ctr.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
+  const mac = createHmac('sha1', Buffer.from(bytes)).update(ctr).digest();
+  const o = mac[mac.length - 1] & 15;
+  return String(((mac.readUInt32BE(o) & 0x7fffffff) % 1000000)).padStart(6, '0');
+}
 const say = (s) => { step = s; console.log(`- ${s}`); };
 const fail = (why) => { throw new Error(`${step}: ${why}`); };
 
@@ -428,7 +439,7 @@ if ((which === 'owner' || which === 'all') && !EMULATOR) {
   }
   await own.waitForSelector('text=Badges saved');
   await own.goto(`${BASE}/settings`);
-  await own.waitForFunction(() => document.querySelectorAll('.set-hero .badge-set .verified').length === 3);
+  await own.waitForFunction(() => document.querySelectorAll('.set-head .badge-set .verified').length === 3);
   await own.screenshot({ path: `${SHOTS}/owner-badges.png` });
 
   say('owner: the Owner link and panel');
@@ -813,6 +824,32 @@ if (which === 'account' || which === 'all') {
   await host.click('form button[type=submit]');
   await host.waitForURL(/\/library/);
 
+  say('security: turn on 2-step verification, then sign in with a code');
+  await host.goto(`${BASE}/settings`);
+  await host.click('#set-security button:has-text("Turn on")');
+  await host.locator('.modal input[type=password]').fill('Battery-Staple-42');
+  await host.click('.modal button:has-text("Continue")');
+  await host.waitForSelector('.tfa-key');
+  const key = (await host.locator('.tfa-key').innerText()).replace(/\s/g, '');
+  await host.screenshot({ path: `${SHOTS}/two-step-setup.png` });
+  await host.fill('.modal .code-input', '000000');
+  await host.click('.modal button:has-text("Turn on")');
+  await host.waitForSelector('.modal .error-text:has-text("code")');
+  await host.fill('.modal .code-input', totpNow(key));
+  await host.click('.modal button:has-text("Turn on")');
+  await host.waitForSelector('text=2-step verification is on');
+  await host.waitForSelector('#set-security .pill:has-text("On")');
+  await host.click('#set-account button:has-text("Sign out")');
+  await host.waitForURL(`${BASE}/`);
+  await host.goto(`${BASE}/login`);
+  await host.fill('input[type=email]', 'host@example.com');
+  await host.fill('input[type=password]', 'Battery-Staple-42');
+  await host.click('form button[type=submit]');
+  await host.waitForSelector('.modal .code-input');
+  await host.screenshot({ path: `${SHOTS}/two-step-code.png` });
+  await host.fill('.modal .code-input', totpNow(key));
+  await host.waitForURL(/\/library/);
+
   say('password reset email');
   const other = await newPage('reset');
   await other.goto(`${BASE}/reset`);
@@ -822,11 +859,15 @@ if (which === 'account' || which === 'all') {
   await other.context().close();
 
   say('delete the account and everything in it');
+  const key2 = key;
   await host.goto(`${BASE}/settings`);
   await host.click('button:has-text("Delete")');
   await host.locator('.modal input[type=password]').fill('Battery-Staple-42');
   await host.locator('.modal input[placeholder="DELETE"]').fill('DELETE');
   await host.click('.modal button:has-text("Delete everything")');
+  // 2-step is on: the code is asked for first
+  await host.waitForSelector('.modal .code-input');
+  await host.locator('.modal .code-input').last().fill(totpNow(key2));
   await host.waitForSelector('text=Your account was deleted');
   await host.goto(`${BASE}/u/quizmaster`);
   await host.waitForSelector('text=Nothing here');

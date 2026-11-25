@@ -105,7 +105,7 @@ export function playStory() {
       const clock = new T.Mesh(new T.CircleGeometry(0.45, 32), new T.MeshBasicMaterial({ map: clockTex })); clock.position.set(5.6, 6.6, -5.88); room.add(clock);
       const poster = (txt, col, x) => {
         const c = document.createElement('canvas'); c.width = 256; c.height = 340; const g = c.getContext('2d');
-        g.fillStyle = col; g.fillRect(0, 0, 256, 340); g.fillStyle = '#fff'; g.font = '700 34px Nunito, sans-serif'; g.textAlign = 'center';
+        g.fillStyle = col; g.fillRect(0, 0, 256, 340); g.fillStyle = '#fff'; g.font = '700 34px Figtree, sans-serif'; g.textAlign = 'center';
         txt.split(' ').forEach((w, i) => g.fillText(w, 128, 90 + i * 50));
         const tx = new T.CanvasTexture(c); tx.colorSpace = T.SRGBColorSpace;
         const m = new T.Mesh(new T.PlaneGeometry(1.1, 1.45), new T.MeshStandardMaterial({ map: tx })); m.position.set(x, 4.2, -5.88); room.add(m);
@@ -183,10 +183,10 @@ export function playStory() {
           const grad = g.createLinearGradient(0, 0, W, H);
           grad.addColorStop(0, mode === 'quiz' ? '#ff4772' : mode === 'poll' ? '#12c9a6' : '#6b4cff'); grad.addColorStop(1, mode === 'quiz' ? '#ff8a2a' : mode === 'poll' ? '#2f9bff' : '#4a2fd6');
           g.fillStyle = grad; g.fillRect(0, 0, W, H);
-          g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '400 64px "Lilita One", system-ui';
+          g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '400 64px "Bricolage Grotesque", system-ui';
           if (mode === 'slide') {
             g.fillText('How plants make food', W / 2, 150);
-            g.font = '700 34px Nunito, system-ui'; g.textAlign = 'left';
+            g.font = '700 34px Figtree, system-ui'; g.textAlign = 'left';
             ['Sunlight + water + air', 'Leaves are tiny kitchens', 'Out comes sugar and oxygen'].forEach((l, i) => g.fillText(`•  ${l}`, 200, 250 + i * 64));
             if (logoImg.complete) g.drawImage(logoImg, W - 150, 20, 120, 120);
           } else if (mode === 'poll') {
@@ -195,7 +195,7 @@ export function playStory() {
             ['Light', 'Soil', 'Music', 'Water'].forEach((l, i) => {
               const x = 170 + i * 200; const hh = vals[i] * 260;
               g.fillStyle = ['#ff4772', '#ffcd1f', '#a560ff', '#2f9bff'][i]; g.fillRect(x, 430 - hh, 140, hh);
-              g.fillStyle = '#fff'; g.font = '800 30px Nunito, system-ui'; g.fillText(l, x + 70, 470); g.fillText(String(Math.round(vals[i] * 24)), x + 70, 420 - hh);
+              g.fillStyle = '#fff'; g.font = '800 30px Figtree, system-ui'; g.fillText(l, x + 70, 470); g.fillText(String(Math.round(vals[i] * 24)), x + 70, 420 - hh);
             });
           } else {
             g.fillText('Which gas do plants give out?', W / 2, 110);
@@ -204,7 +204,7 @@ export function playStory() {
               const right = i === 0 && k > 0.6;
               g.fillStyle = ['#ff4772', '#2f9bff', '#ffb21f', '#12c9a6'][i]; g.globalAlpha = k > 0.6 && !right ? 0.35 : 1;
               g.fillRect(x, y, 380, 120); g.globalAlpha = 1;
-              g.fillStyle = '#fff'; g.font = '800 44px Nunito, system-ui'; g.fillText(right ? `✓ ${l}` : l, x + 190, y + 76);
+              g.fillStyle = '#fff'; g.font = '800 44px Figtree, system-ui'; g.fillText(right ? `✓ ${l}` : l, x + 190, y + 76);
             });
           }
         }
@@ -266,33 +266,33 @@ export function playStory() {
         g.fillStyle = '#f3f0ff'; g.fillRect(0, 0, W, H);
         g.fillStyle = '#17133f'; g.fillRect(0, 0, W, 70);
         if (logoImg.complete) g.drawImage(logoImg, 16, 10, 50, 50);
-        g.fillStyle = '#fff'; g.font = '400 34px "Lilita One", system-ui'; g.textAlign = 'left'; g.fillText('Quickzy', 76, 47);
-        g.fillStyle = '#9b97c4'; g.font = '700 18px Nunito, system-ui'; g.fillText('quickzy.work.gd', 820, 44);
+        g.fillStyle = '#fff'; g.font = '400 34px "Bricolage Grotesque", system-ui'; g.textAlign = 'left'; g.fillText('Quickzy', 76, 47);
+        g.fillStyle = '#9b97c4'; g.font = '700 18px Figtree, system-ui'; g.fillText('quickzy.work.gd', 820, 44);
         g.textAlign = 'center';
         if (step === 0) {
           const grad = g.createLinearGradient(0, 90, W, 400); grad.addColorStop(0, '#6b4cff'); grad.addColorStop(1, '#ff4772');
           g.fillStyle = grad; g.fillRect(40, 100, W - 80, 300);
-          g.fillStyle = '#fff'; g.font = '400 64px "Lilita One", system-ui'; g.fillText('Make a quiz.', W / 2, 220);
+          g.fillStyle = '#fff'; g.font = '400 64px "Bricolage Grotesque", system-ui'; g.fillText('Make a quiz.', W / 2, 220);
           g.fillStyle = '#ffcd1f'; g.fillText('Play it like a game.', W / 2, 300);
-          g.fillStyle = '#ffcd1f'; g.fillRect(380, 460, 260, 70); g.fillStyle = '#17133f'; g.font = '800 30px Nunito, system-ui'; g.fillText('Quickzy Pro', W / 2, 506);
+          g.fillStyle = '#ffcd1f'; g.fillRect(380, 460, 260, 70); g.fillStyle = '#17133f'; g.font = '800 30px Figtree, system-ui'; g.fillText('Quickzy Pro', W / 2, 506);
         } else if (step === 1) {
-          g.fillStyle = '#17133f'; g.font = '400 48px "Lilita One", system-ui'; g.fillText('Quickzy Pro', W / 2, 150);
+          g.fillStyle = '#17133f'; g.font = '400 48px "Bricolage Grotesque", system-ui'; g.fillText('Quickzy Pro', W / 2, 150);
           g.fillStyle = '#fff'; g.fillRect(260, 190, 500, 360); g.strokeStyle = '#d9d4f5'; g.lineWidth = 3; g.strokeRect(260, 190, 500, 360);
-          g.textAlign = 'left'; g.fillStyle = '#6b6890'; g.font = '700 20px Nunito, system-ui';
+          g.textAlign = 'left'; g.fillStyle = '#6b6890'; g.font = '700 20px Figtree, system-ui';
           const card = '4242 4242 4242 4242'.slice(0, Math.floor(k * 1.8 * 19));
-          g.fillText('Card number', 290, 240); g.fillStyle = '#17133f'; g.font = '800 30px Nunito, system-ui'; g.fillText(card + (Math.sin(performance.now() / 150) > 0 ? '|' : ''), 290, 280);
-          g.fillStyle = '#6b6890'; g.font = '700 20px Nunito, system-ui'; g.fillText('7 days free, then $13.49 a year', 290, 340);
+          g.fillText('Card number', 290, 240); g.fillStyle = '#17133f'; g.font = '800 30px Figtree, system-ui'; g.fillText(card + (Math.sin(performance.now() / 150) > 0 ? '|' : ''), 290, 280);
+          g.fillStyle = '#6b6890'; g.font = '700 20px Figtree, system-ui'; g.fillText('7 days free, then $13.49 a year', 290, 340);
           g.fillStyle = k > 0.75 ? '#12c9a6' : '#6b4cff'; g.fillRect(290, 440, 440, 70);
-          g.fillStyle = '#fff'; g.font = '800 28px Nunito, system-ui'; g.textAlign = 'center';
+          g.fillStyle = '#fff'; g.font = '800 28px Figtree, system-ui'; g.textAlign = 'center';
           g.fillText(k > 0.75 ? '✓ Welcome to Pro!' : 'Start my free week', 510, 485);
         } else {
-          g.fillStyle = '#17133f'; g.font = '400 46px "Lilita One", system-ui'; g.fillText('Unlocked for you', W / 2, 140);
+          g.fillStyle = '#17133f'; g.font = '400 46px "Bricolage Grotesque", system-ui'; g.fillText('Unlocked for you', W / 2, 140);
           [['Presentation+', '#6b4cff', 'Slides with live polls and graphs'], ['Quizzes', '#ff4772', 'Ten game modes, homework, reports']].forEach(([t, c, sub], i) => {
             const x = 110 + i * 420; const pop = Math.min(1, Math.max(0, k * 2 - i * 0.5));
             g.save(); g.translate(x + 190, 330); g.scale(0.6 + pop * 0.4, 0.6 + pop * 0.4); g.globalAlpha = pop;
             g.fillStyle = c; g.fillRect(-190, -120, 380, 240);
-            g.fillStyle = '#fff'; g.font = '400 44px "Lilita One", system-ui'; g.fillText(t, 0, -10);
-            g.font = '700 20px Nunito, system-ui'; g.fillText(sub, 0, 40); g.font = '800 30px Nunito, system-ui'; g.fillText('✓ Unlocked', 0, 95);
+            g.fillStyle = '#fff'; g.font = '400 44px "Bricolage Grotesque", system-ui'; g.fillText(t, 0, -10);
+            g.font = '700 20px Figtree, system-ui'; g.fillText(sub, 0, 40); g.font = '800 30px Figtree, system-ui'; g.fillText('✓ Unlocked', 0, 95);
             g.restore();
           });
         }

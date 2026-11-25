@@ -72,18 +72,22 @@ function sidebar(path) {
     h('a', { class: 'logo side-logo', href: '/', 'aria-label': 'Quickzy home' }, logo(), wordmark(), h('span', { class: 'ver' }, VERSION)),
     h('a', { class: 'btn btn-main side-join', href: '/join' }, icon('play', { size: 18 }), 'Join a game'),
     h('nav', { class: 'side-nav' },
-      link('/', 'Home', 'home'),
-      link('/discover', 'Discover', 'compass'),
-      link('/channels', 'Channels', 'users'),
-      link('/blooks', 'Blooks', 'star'),
-      signed ? h('div', { class: 'side-sep' }) : null,
-      signed ? link('/new', 'Create', 'plus') : null,
-      signed ? link('/library', 'My quizzes', 'list') : null,
-      signed ? link('/homework', 'Homework', 'book') : null,
-      h('div', { class: 'side-sep' }),
-      h('a', { href: '/pro', class: `side-link side-pro ${isOn(path, '/pro')}` }, verifiedBadge(null, 'pro'), h('span', {}, 'Quickzy Pro')),
-      link('/app', 'Quickzy app', 'download'),
-      user && user.uid === OWNER_UID ? h('a', { href: '/owner', class: `side-link nav-owner ${isOn(path, '/owner')}` }, verifiedBadge(null, 'owner'), h('span', {}, 'Owner panel')) : null),
+      h('div', { class: 'side-group' },
+        h('small', {}, 'Play'),
+        link('/', 'Home', 'home'),
+        link('/discover', 'Discover', 'compass'),
+        link('/channels', 'Channels', 'users'),
+        link('/blooks', 'Blooks', 'star')),
+      signed ? h('div', { class: 'side-group' },
+        h('small', {}, 'Create'),
+        link('/new', 'Create', 'plus'),
+        link('/library', 'My quizzes', 'list'),
+        link('/homework', 'Homework', 'book')) : null,
+      h('div', { class: 'side-group' },
+        h('small', {}, 'Quickzy'),
+        h('a', { href: '/pro', class: `side-link side-pro ${isOn(path, '/pro')}` }, verifiedBadge(null, 'pro'), h('span', {}, 'Quickzy Pro')),
+        link('/app', 'Quickzy app', 'download'),
+        user && user.uid === OWNER_UID ? h('a', { href: '/owner', class: `side-link nav-owner ${isOn(path, '/owner')}` }, verifiedBadge(null, 'owner'), h('span', {}, 'Owner panel')) : null)),
     h('div', { class: 'side-end' },
       signed && profile
         ? h('a', { class: 'side-card', href: `/u/${profile.username}`, 'aria-label': 'Your profile' },
@@ -213,6 +217,11 @@ async function loadBanner() {
     } }, icon('close', { size: 16 })));
 }
 
+let inLiveGame = false;
+addEventListener('beforeunload', (e) => {
+  if (inLiveGame && !navigator.webdriver && session.prefs().confirmLeave !== false) { e.preventDefault(); e.returnValue = ''; }
+});
+
 onRoute(async (match, mod, query, keep) => {
   if (match.opts.auth && !session.signedIn()) {
     navigate(`/login?next=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
@@ -220,6 +229,8 @@ onRoute(async (match, mod, query, keep) => {
   }
   const chrome = match.opts.chrome !== false;
   document.body.classList.toggle('in-game', !chrome);
+  // Settings → More settings → "Ask before leaving a game"
+  inLiveGame = /^\/(play|lobby)\//.test(location.pathname);
   pageRoot = h('main', { id: 'page' }, loader());
   app.classList.toggle('with-side', chrome);
   fill(app, chrome ? sidebar(location.pathname) : null, chrome ? topbar(location.pathname) : null, chrome ? countBar : null, chrome ? eventBar : null, chrome ? banner : null, pageRoot, chrome ? tabbar(location.pathname) : null);
@@ -265,6 +276,7 @@ async function boot() {
   }
   // know early whether this account is Pro (badges, flags, custom blooks)
   if (session.signedIn()) import('./services/plan.js').then((p) => p.myPlan()).catch(() => {});
+  guardSession();
   // the daily streak and its chest (not during the browser tests)
   if (session.signedIn() && !navigator.webdriver) {
     session.whenProfile().then(() => import('./services/streak.js')).then(async (m) => { const r = await m.checkIn(); if (r) setTimeout(() => m.showDaily(r), 1200); }).catch(() => {});
@@ -311,6 +323,47 @@ async function boot() {
   });
   loadBanner();
   render();
+}
+
+/**
+ * Account safety on this device:
+ *  - "Sign out everywhere": if the account was signed out on all devices after
+ *    this device last proved who it is, sign out here too;
+ *  - auto sign-out: after 30 minutes without use, when it is turned on.
+ */
+function guardSession() {
+  const u = session.me();
+  if (!u || u.isAnonymous || !net.auth.authTime) return;
+  // 2-step on, but this session never passed the code (a page closed half-way): sign out
+  if (net.kind !== 'dev' && net.auth.claims) {
+    Promise.all([net.store.get('mfa', u.uid).catch(() => null), net.auth.claims().catch(() => ({}))]).then(async ([m, claims]) => {
+      if (m && m.on && claims.mfa !== true) { await net.auth.signOut().catch(() => {}); navigate('/login', { replace: true }); }
+    }).catch(() => {});
+  }
+  Promise.all([net.store.get('signouts', u.uid).catch(() => null), net.auth.authTime().catch(() => null)]).then(async ([doc, at]) => {
+    if (doc && at && doc.before > at + 999) {
+      await net.auth.signOut().catch(() => {});
+      import('./ui/kit.js').then((k) => k.toast('Your account was signed out on all devices. Sign in again.', 'bad'));
+      navigate('/login', { replace: true });
+    }
+  }).catch(() => {});
+  const KEY = 'quickzy.lastActive';
+  const LIMIT = 30 * 60 * 1000;
+  const mark = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch { /* private mode */ } };
+  const check = async () => {
+    if (!session.prefs().autoLock || !session.signedIn() || (session.me() && session.me().isAnonymous)) return;
+    let last = 0;
+    try { last = Number(localStorage.getItem(KEY)) || 0; } catch { return; }
+    if (last && Date.now() - last > LIMIT) {
+      mark();
+      await net.auth.signOut().catch(() => {});
+      import('./ui/kit.js').then((k) => k.toast('Signed out after 30 minutes without use (you turned this on in Settings).'));
+      navigate('/login', { replace: true });
+    }
+  };
+  check().then(mark);
+  ['pointerdown', 'keydown'].forEach((ev) => addEventListener(ev, mark, { passive: true }));
+  setInterval(check, 60 * 1000);
 }
 
 boot();

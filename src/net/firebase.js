@@ -6,7 +6,7 @@
 // many players in a few tens of milliseconds and charges by bandwidth rather
 // than by write, which is what a game needs.
 
-import { firebaseConfig, FIREBASE_SDK } from '../config.js';
+import { firebaseConfig, FIREBASE_SDK, SUPABASE } from '../config.js';
 import { useEmulator } from './index.js';
 
 export async function create() {
@@ -32,6 +32,21 @@ export async function create() {
 
   /* ------------------------------------------------------------ auth */
 
+  // 2-step verification and passkeys run on Quickzy's own guard (a Supabase
+  // function, free): it checks the code or the passkey, then hands back a
+  // Firebase sign-in that is marked as verified ({ mfa: true }).
+  const GUARD = `${SUPABASE.url}/functions/v1/guard`;
+  async function guard(path, body = {}, auth = true) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (auth && fa.currentUser) headers.Authorization = `Bearer ${await fa.currentUser.getIdToken()}`;
+    const r = await fetch(`${GUARD}/${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) { const e = new Error(d.error || 'auth/network-request-failed'); e.code = d.error || 'auth/network-request-failed'; throw e; }
+    return d;
+  }
+  let twoStepOn = false;   // the last answer from the guard, for shape()
+  const WEBAUTHN = 'https://cdn.jsdelivr.net/npm/@simplewebauthn/browser@13.3.0/+esm';
+
   const shape = (u) => (u ? {
     uid: u.uid,
     email: u.email || null,
@@ -39,7 +54,38 @@ export async function create() {
     emailVerified: Boolean(u.emailVerified),
     isAnonymous: Boolean(u.isAnonymous),
     providers: (u.providerData || []).map((p) => p.providerId),
+    mfa: twoStepOn ? [{ uid: 'totp', name: 'Authenticator app', kind: 'totp', at: null }] : [],
+    lastSignIn: Date.parse(u.metadata && u.metadata.lastSignInTime) || null,
+    created: Date.parse(u.metadata && u.metadata.creationTime) || null,
   } : null);
+
+  /**
+   * Run a sign-in (or a "prove it's you"). If the account has 2-step on and
+   * this session has not passed the code, stop: the error carries finish(code),
+   * which checks the code and signs in again as verified, and cancel(), which
+   * signs out. `after` runs once signed in properly.
+   */
+  async function gated(fn, after) {
+    const r = await fn();
+    let st = null;
+    try { st = await guard('status'); } catch { st = null; }
+    twoStepOn = Boolean(st && st.totp);
+    const claims = (await F.getIdTokenResult(fa.currentUser)).claims;
+    if (st && st.totp && claims.mfa !== true) {
+      const e = new Error('Two-step verification');
+      e.code = 'auth/multi-factor-auth-required';
+      e.finish = async (code) => {
+        const { token } = await guard('totp/verify', { code: String(code).replace(/\D/g, '') });
+        const c = await F.signInWithCustomToken(fa, token);
+        if (after) await after();
+        return shape(c.user);
+      };
+      e.cancel = () => F.signOut(fa);
+      throw e;
+    }
+    if (after) await after();
+    return shape((r && r.user) || fa.currentUser);
+  }
 
   // wait for the persisted session before the app draws anything
   await new Promise((resolve) => {
@@ -55,29 +101,69 @@ export async function create() {
       provider.setCustomParameters({ prompt: 'select_account' });
       // a pop-up keeps working when the site and the auth domain differ,
       // which is the case on quickzy.web.app (auth domain akylduukodo.firebaseapp.com); a redirect does not reliably
-      return shape((await F.signInWithPopup(fa, provider)).user);
+      return gated(() => F.signInWithPopup(fa, provider));
     },
     signUp: async (email, password) => shape((await F.createUserWithEmailAndPassword(fa, email, password)).user),
-    signIn: async (email, password) => shape((await F.signInWithEmailAndPassword(fa, email, password)).user),
+    signIn: (email, password) => gated(() => F.signInWithEmailAndPassword(fa, email, password)),
     signOut: () => F.signOut(fa),
     // Firebase sends these emails itself: no mail server of our own is needed
     sendReset: (email) => F.sendPasswordResetEmail(fa, email, { url: `${location.origin}/login` }),
     sendVerify: () => F.sendEmailVerification(fa.currentUser, { url: `${location.origin}/settings` }),
     setDisplayName: (name) => F.updateProfile(fa.currentUser, { displayName: name }),
-    async changePassword(current, next) {
+    changePassword(current, next) {
       const u = fa.currentUser;
-      await F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, current));
-      await F.updatePassword(u, next);
+      return gated(() => F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, current)), () => F.updatePassword(fa.currentUser, next));
     },
     /** Prove it is really them before something drastic. */
-    async reauth(password) {
+    reauth(password) {
       const u = fa.currentUser;
-      if (password) await F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, password));
-      else await F.reauthenticateWithPopup(u, new F.GoogleAuthProvider());
+      return gated(() => (password ? F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, password)) : F.reauthenticateWithPopup(u, new F.GoogleAuthProvider())));
+    },
+    /** When this device last proved who it is (password, Google or code), in ms. */
+    async authTime() {
+      const r = await F.getIdTokenResult(fa.currentUser, true);
+      return Date.parse(r.authTime);
+    },
+    /** The claims of this session ({ mfa: true } once the code or a passkey was used). */
+    claims: async () => (fa.currentUser ? (await F.getIdTokenResult(fa.currentUser)).claims : {}),
+    // 2-step verification with an authenticator app, checked by the guard
+    mfa: {
+      ready: async () => { try { return (await guard('health', {}, false)).ready === true; } catch { return false; } },
+      async status() { const st = await guard('status'); twoStepOn = Boolean(st.totp); return st; },
+      async start() {
+        const r = await guard('totp/start');
+        return {
+          key: r.key, uri: r.uri,
+          finish: async (code) => {
+            const { token } = await guard('totp/enable', { code: String(code).replace(/\D/g, '') });
+            await F.signInWithCustomToken(fa, token);
+            twoStepOn = true;
+          },
+        };
+      },
+      async remove() { await guard('totp/disable'); twoStepOn = false; },
+    },
+    // passkeys: the fingerprint, face or screen lock of this device
+    passkeys: {
+      supported: () => typeof window !== 'undefined' && Boolean(window.PublicKeyCredential),
+      async add(name) {
+        const { id, options } = await guard('passkey/register/options');
+        const { startRegistration } = await import(WEBAUTHN);
+        const response = await startRegistration({ optionsJSON: options });
+        await guard('passkey/register/verify', { id, response, name });
+      },
+      remove: (id) => guard('passkey/remove', { id }),
+      async signIn() {
+        const { id, options } = await guard('passkey/login/options', {}, false);
+        const { startAuthentication } = await import(WEBAUTHN);
+        const response = await startAuthentication({ optionsJSON: options });
+        const { token } = await guard('passkey/login/verify', { id, response }, false);
+        return shape((await F.signInWithCustomToken(fa, token)).user);
+      },
     },
     // call reauth() first: Firebase refuses to delete an account signed in long ago
     deleteAccount: async () => F.deleteUser(fa.currentUser),
-    async reload() { if (fa.currentUser) await F.reload(fa.currentUser); return shape(fa.currentUser); },
+    async reload() { if (fa.currentUser) { await F.reload(fa.currentUser); try { twoStepOn = Boolean((await guard('status')).totp); } catch { /* keep */ } } return shape(fa.currentUser); },
   };
 
   /* ----------------------------------------------------------- store */

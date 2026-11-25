@@ -1,0 +1,39 @@
+name: Account safety settings
+
+# Switches on email privacy in
+# Firebase Authentication. Runs when this file or tools/security.cjs changes,
+# or by hand from the Actions tab.
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['tools/security.cjs', '.github/workflows/security.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth:
+    name: Switch on account safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT: akylduukodo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Sign in with the service account
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AKYLDUUKODO }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+      - name: Switch on email privacy
+        run: |
+          npm install --no-save --no-package-lock firebase-admin@12.7.0 >/dev/null 2>&1
+          set -o pipefail; node tools/security.cjs 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Forget the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

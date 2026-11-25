@@ -24,6 +24,8 @@ export const TIPS = [
   'Duplicate blooks give coins back. Rarer ones give more.',
 ];
 
+const tipsOn = () => { try { return JSON.parse(localStorage.getItem('quickzy.prefs') || '{}').tips !== false; } catch { return true; } };
+
 /** A tip to start on, different each visit. */
 const firstTip = () => Math.floor(Math.random() * TIPS.length);
 
@@ -67,8 +69,8 @@ export function loader({ full = false, text = '' } = {}) {
       h('div', { class: 'ld-word' }, wordmark()),
       h('div', { class: 'ld-progress' }, h('div', { class: 'ld-track' }, fillEl), h('div', { class: 'ld-row' }, label, pct))),
     h('div', { class: 'ld-foot' },
-      h('div', { class: 'ld-tip' }, h('b', {}, 'Did you know?'), tip),
-      h('small', {}, `Quickzy ${VERSION} · Made with care in Kyrgyzstan`)));
+      tipsOn() ? h('div', { class: 'ld-tip' }, h('b', {}, 'Did you know?'), tip) : null,
+      h('small', {}, `Quickzy ${VERSION}`)));
   // the bar creeps towards the next step, never quite reaching it, like a real download
   boot = { root, label, target: 0.12 };
   let shown = 0;

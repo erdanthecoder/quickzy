@@ -76,7 +76,7 @@ function liveryTex(T) {
     g.fillStyle = '#1b2240';
     for (let x = w * 0.16; x < w * 0.84; x += 22) { g.beginPath(); g.ellipse(x, hh * 0.98, 6, 8, 0, 0, Math.PI * 2); g.fill(); }
     // the name: left side reads nose-first from the left, right side from the right
-    g.font = '900 52px "Lilita One", Nunito, sans-serif';
+    g.font = '900 52px "Bricolage Grotesque", Figtree, sans-serif';
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = '#6b4cff';
     g.save(); g.translate(w * 0.5, hh * 0.535); g.scale(-1, 0.75); g.fillText('QUICKZY', 0, 0); g.restore();
