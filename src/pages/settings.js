@@ -370,7 +370,7 @@ async function turnOffTwoStep(redraw) {
   if (!(await confirm({ title: 'Turn off 2-step verification?', text: 'Anyone who learns your password could then sign in as you.', yes: 'Turn off', danger: true }))) return;
   if (!(await proveItsYou('Before turning off 2-step verification, check it is you.'))) return;
   try {
-    for (const f of session.me().mfa || []) await net.auth.mfa.remove(f.uid);
+    await net.auth.mfa.remove('totp');
     await session.refresh(); toast('2-step verification is off'); redraw();
   } catch (err) { toast(explain(err), 'bad'); }
 }
@@ -386,18 +386,41 @@ async function signOutEverywhere() {
   } catch (err) { toast(explain(err), 'bad'); }
 }
 
-const TWO_STEP_READY = () => net.kind === 'dev';
+/** Add a passkey for this device (after checking it is you, if needed). */
+async function addPasskey(redraw) {
+  const name = /iphone|ipad/i.test(navigator.userAgent) ? 'iPhone or iPad' : /android/i.test(navigator.userAgent) ? 'Android phone' : /mac/i.test(navigator.userAgent) ? 'Mac' : /windows/i.test(navigator.userAgent) ? 'Windows computer' : 'This device';
+  const go = async () => net.auth.passkeys.add(name);
+  try { await go(); } catch (err) {
+    if (err && err.code === 'auth/requires-recent-login') {
+      if (!(await proveItsYou('Before adding a passkey, check it is you.'))) return;
+      try { await go(); } catch (e2) { if (e2 && e2.name !== 'NotAllowedError') toast(explain(e2), 'bad'); return; }
+    } else { if (!err || err.name !== 'NotAllowedError') toast(explain(err), 'bad'); return; }
+  }
+  sfx('checkpoint'); toast('Passkey added. Next time, sign in with your fingerprint, face or screen lock.', 'ok'); redraw();
+}
+
 
 function securitySection() {
   const box = h('div', { class: 'stack', style: { gap: 0 } });
+  // what the sign-in guard knows: is it set up, is 2-step on, which passkeys
+  let guard = { ready: false, totp: false, passkeys: [] };
+  const load = async () => {
+    try {
+      const [ready, st] = await Promise.all([net.auth.mfa.ready(), net.auth.mfa.status().catch(() => null)]);
+      guard = { ready, totp: Boolean(st && st.totp), passkeys: (st && st.passkeys) || [] };
+    } catch { /* keep */ }
+    draw();
+  };
   const draw = () => {
     const u = session.me();
     const hasPassword = (u.providers || []).includes('password');
-    const twoStep = (u.mfa || []).length > 0;
+    const twoStep = guard.totp || (u.mfa || []).length > 0;
+    const canPasskey = guard.ready && net.auth.passkeys && net.auth.passkeys.supported();
     const p = session.prefs();
     const checks = [
       [u.emailVerified, 'Email confirmed'],
       [hasPassword || (u.providers || []).includes('google.com'), hasPassword ? 'Password set' : 'Google sign-in'],
+      [twoStep, '2-step verification'],
     ];
     const score = checks.filter(([ok]) => ok).length;
     const when = (ms) => (ms ? new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not known');
@@ -407,11 +430,17 @@ function securitySection() {
         h('ul', {}, ...checks.map(([ok, label]) => h('li', { class: ok ? 'is-on' : '' }, icon(ok ? 'check' : 'close', { size: 14, stroke: 3 }), label)))),
       row('2-step verification', 'When you sign in, Quickzy also asks for a 6-digit code from an app on your phone. Even someone with your password cannot get in.',
         twoStep
-          ? h('div', { class: 'row' }, h('span', { class: 'pill pill-ok' }, icon('shield', { size: 14 }), 'On'), h('button', { class: 'btn btn-sm btn-ghost', onclick: () => turnOffTwoStep(draw) }, 'Turn off'))
-          // the live servers cannot do it yet (it needs Firebase's paid plan); the local test server can
-          : TWO_STEP_READY() ? h('button', { class: 'btn btn-sm btn-main', onclick: () => turnOnTwoStep(draw) }, icon('shield', { size: 16 }), 'Turn on') : h('span', { class: 'pill' }, 'Coming soon')),
+          ? h('div', { class: 'row' }, h('span', { class: 'pill pill-ok' }, icon('shield', { size: 14 }), 'On'), h('button', { class: 'btn btn-sm btn-ghost', onclick: () => turnOffTwoStep(load) }, 'Turn off'))
+          : guard.ready ? h('button', { class: 'btn btn-sm btn-main', onclick: () => turnOnTwoStep(load) }, icon('shield', { size: 16 }), 'Turn on') : h('span', { class: 'pill' }, 'Getting ready…')),
       row('Passkeys', 'Sign in with your fingerprint, face or screen lock instead of a password. Passkeys cannot be guessed or stolen by fake websites.',
-        h('span', { class: 'pill' }, 'Coming soon')),
+        canPasskey ? h('button', { class: 'btn btn-sm', onclick: () => addPasskey(load) }, icon('plus', { size: 16 }), 'Add a passkey')
+          : h('span', { class: 'pill' }, guard.ready ? 'Not on this browser' : 'Getting ready…')),
+      ...guard.passkeys.map((k) => h('div', { class: 'set-sub' },
+        icon('key', { size: 16 }), h('div', { class: 'grow' }, h('b', {}, k.name || 'Passkey'), h('small', { class: 'muted' }, `Added ${when(k.created)}${k.used ? ` · last used ${when(k.used)}` : ''}`)),
+        h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => {
+          if (!(await confirm({ title: 'Remove this passkey?', text: 'You will not be able to sign in with it any more.', yes: 'Remove', danger: true }))) return;
+          try { await net.auth.passkeys.remove(k.id); toast('Passkey removed'); load(); } catch (err) { toast(explain(err), 'bad'); }
+        } }, 'Remove'))),
       row('Sign out everywhere else', 'Lost a phone, or signed in on a school computer? Sign out every other device at once.',
         h('button', { class: 'btn btn-sm', onclick: signOutEverywhere }, icon('logout', { size: 16 }), 'Sign out others')),
       row('Auto sign-out on this device', 'Signs you out after 30 minutes without using Quickzy. Turn on for shared computers.',
@@ -427,6 +456,7 @@ function securitySection() {
           h('li', {}, 'Use a password you use nowhere else, and turn on 2-step verification.'))));
   };
   draw();
+  load();
   return section('Security', box);
 }
 

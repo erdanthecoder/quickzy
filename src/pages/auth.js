@@ -98,8 +98,18 @@ function Login(query) {
       await afterSignIn(query.next, false);
     } catch (err) { fill(errorBox, explain(err)); }
   });
+  // passkeys: the fingerprint, face or screen lock of this device
+  const passkey = net.auth.passkeys && net.auth.passkeys.supported() ? h('button', { class: 'btn btn-block btn-lg passkey-btn', type: 'button' }, icon('key', { size: 20 }), 'Sign in with a passkey') : null;
+  if (passkey) passkey.addEventListener('click', busy(passkey, async () => {
+    fill(errorBox);
+    try { await net.auth.passkeys.signIn(); await afterSignIn(query.next, false); } catch (err) {
+      if (err && err.name === 'NotAllowedError') return;   // they closed the passkey window
+      fill(errorBox, err && err.code === 'auth/passkey-unknown' ? 'That passkey is not linked to a Quickzy account. Sign in with your password, then add it in Settings → Security.' : explain(err));
+    }
+  }));
   return shell('Welcome back', null,
     googleButton(query.next, errorBox),
+    passkey,
     h('div', { class: 'divider' }, 'or with email'),
     form,
     h('p', { class: 'center small', style: { margin: 0 } }, 'New here? ', h('a', { href: `/signup${query.next ? `?next=${encodeURIComponent(query.next)}` : ''}` }, 'Create an account')),

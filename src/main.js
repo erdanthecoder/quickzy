@@ -334,6 +334,12 @@ async function boot() {
 function guardSession() {
   const u = session.me();
   if (!u || u.isAnonymous || !net.auth.authTime) return;
+  // 2-step on, but this session never passed the code (a page closed half-way): sign out
+  if (net.kind !== 'dev' && net.auth.claims) {
+    Promise.all([net.store.get('mfa', u.uid).catch(() => null), net.auth.claims().catch(() => ({}))]).then(async ([m, claims]) => {
+      if (m && m.on && claims.mfa !== true) { await net.auth.signOut().catch(() => {}); navigate('/login', { replace: true }); }
+    }).catch(() => {});
+  }
   Promise.all([net.store.get('signouts', u.uid).catch(() => null), net.auth.authTime().catch(() => null)]).then(async ([doc, at]) => {
     if (doc && at && doc.before > at + 999) {
       await net.auth.signOut().catch(() => {});

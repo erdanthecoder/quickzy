@@ -49,7 +49,7 @@ export async function withTwoStep(fn) {
     if (!err || err.code !== 'auth/multi-factor-auth-required' || !err.finish) throw err;
     for (;;) {
       const code = await askCode();
-      if (!code) { const e = new Error('Cancelled'); e.code = 'auth/cancelled'; throw e; }
+      if (!code) { try { if (err.cancel) await err.cancel(); } catch { /* ignore */ } const e = new Error('Cancelled'); e.code = 'auth/cancelled'; throw e; }
       try {
         return await err.finish(code);
       } catch (e2) {

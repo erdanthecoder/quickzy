@@ -1,6 +1,6 @@
 name: Account safety settings
 
-# Switches on 2-step verification (authenticator apps) and email privacy in
+# Switches on email privacy in
 # Firebase Authentication. Runs when this file or tools/security.cjs changes,
 # or by hand from the Actions tab.
 on:
@@ -30,10 +30,10 @@ jobs:
         run: |
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
-      - name: Switch on 2-step verification and email privacy
+      - name: Switch on email privacy
         run: |
           npm install --no-save --no-package-lock firebase-admin@12.7.0 >/dev/null 2>&1
-          node tools/security.cjs 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          set -o pipefail; node tools/security.cjs 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Forget the key
         if: always()
         run: rm -f "$RUNNER_TEMP/sa.json"

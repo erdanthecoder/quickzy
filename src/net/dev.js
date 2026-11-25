@@ -48,7 +48,7 @@ export async function create() {
   // finish(code), which repeats the same request with the code
   const gated = async (path, body, done = (r) => r) => {
     try { return done(await call(path, body)); } catch (err) {
-      if (err.code === 'auth/multi-factor-auth-required') err.finish = async (code) => done(await call(path, { ...body, code }));
+      if (err.code === 'auth/multi-factor-auth-required') { err.finish = async (code) => done(await call(path, { ...body, code })); err.cancel = () => {}; }
       throw err;
     }
   };
@@ -67,7 +67,16 @@ export async function create() {
     changePassword: (current, next) => gated('auth/password', { current, next }),
     reauth: (password) => gated('auth/reauth', { password }),
     async authTime() { const r = await call('auth/me'); return r.authTime; },
+    claims: async () => ({ mfa: true }),
+    passkeys: {
+      supported: () => false,
+      add: async () => { const e = new Error('auth/operation-not-allowed'); e.code = e.message; throw e; },
+      remove: async () => {},
+      signIn: async () => { const e = new Error('auth/operation-not-allowed'); e.code = e.message; throw e; },
+    },
     mfa: {
+      ready: async () => true,
+      status: async () => ({ totp: Boolean(user && user.mfa && user.mfa.length), verified: true, passkeys: [] }),
       async start() {
         const r = await call('auth/mfa-start');
         return { key: r.key, uri: r.uri, finish: async (code, name) => { const x = await call('auth/mfa-enroll', { code, name }); setUser(x.user); } };

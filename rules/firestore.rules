@@ -11,14 +11,21 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
+    // 2-step verification: once it is on (mfa/{uid}, written only by the
+    // sign-in guard), a session that did not pass the code changes nothing
+    function needsCode() {
+      return exists(/databases/$(database)/documents/mfa/$(request.auth.uid))
+        && get(/databases/$(database)/documents/mfa/$(request.auth.uid)).data.on == true
+        && request.auth.token.get('mfa', false) != true;
+    }
     // "Sign out everywhere": a device that last proved who it is before that
     // moment can no longer change anything, even with a stolen session
     function lockedOut() {
       return exists(/databases/$(database)/documents/signouts/$(request.auth.uid))
         && get(/databases/$(database)/documents/signouts/$(request.auth.uid)).data.before > request.auth.token.auth_time * 1000;
     }
-    function account() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous' && !lockedOut(); }
-    function me(uid) { return signedIn() && request.auth.uid == uid; }
+    function account() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous' && !lockedOut() && !needsCode(); }
+    function me(uid) { return signedIn() && request.auth.uid == uid && !needsCode(); }
     function onlyKeys(keys) { return request.resource.data.keys().hasOnly(keys); }
     function str(v, max) { return v is string && v.size() <= max; }
     // the person who runs Quickzy; the same account carries the green check
@@ -37,6 +44,12 @@ service cloud.firestore {
     // ------------------------------------------------------ sign out everywhere
     // the moment every older sign-in stops working; only the account itself
     // sets it, and only to the moment it last proved who it is
+    // whether an account has 2-step on: the account itself may read it
+    match /mfa/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
     match /signouts/{uid} {
       allow read: if me(uid);
       allow create, update: if me(uid) && request.auth.token.firebase.sign_in_provider != 'anonymous'
