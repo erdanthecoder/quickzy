@@ -386,6 +386,8 @@ async function signOutEverywhere() {
   } catch (err) { toast(explain(err), 'bad'); }
 }
 
+const TWO_STEP_READY = () => net.kind === 'dev';
+
 function securitySection() {
   const box = h('div', { class: 'stack', style: { gap: 0 } });
   const draw = () => {
@@ -395,20 +397,19 @@ function securitySection() {
     const p = session.prefs();
     const checks = [
       [u.emailVerified, 'Email confirmed'],
-      [twoStep, '2-step verification'],
       [hasPassword || (u.providers || []).includes('google.com'), hasPassword ? 'Password set' : 'Google sign-in'],
-      [Boolean(p.autoLock), 'Auto sign-out'],
     ];
     const score = checks.filter(([ok]) => ok).length;
     const when = (ms) => (ms ? new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not known');
     fill(box,
-      h('div', { class: `sec-check is-${score >= 3 ? 'good' : score === 2 ? 'ok' : 'low'}` },
-        h('div', { class: 'sec-score' }, h('b', {}, `${score}/4`), h('small', {}, score >= 3 ? 'Well protected' : score === 2 ? 'Could be safer' : 'Needs attention')),
+      h('div', { class: `sec-check is-${score >= checks.length ? 'good' : score >= 2 ? 'ok' : 'low'}` },
+        h('div', { class: 'sec-score' }, h('b', {}, `${score}/${checks.length}`), h('small', {}, score >= checks.length ? 'Well protected' : score >= 2 ? 'Could be safer' : 'Needs attention')),
         h('ul', {}, ...checks.map(([ok, label]) => h('li', { class: ok ? 'is-on' : '' }, icon(ok ? 'check' : 'close', { size: 14, stroke: 3 }), label)))),
       row('2-step verification', 'When you sign in, Quickzy also asks for a 6-digit code from an app on your phone. Even someone with your password cannot get in.',
         twoStep
           ? h('div', { class: 'row' }, h('span', { class: 'pill pill-ok' }, icon('shield', { size: 14 }), 'On'), h('button', { class: 'btn btn-sm btn-ghost', onclick: () => turnOffTwoStep(draw) }, 'Turn off'))
-          : h('button', { class: 'btn btn-sm btn-main', onclick: () => turnOnTwoStep(draw) }, icon('shield', { size: 16 }), 'Turn on')),
+          // the live servers cannot do it yet (it needs Firebase's paid plan); the local test server can
+          : TWO_STEP_READY() ? h('button', { class: 'btn btn-sm btn-main', onclick: () => turnOnTwoStep(draw) }, icon('shield', { size: 16 }), 'Turn on') : h('span', { class: 'pill' }, 'Coming soon')),
       row('Passkeys', 'Sign in with your fingerprint, face or screen lock instead of a password. Passkeys cannot be guessed or stolen by fake websites.',
         h('span', { class: 'pill' }, 'Coming soon')),
       row('Sign out everywhere else', 'Lost a phone, or signed in on a school computer? Sign out every other device at once.',
