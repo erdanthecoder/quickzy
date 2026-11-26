@@ -116,7 +116,7 @@ export default async function Home() {
     h('section', { class: 'hm-steps reveal' },
       h('h2', { class: 'hm-h2' }, 'One quiz, three minutes, a whole room playing.'),
       h('ol', {},
-        ...[['Write it', 'Type your questions, or let AI draft them for you. Pictures and videos welcome.'],
+        ...[['Write it', 'Type your questions, add pictures and videos. It takes a few minutes.'],
           ['Share the PIN', 'It goes up on the big screen. Phones join in seconds: no app, no account.'],
           ['Play it as a game', 'Every right answer moves you on. The leaderboard does the rest.']]
           .map(([t, d], i) => h('li', {}, h('b', {}, String(i + 1).padStart(2, '0')), h('h3', {}, t), h('p', {}, d))))),
@@ -139,8 +139,6 @@ export default async function Home() {
       h('a', { class: 'hm-tile hm-tile-blooks', href: '/blooks' },
         h('small', {}, 'Blooks'), h('h3', {}, 'Collect them all.'), h('p', {}, 'Earn coins by playing, open packs, find the legendaries.'),
         h('div', { class: 'hm-blook-row' }, ...['dragon', 'unicorn', 'fox', 'astronaut', 'cupcake'].map((id) => blook(id, 54)))),
-      h('a', { class: 'hm-tile hm-tile-ai', href: signedIn() ? '/new' : '/signup' },
-        h('small', {}, 'Make with AI'), h('h3', {}, 'A quiz from one sentence.'), h('p', {}, 'Describe the topic, paste the reply, edit what you like.')),
       h('a', { class: 'hm-tile hm-tile-safe', href: '/teachers' },
         h('small', {}, 'For schools'), h('h3', {}, 'No ads. No chat. No accounts for kids.'), h('p', {}, 'Players only see names and scores, and hosts can remove anyone.'))),
 

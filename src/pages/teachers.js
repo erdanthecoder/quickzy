@@ -9,7 +9,7 @@ import { signedIn } from '../services/session.js';
 import { pageTitle } from './parts.js';
 
 const STEPS = [
-  ['compass', 'Pick a quiz', 'Choose one of 50+ ready-made quizzes on Discover, or make your own in minutes (or with AI).'],
+  ['compass', 'Pick a quiz', 'Choose one of 50+ ready-made quizzes on Discover, or make your own in minutes.'],
   ['play', 'Host it on the big screen', 'Choose a game mode and press Open the lobby. A 6-digit PIN and a QR code appear.'],
   ['users', 'Students join on any device', 'Phones, tablets, laptops. No app and no account needed: they type the PIN and a name.'],
   ['trophy', 'Play and see results', 'Watch the race live, then download every answer as a spreadsheet.'],
