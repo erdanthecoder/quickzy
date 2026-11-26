@@ -447,7 +447,7 @@ function drawFlag(ctx, x, y, t, colour = '#ff4772') {
 export function mountPlayer(game) {
   const { stage, uid, live, P, meta } = game;
   const view = makeCanvas(stage);
-  const ctl = controls(stage, { joystick: true, buttons: [{ id: 'action', label: 'Jump', className: 'is-right' }] });
+  const ctl = controls(stage, { joystick: true, buttons: [{ id: 'action', label: 'Jump', className: 'is-right' }], hint: [['← →', 'move'], ['Space', 'jump']] });
   const fx = particles();
   const shake = shaker();
   const seed = hashString(`${meta.quizId}:${meta.createdAt || 0}`);

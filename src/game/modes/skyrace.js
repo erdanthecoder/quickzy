@@ -154,7 +154,7 @@ function drawJet(ctx, x, y, s, t) {
 export function mountPlayer(game) {
   const { stage, uid, live, P } = game;
   const view = makeCanvas(stage);
-  const ctl = controls(stage, { joystick: true, buttons: [] });
+  const ctl = controls(stage, { joystick: true, buttons: [], hint: [['↑ ↓', 'fly'], ['Space', 'boost']] });
   const fx = particles();
   const shake = shaker();
   const names = new Map();

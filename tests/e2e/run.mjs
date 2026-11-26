@@ -393,7 +393,7 @@ if (which === 'arcade' || which === 'all') {
       say('candy: buy a machine and make candy');
       await cara.waitForSelector('.cf-machine:not([disabled])', { timeout: 10000 });
       await cara.click('.cf-machine:not([disabled]) >> nth=0');
-      await cara.waitForFunction(() => /[1-9]\d* candy a second/.test(document.querySelector('.cf-top').innerText), null, { timeout: 8000 })
+      await cara.waitForFunction(() => /[1-9]/.test(document.querySelector('.cf-rate').innerText), null, { timeout: 8000 })
         .catch(() => fail('candy: buying a machine did not raise the rate'));
       await cara.screenshot({ path: `${SHOTS}/candy.png` });
     }

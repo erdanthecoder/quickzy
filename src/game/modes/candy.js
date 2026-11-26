@@ -14,6 +14,10 @@ export const MACHINES = [
   ['Cotton cloud', '#a560ff', 500, 55],
   ['Rainbow rocket', '#ffcd1f', 1500, 170],
 ];
+// what each machine makes, shown on the belt and its card
+const ART = ['🍭', '🍬', '🍫', '🍡', '🚀'];
+const CANDY = ['🍭', '🍬', '🍫', '🍡', '🌈'];
+
 export const costOf = (i, owned) => Math.round(MACHINES[i][2] * 1.18 ** owned);
 export const cashFor = (rate) => 12 + Math.round(rate * 4);
 
@@ -60,26 +64,47 @@ export function mountPlayer(game) {
   let f = { c: 0, r: 0, m: MACHINES.map(() => 0) };
   game.grantText = (g) => `+$${g}`;
   const cashEl = h('b', { class: 'cf-cash' });
-  const rateEl = h('small', {});
+  const rateEl = h('b', { class: 'cf-rate' });
+  const hint = h('p', { class: 'cf-hint' });
   const shop = h('div', { class: 'cf-shop' });
   const belt = h('div', { class: 'cf-belt' });
-  const answer = h('button', { class: 'btn btn-main btn-lg' }, 'Answer for cash');
-  stage.append(h('div', { class: 'cf-root' },
-    h('div', { class: 'cf-top' }, h('h2', {}, 'Candy Factory'), h('div', {}, cashEl, rateEl)),
-    belt, answer, shop));
+  const answer = h('button', { class: 'cf-answer' }, h('span', {}, '💵'), 'Answer for cash');
+  const factory = h('div', { class: 'cf-factory' },
+    h('div', { class: 'cf-roof' }, h('i'), h('i'), h('i')),
+    h('div', { class: 'cf-sign' }, h('span', {}, '🍬'), 'Candy Factory'),
+    h('div', { class: 'cf-stats' },
+      h('div', {}, h('small', {}, 'Cash'), cashEl),
+      h('div', {}, h('small', {}, 'Candy a second'), rateEl)),
+    belt);
+  stage.append(h('div', { class: 'cf-root' }, factory, answer, hint, shop));
+  let shown = -1;
   const draw = () => {
-    cashEl.textContent = `$${f.c}`;
-    rateEl.textContent = ` · ${f.r} candy a second`;
+    cashEl.textContent = `$${f.c.toLocaleString()}`;
+    rateEl.textContent = `${f.r.toLocaleString()}`;
     fill(shop, ...MACHINES.map(([name, col, , per], i) => {
       const cost = costOf(i, f.m[i] || 0);
-      const b = h('button', { class: 'cf-machine', disabled: f.c < cost, style: { '--c': col } },
-        h('span', { class: 'cf-icon' }), h('b', {}, name), h('small', {}, `+${per}/s · owned ${f.m[i] || 0}`), h('span', { class: 'cf-cost' }, `$${cost}`));
+      const own = f.m[i] || 0;
+      const can = f.c >= cost;
+      const b = h('button', { class: `cf-machine${can ? ' is-ready' : ''}${own ? ' is-owned' : ''}`, disabled: !can, style: { '--c': col } },
+        h('span', { class: 'cf-icon' }, ART[i]),
+        own ? h('span', { class: 'cf-owned' }, `×${own}`) : null,
+        h('b', {}, name), h('small', {}, `+${per} candy a second`),
+        h('span', { class: 'cf-cost' }, can ? 'Buy ' : '', `$${cost.toLocaleString()}`),
+        h('span', { class: 'cf-bar' }, h('i', { style: { width: `${Math.min(100, (f.c / cost) * 100)}%` } })));
       b.addEventListener('click', () => { game.sendAct({ k: 'b', a: i }); sfx('coin'); b.classList.add('is-bought'); });
       return b;
     }));
-    // one candy on the belt per machine type owned, up to 12
-    const n = Math.min(12, f.m.reduce((a, b) => a + b, 0));
-    fill(belt, ...Array.from({ length: n }, (_, i) => h('i', { style: { background: MACHINES[i % MACHINES.length][1], animationDelay: `${-i * 0.35}s` } })));
+    // what to save up for next
+    const next = MACHINES.map((m, i) => [i, costOf(i, f.m[i] || 0)]).filter(([, c]) => c > f.c).sort((a, b) => a[1] - b[1])[0];
+    hint.textContent = !f.r ? 'Answer right for cash, then buy your first machine!'
+      : next ? `Next: ${ART[next[0]]} ${MACHINES[next[0]][0]} in $${(next[1] - f.c).toLocaleString()} more` : 'You can buy something now!';
+    // candy on the belt: more machines, more candy (up to 10)
+    const kinds = f.m.flatMap((n, i) => Array.from({ length: Math.min(n, 4) }, () => i));
+    const n = Math.min(10, kinds.length);
+    if (n !== shown) {
+      shown = n;
+      fill(belt, ...Array.from({ length: n }, (_, k) => h('i', { style: { animationDelay: `${-(k * 4.2) / Math.max(1, n)}s` } }, CANDY[kinds[(k * 7) % kinds.length]])));
+    }
     belt.classList.toggle('is-on', n > 0);
   };
   draw();
@@ -96,7 +121,7 @@ export function mountPlayer(game) {
 
 export function mountScreen(el, { ref }) {
   const list = h('div', { class: 'th-board' });
-  el.append(h('div', { class: 'th-screen cf-screen' }, h('h2', {}, 'Candy Factory'), list));
+  el.append(h('div', { class: 'th-screen cf-screen' }, h('h2', {}, '🍭 Candy Factory 🍫'), list));
   const timer = setInterval(() => {
     const top = ref.ranked().slice(0, 8);
     const max = Math.max(1, ...top.map((p) => p.score));
