@@ -451,3 +451,11 @@ body.in-game { background: var(--night); color: #fff; overscroll-behavior: none;
   .touch-btn.is-desk::after { content: 'C'; display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 7px; background: rgba(23, 19, 63, 0.18); font-size: 0.85rem; }
   .touch-btn.is-desk:hover { filter: brightness(1.06); }
 }
+/* on computers: the keys for this game, in a corner */
+.key-hint { position: absolute; left: 14px; bottom: 14px; display: none; flex-wrap: wrap; gap: 6px 14px; max-width: calc(100% - 28px); padding: 8px 12px; border-radius: 12px;
+  background: rgba(13, 11, 36, 0.62); color: #fff; font-weight: 800; font-size: 0.85rem; pointer-events: none; transition: opacity 0.6s; backdrop-filter: blur(4px); }
+.key-hint span { display: inline-flex; align-items: center; gap: 4px; }
+.key-hint kbd { font: inherit; font-size: 0.78rem; min-width: 24px; padding: 2px 7px; border-radius: 6px; background: #fff; color: #17133f; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); text-align: center; }
+.key-hint span kbd:last-of-type { margin-right: 3px; }
+.key-hint.is-faded { opacity: 0.45; }
+@media (pointer: fine) { .key-hint { display: flex; } }

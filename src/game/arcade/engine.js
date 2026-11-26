@@ -76,7 +76,7 @@ const KEYMAP = {
  *   state.tapped(id)    pressed since the last call (one-shot)
  *   state.aim           {x, y} pointer position on the canvas, when aim is on
  */
-export function controls(el, { joystick = false, buttons = [], aim = false } = {}) {
+export function controls(el, { joystick = false, buttons = [], aim = false, hint = [] } = {}) {
   const keys = new Set();
   const taps = new Set();
   const btnHeld = new Set();
@@ -100,6 +100,20 @@ export function controls(el, { joystick = false, buttons = [], aim = false } = {
   const layer = document.createElement('div');
   layer.className = 'touch-layer';
   el.append(layer);
+
+  // on computers: which keys do what, in the corner (it fades after a while)
+  if (hint.length) {
+    const tip = document.createElement('div');
+    tip.className = 'key-hint';
+    for (const [keys, what] of hint) {
+      const row = document.createElement('span');
+      for (const k of keys.split(' ')) { const kb = document.createElement('kbd'); kb.textContent = k; row.append(kb); }
+      row.append(document.createTextNode(what));
+      tip.append(row);
+    }
+    layer.append(tip);
+    setTimeout(() => tip.classList.add('is-faded'), 12000);
+  }
 
   // joystick: anywhere on the left half on touch screens
   let stick = null;

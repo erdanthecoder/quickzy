@@ -94,14 +94,18 @@ export function mountPlayer(game) {
   game.grantText = () => 'A chest to open!';
   const status = h('p', { class: 'th-status' }, 'Answer a question to earn a chest.');
   const row = h('div', { class: 'th-chests' });
-  const answer = h('button', { class: 'btn btn-main btn-lg' }, 'Answer a question');
+  const answer = h('button', { class: 'cf-answer th-answer' }, h('span', {}, '🗝️'), 'Answer a question');
   const pick = h('div', { class: 'th-pick', hidden: true });
-  stage.append(h('div', { class: 'th-root' }, h('h2', { class: 'th-title' }, 'Treasure Hunt'), status, row, pick, answer));
+  const scene = h('div', { class: 'th-scene', 'aria-hidden': 'true' },
+    h('span', { class: 'th-sun' }), h('span', { class: 'th-sea' }), h('span', { class: 'th-sand' }),
+    h('span', { class: 'th-palm is-l' }, '🌴'), h('span', { class: 'th-palm is-r' }, '🌴'), h('span', { class: 'th-ship' }, '⛵'));
+  stage.append(h('div', { class: 'th-root' }, scene, h('h2', { class: 'th-title' }, 'Treasure Hunt'), status, row, pick, answer));
 
   const drawChests = (open = -1, ev = null) => fill(row, ...[0, 1, 2].map((i) => {
     const isOpen = i === open;
     const b = h('button', { class: `th-chest${isOpen ? ` is-open is-${ev.k}` : ''}`, disabled: !chests || busy || open >= 0, 'aria-label': `Chest ${i + 1}` },
-      h('span', { class: 'th-lid' }), h('span', { class: 'th-box' }),
+      h('span', { class: 'th-glow' }), h('span', { class: 'th-box' }, h('i', { class: 'th-lock' })), h('span', { class: 'th-lid' }),
+      isOpen ? h('span', { class: 'th-burst' }, PRIZE_ART[ev.k] || '✨') : null,
       isOpen ? h('b', { class: 'th-prize' }, prizeText(ev)) : null);
     b.addEventListener('click', () => {
       if (!chests || busy) return;
@@ -112,6 +116,7 @@ export function mountPlayer(game) {
     });
     return b;
   }));
+  const PRIZE_ART = { gold: '💰', x2: '⭐', x3: '🌟', steal: '🦹', swap: '🔄', lose: '💣', none: '🕸️' };
   const prizeText = (ev) => {
     if (!ev) return '';
     if (ev.k === 'gold') return `+${ev.amt}`;
@@ -173,7 +178,7 @@ export function mountPlayer(game) {
 export function mountScreen(el, { ref, live, P }) {
   const list = h('div', { class: 'th-board' });
   const feedEl = h('div', { class: 'th-feed' });
-  el.append(h('div', { class: 'th-screen' }, h('h2', {}, 'Treasure Hunt'), list, feedEl));
+  el.append(h('div', { class: 'th-screen' }, h('h2', {}, '🏴‍☠️ Treasure Hunt 💰'), list, feedEl));
   const off = live && P ? live.on(P('snap'), (s) => fill(feedEl, ...((s && s.feed) || []).map((t) => h('p', {}, t)))) : () => {};
   const timer = setInterval(() => {
     const top = ref.ranked().slice(0, 8);

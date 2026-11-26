@@ -102,7 +102,7 @@ function drawSky(ctx, w, h, off) {
 export function mountPlayer(game) {
   const { stage, uid, live, P, meta } = game;
   const view = makeCanvas(stage);
-  const ctl = controls(stage, { buttons: [{ id: 'action', label: 'Jump', className: 'is-right' }] });
+  const ctl = controls(stage, { buttons: [{ id: 'action', label: 'Jump', className: 'is-right' }], hint: [['Space', 'jump (or click)']] });
   // the 3D street, when this device can show it
   let run3d = null; let gone = false;
   const holder = h('div', { class: 'rr3' });

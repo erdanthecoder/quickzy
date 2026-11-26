@@ -300,7 +300,7 @@ export function mountPlayer(game) {
       } catch { holder.remove(); arena = null; }
     }).catch(() => {});
   }
-  const ctl = controls(stage, { joystick: true, aim: true, buttons: [{ id: 'recharge', label: 'Recharge', className: 'is-right is-small' }] });
+  const ctl = controls(stage, { joystick: true, aim: true, buttons: [{ id: 'recharge', label: 'Recharge', className: 'is-right is-small' }], hint: [['W A S D', 'move'], ['Click', 'shoot']] });
   const fx = particles();
   const shake = shaker();
   const names = new Map();
