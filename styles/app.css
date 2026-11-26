@@ -2594,3 +2594,32 @@ a.pf-todo-item:hover { background: #ece7ff; }
 @keyframes pz-pie { 0% { transform: translate(-50%, -20%) scale(.2) rotate(-40deg); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(1.1) rotate(8deg); opacity: 1; } 70% { transform: translate(-50%, -60%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -140%) scale(.6); opacity: 0; } }
 .pz-screen { background: repeating-conic-gradient(from 45deg, #fff6e8 0 25%, #ffe9cf 0 50%) 0 0 / 60px 60px; }
 .pz-screen h2 { color: #e8463a; text-shadow: 0 3px 0 #fff, 0 6px 0 rgba(0,0,0,.08); }
+
+/* ===================================================== more admin abuse */
+.abuse-btn.is-surprise { background: conic-gradient(from 0deg, #ff4772, #ffcd1f, #12c9a6, #2f9bff, #a560ff, #ff4772); animation: abuse-surprise 3s linear infinite; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+@keyframes abuse-surprise { 50% { filter: hue-rotate(180deg); } }
+.abuse-btn.is-fireworks { background: linear-gradient(140deg, #17133f, #ff4772); }
+.abuse-btn.is-giant { background: linear-gradient(140deg, #12c9a6, #2f9bff); }
+.abuse-btn.is-gravity { background: linear-gradient(140deg, #8a5a2b, #ff8a2a); }
+.abuse-btn.is-upside { background: linear-gradient(320deg, #a560ff, #2f9bff); }
+.abuse-btn.is-snow { background: linear-gradient(140deg, #7fd3ff, #2f6bff); }
+.abuse-btn.is-spin { background: radial-gradient(circle at 30% 30%, #ff8a2a, #a560ff); }
+.abuse-btn.is-tiny { background: linear-gradient(140deg, #ff4772, #17133f); }
+.abuse-giant { position: fixed; left: 50%; bottom: -20px; z-index: 300; display: grid; justify-items: center; transform: translateX(-50%); pointer-events: none; animation: abuse-rise 1s cubic-bezier(.2, 1.4, .4, 1) both; filter: drop-shadow(0 20px 40px rgba(0,0,0,.4)); }
+.abuse-giant .blook { animation: abuse-wave 1s ease-in-out infinite alternate; transform-origin: bottom center; }
+.abuse-giant.is-out { animation: abuse-sink .7s ease-in both; }
+.abuse-giant-say { position: relative; max-width: min(80vw, 520px); padding: 14px 22px; margin-bottom: 10px; border-radius: 24px; background: #fff; color: #17133f; font: 400 clamp(22px, 4vw, 36px) 'Bricolage Grotesque', system-ui; text-align: center; box-shadow: 0 8px 0 rgba(0,0,0,.15); }
+.abuse-giant-say::after { content: ''; position: absolute; bottom: -14px; left: 50%; margin-left: -14px; border: 14px solid transparent; border-bottom: 0; border-top-color: #fff; }
+@keyframes abuse-rise { from { transform: translate(-50%, 110%); } }
+@keyframes abuse-sink { to { transform: translate(-50%, 110%); } }
+@keyframes abuse-wave { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+.abuse-fall { animation: abuse-fall 3.4s cubic-bezier(.5, 0, .5, 1) both; }
+@keyframes abuse-fall { 0% { transform: none; } 35%, 60% { transform: translateY(110vh) rotate(var(--fall-r, 20deg)); } 85% { transform: translateY(-12px); } 100% { transform: none; } }
+html.abuse-upside body { transform: rotate(180deg); transition: transform .8s cubic-bezier(.4, 1.4, .5, 1); }
+html body { transition: transform .8s cubic-bezier(.4, 1.4, .5, 1); }
+.abuse-flake { position: fixed; top: -40px; z-index: 290; color: #fff; text-shadow: 0 0 6px rgba(120, 180, 255, .9); pointer-events: none; animation: abuse-snow linear both; }
+@keyframes abuse-snow { to { transform: translate(40px, 110vh) rotate(360deg); } }
+.abuse-spin { animation: abuse-spin 2s cubic-bezier(.6, 0, .3, 1) both; }
+@keyframes abuse-spin { 50% { transform: rotate(180deg) scale(.6); } 100% { transform: rotate(360deg) scale(1); } }
+.abuse-tiny { animation: abuse-tiny 3s cubic-bezier(.4, 1.6, .5, 1) both; transform-origin: 50% 40%; }
+@keyframes abuse-tiny { 20%, 70% { transform: scale(.25); } 100% { transform: none; } }

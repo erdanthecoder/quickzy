@@ -13,7 +13,7 @@ import * as siteSvc from '../services/site.js';
 import { BADGES } from '../config.js';
 import { pageTitle } from './parts.js';
 import { reloadProfile } from '../services/session.js';
-import { EFFECTS, GAME_EFFECTS, send } from '../ui/abuse.js';
+import { EFFECTS, GAME_EFFECTS, SURPRISES, send } from '../ui/abuse.js';
 import { isPro, setPro, forget } from '../services/plan.js';
 import NotFound from './notfound.js';
 
@@ -281,6 +281,20 @@ function abusePanel(list, { pin = null, onSent } = {}) {
     });
     return b;
   }));
+  // one random effect, the same one for everybody
+  const surprise = h('button', { class: 'abuse-btn is-surprise' }, h('b', {}, 'Surprise me!'), h('small', {}, 'A random effect lands on every screen'));
+  surprise.addEventListener('click', async () => {
+    const pick = SURPRISES[Math.floor(Math.random() * SURPRISES.length)];
+    surprise.disabled = true;
+    try {
+      await send(pick, { text: text.value.trim(), pin });
+      const name = (list.find(([k]) => k === pick) || [pick, pick])[1];
+      toast(`Surprise: ${name}!`, 'ok');
+      if (onSent) onSent();
+    } catch (e) { toast(explain(e), 'bad'); }
+    surprise.disabled = false;
+  });
+  grid.prepend(surprise);
   return h('div', { class: 'stack' }, text,
     h('div', { class: 'row', style: { gap: '14px' } },
       list.some(([k]) => k === 'coins') ? h('label', { class: 'row small', style: { gap: '6px' } }, 'Coin rain gives each account', coins, 'coins') : null,
