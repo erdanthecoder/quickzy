@@ -45,6 +45,12 @@ export default async function Editor({ params, query = {} }) {
     quiz = { id: quiz.id, title: quiz.title, description: quiz.description || '', cover: quiz.cover || 0, image: quiz.image || '', public: Boolean(quiz.public), questions: quiz.questions,
       owner: quiz.owner, editors: quiz.editors || [], authorName: quiz.authorName };
     if (!quiz.questions.length) quiz.questions.push(blankQuestion('mc'));
+    // a video quiz opens in the video quiz maker
+    const { isVideoLesson } = await import('./video.js');
+    if (isVideoLesson(quiz) && quiz.owner === me().uid) { navigate(`/video/${quiz.id}`, { replace: true }); return h('div'); }
+  } else if (query.video) {
+    navigate('/video', { replace: true });
+    return h('div');
   } else {
     quiz = SAMPLE();
     const draft = readDraft();
@@ -385,7 +391,7 @@ export default async function Editor({ params, query = {} }) {
     typeSel.addEventListener('change', () => { quiz.questions[at] = retype(q, typeSel.value); touch(); drawEdit(); });
     const timeSel = h('select', { class: 'select', 'aria-label': 'Time limit' }, ...TIMES.map((t) => h('option', { value: t, selected: t === q.time }, t < 60 ? `${t} seconds` : `${t / 60} minute${t === 60 ? '' : 's'}`)));
     timeSel.addEventListener('change', () => { q.time = Number(timeSel.value); touch(); });
-    const pointsSel = q.type === 'poll' ? null : segmented(POINTS, q.points, (v) => { q.points = v; touch(); });
+    const pointsSel = q.type === 'poll' || q.type === 'fact' ? null : segmented(POINTS, q.points, (v) => { q.points = v; touch(); });
 
     const text = h('textarea', { class: 'q-text', placeholder: 'Type your question', maxlength: LIMITS.questionMax, rows: 2, 'aria-label': 'Question' });
     text.value = q.text;

@@ -2658,3 +2658,50 @@ html[data-motion="calm"] .ld-logo { opacity: 1; animation: none; }
 .cls-react-btn.is-on span { filter: none; }
 .cls-react-btn.is-pop span { animation: react-pop .4s cubic-bezier(.2, 1.8, .4, 1); }
 @keyframes react-pop { 50% { transform: scale(1.6) rotate(-10deg); } }
+
+/* ======================================================= the video quiz maker */
+.vq-bar { gap: 10px; padding: 10px 14px; position: sticky; top: 12px; z-index: 5; flex-wrap: wrap; }
+.vq-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #ff4772; color: #fff; font-weight: 900; font-size: 13px; }
+.vq-title { flex: 1; min-width: 200px; font-weight: 800; }
+.vq-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 18px; margin-top: 16px; align-items: start; }
+@media (max-width: 960px) { .vq-grid { grid-template-columns: 1fr; } }
+.vq-stage .yt-player, .vq-stage .q-video { margin: 0; }
+.vq-stage iframe { width: 100%; aspect-ratio: 16 / 9; height: auto; border: 0; border-radius: 18px; background: #0d0b24; display: block; }
+.vq-pick { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 40px 20px; border-radius: 22px; border: 2px dashed var(--line-2); background: var(--card); }
+.vq-pick h2, .vq-pick p { margin: 0; }
+.vq-pick-ic { width: 68px; height: 68px; border-radius: 22px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #ff4772, #ff8a2a); box-shadow: 0 8px 20px -8px #ff4772; }
+.vq-pick-row { width: min(560px, 100%); flex-wrap: nowrap; }
+.vq-pick-row .input { flex: 1; min-width: 0; }
+.vq-timeline { padding: 4px 2px; }
+.vq-track { position: relative; height: 14px; margin: 18px 6px; border-radius: 99px; background: var(--line); }
+.vq-head { position: absolute; top: -6px; width: 4px; height: 26px; margin-left: -2px; border-radius: 4px; background: var(--ink); transition: left .25s linear; }
+.vq-mark { position: absolute; top: 50%; width: 32px; height: 32px; margin: -16px 0 0 -16px; border-radius: 50%; border: 3px solid var(--card); display: grid; place-items: center; font-size: 15px; cursor: pointer; box-shadow: 0 3px 8px rgba(23,19,63,.25); transition: transform .15s; padding: 0; }
+.vq-mark:hover, .vq-mark.is-open { transform: scale(1.25); z-index: 2; }
+.vq-mark.is-mc, .vq-stop-ic.is-mc, .vq-add-btn.is-mc { background: #ffe3ea; }
+.vq-mark.is-tf, .vq-stop-ic.is-tf, .vq-add-btn.is-tf { background: #dff7ef; }
+.vq-mark.is-type, .vq-stop-ic.is-type, .vq-add-btn.is-type { background: #e3efff; }
+.vq-mark.is-fact, .vq-stop-ic.is-fact, .vq-add-btn.is-fact { background: #fff4cc; }
+.vq-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
+.vq-now-box { display: grid; padding: 4px 12px 4px 4px; margin-right: 4px; border-right: 1px solid var(--line); }
+.vq-now-box small { font-weight: 800; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.vq-now { font-size: 24px; font-variant-numeric: tabular-nums; }
+.vq-add-btn { font: inherit; display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; border: 0; cursor: pointer; font-weight: 800; color: var(--ink); box-shadow: 0 3px 0 rgba(23,19,63,.12); transition: transform .12s; }
+.vq-add-btn:hover { transform: translateY(-2px); }
+.vq-add-btn span { font-size: 18px; }
+.vq-side { gap: 10px; }
+.vq-stops { display: grid; gap: 8px; }
+.vq-stop { border-radius: 18px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+.vq-stop.is-open { border-color: var(--violet); box-shadow: 0 0 0 2px rgba(107, 76, 255, .2); }
+.vq-stop-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; }
+.vq-stop-head > div { display: grid; min-width: 0; }
+.vq-stop-head b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vq-stop-ic { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; flex: none; }
+.vq-time { width: 70px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; padding: 6px; }
+.vq-stop-body { display: grid; gap: 10px; padding: 0 12px 12px; }
+.vq-opts { display: grid; gap: 6px; }
+.vq-opt { display: flex; align-items: center; gap: 8px; }
+.vq-opt .input { flex: 1; min-width: 0; }
+.vq-empty { padding: 20px; border-radius: 18px; border: 2px dashed var(--line-2); text-align: center; }
+.vq-empty p { margin: 6px 0 0; }
+.pad-gotit { margin: 10px auto 0; display: flex; gap: 10px; }
+.fact-show { background: #fff4cc; color: #5a4300; }

@@ -7,7 +7,7 @@
 // for each quiz is remembered on this device.
 
 import { picture } from '../ui/picture.js';
-import { videoClip } from '../ui/video.js';
+import { videoClip, ytPlayer } from '../ui/video.js';
 import { h, fill } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { signedIn } from '../services/session.js';
@@ -110,7 +110,8 @@ export default async function Practice({ params }) {
 
   async function run(mode = 'classic') {
     playMusic(mode === 'classic' ? 'game' : 'tense');
-    const order = shuffled(qs.length);
+    // a video quiz plays in order (its stops follow the video); others shuffle
+    const order = qs.some((q) => q.video) ? qs.map((_, i) => i) : shuffled(qs.length);
     const log = [];
     let score = 0;
     let streak = 0;
@@ -148,16 +149,20 @@ export default async function Practice({ params }) {
     return el;
   }
 
-  // a video question plays its clip first; the question comes when you are ready
+  // a video question plays its clip first; when the clip ends (or you tap),
+  // the question (or the fact) comes up
   function watch(q, n, total) {
     if (!q.video) return Promise.resolve();
     stopMusic();
     return new Promise((resolve) => {
+      let done = false;
+      const go = () => { if (done) return; done = true; player.destroy(); playMusic('game'); resolve(); };
+      const player = ytPlayer(q.video.id, { start: q.video.start, end: q.video.end, autoplay: true, onEnd: go });
       fill(root, h('div', { class: 'solo-q' },
-        h('div', { class: 'solo-top' }, h('span', {}, `${n + 1} / ${total}`), h('span', {}, 'Watch first')),
-        h('h2', { class: 'q-text-play' }, q.text),
-        videoClip(q.video),
-        h('button', { class: 'btn btn-main btn-lg', onclick: () => { playMusic('game'); resolve(); } }, icon('play', { size: 18 }), 'I watched it: answer')));
+        h('div', { class: 'solo-top' }, h('span', {}, `${n + 1} / ${total}`), h('span', {}, 'Watch')),
+        q.type === 'fact' ? h('h2', { class: 'q-text-play' }, 'Watch the video\u2026') : h('h2', { class: 'q-text-play' }, q.text),
+        player.el,
+        h('button', { class: 'btn btn-main btn-lg', onclick: go }, icon('play', { size: 18 }), q.type === 'fact' ? 'Skip ahead' : 'I watched it: answer')));
     });
   }
 
@@ -173,6 +178,8 @@ export default async function Practice({ params }) {
         done = true;
         clearInterval(timer);
         const ms = Math.min(performance.now() - started, q.time * 1000);
+        // a fact never times out: it just counts as read
+        if (choice === undefined && q.type === 'fact') choice = 0;
         const r = choice === undefined ? { correct: false, display: check(q, key[i], null).display, timeout: true } : check(q, key[i], choice);
         resolve({ ...r, choice, ms });
       };
@@ -202,11 +209,13 @@ export default async function Practice({ params }) {
 
   function feedback(res, pts, streak, score, fast = false) {
     return new Promise((resolve) => {
+      // a fact needs no "Correct / Not quite": straight on with the video
+      if (res.fact) { resolve(); return; }
       if (res.poll) sfx('pick'); else sfx(res.correct ? 'right' : 'wrong');
       if (res.correct) confetti({ y: 0.45, count: streak >= 3 ? 140 : 60, power: 800 });
       const v = res.timeout
         ? h('div', { class: 'verdict is-bad' }, h('div', { class: 'verdict-icon' }, icon('clock', { size: 56 })), h('h2', {}, 'Time is up'), h('p', {}, 'The answer was ', h('b', {}, res.display)))
-        : verdict({ ok: res.correct, poll: res.poll, pts, display: res.display, streak });
+        : verdict({ ok: res.correct, poll: res.poll, fact: res.fact, pts, display: res.display, streak });
       const next = h('button', { class: 'btn btn-main btn-lg' }, 'Next', icon('arrowRight'));
       const screen = h('div', { class: `play-screen is-verdict ${res.poll ? 'is-poll' : res.correct ? 'is-ok' : 'is-bad'}` },
         v,
@@ -309,7 +318,7 @@ export default async function Practice({ params }) {
   // not know come back at the end.
   function flashcards() {
     stopMusic();
-    const deck = shuffled(qs.length).filter((i) => qs[i].type !== 'poll');
+    const deck = shuffled(qs.length).filter((i) => qs[i].type !== 'poll' && qs[i].type !== 'fact');
     let known = 0; let flips = 0;
     const show = () => {
       if (!deck.length) {

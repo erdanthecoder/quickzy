@@ -18,6 +18,7 @@ export const TYPES = [
   { id: 'order', label: 'Put in order', icon: 'order', hint: 'Players arrange items into the right order.' },
   { id: 'number', label: 'Number', icon: 'hash', hint: 'A number, with as much leeway as you allow.' },
   { id: 'poll', label: 'Poll', icon: 'chart', hint: 'No right answer, no points. Just opinions.' },
+  { id: 'fact', label: 'Fact', icon: 'info', hint: 'Show a fact or a tip. Players read it and tap Got it. No points.' },
 ];
 
 export const TYPE_BY_ID = new Map(TYPES.map((t) => [t.id, t]));
@@ -37,6 +38,7 @@ export function blankQuestion(type = 'mc') {
   if (type === 'order') return { ...base, time: 30, options: ['', '', ''] };
   if (type === 'number') return { ...base, answer: 0, tolerance: 0, unit: '' };
   if (type === 'poll') return { ...base, options: ['', '', '', ''], points: 'none' };
+  if (type === 'fact') return { ...base, time: 15, points: 'none' };
   return base;
 }
 
@@ -46,7 +48,7 @@ export function retype(q, type) {
   next.id = q.id;
   next.text = q.text;
   next.time = q.time;
-  if (type !== 'poll') next.points = q.points === 'none' && q.type === 'poll' ? 'standard' : q.points;
+  if (type !== 'poll' && type !== 'fact') next.points = q.points === 'none' && (q.type === 'poll' || q.type === 'fact') ? 'standard' : q.points;
   if (q.options && next.options) {
     next.options = q.options.slice(0, 6);
     while (next.options.length < (type === 'order' ? 3 : 2)) next.options.push('');
@@ -58,7 +60,7 @@ const trimmed = (s) => String(s ?? '').trim();
 
 /** '' if the question is ready to play, otherwise what is missing. */
 export function problem(q) {
-  if (!trimmed(q.text)) return 'Write the question.';
+  if (!trimmed(q.text)) return q.type === 'fact' ? 'Write the fact.' : 'Write the question.';
   if (q.text.length > 240) return 'The question is too long (240 characters at most).';
   if (!TIMES.includes(q.time)) return 'Pick a time limit.';
   if (['mc', 'multi', 'poll', 'order'].includes(q.type)) {
@@ -129,7 +131,8 @@ export function cleanVideo(v) {
   const id = youTubeId(v.id);
   const start = Math.max(0, Math.floor(Number(v.start) || 0));
   const end = Math.floor(Number(v.end) || 0);
-  if (!id || !(end > start) || end - start > 600 || end > 36000) return null;
+  // a clip is up to an hour (a whole video lesson can be one long clip)
+  if (!id || !(end > start) || end - start > 3600 || end > 36000) return null;
   return { id, start, end };
 }
 
@@ -150,7 +153,7 @@ export function split(questions, rand = Math.random) {
   const pub = [];
   const key = [];
   for (const q of questions) {
-    const p = { id: q.id, type: q.type, text: trimmed(q.text), time: q.time, points: q.type === 'poll' ? 'none' : q.points };
+    const p = { id: q.id, type: q.type, text: trimmed(q.text), time: q.time, points: q.type === 'poll' || q.type === 'fact' ? 'none' : q.points };
     const pic = cleanPic(q.img);
     if (pic) p.img = pic;
     const clip = cleanVideo(q.video);
@@ -219,6 +222,8 @@ export function normaliseText(s) {
 export function check(pub, key, choice) {
   const t = pub.type;
   if (t === 'poll') return { correct: false, poll: true, display: '' };
+  // a fact: nothing to get right; it just counts as read
+  if (t === 'fact') return { correct: false, poll: true, fact: true, display: '' };
   if (t === 'mc') return { correct: Number(choice) === key, display: pub.options[key] };
   if (t === 'tf') return { correct: Boolean(choice) === key && typeof choice === 'boolean', display: key ? 'True' : 'False' };
   if (t === 'multi') {
@@ -254,6 +259,7 @@ export function validChoice(pub, choice) {
   const n = (pub.options || []).length;
   if (pub.type === 'mc' || pub.type === 'poll') return Number.isInteger(choice) && choice >= 0 && choice < n;
   if (pub.type === 'tf') return typeof choice === 'boolean';
+  if (pub.type === 'fact') return choice === 0;
   if (pub.type === 'multi') return Array.isArray(choice) && choice.length > 0 && choice.length <= n && choice.every((c) => Number.isInteger(c) && c >= 0 && c < n);
   if (pub.type === 'order') return Array.isArray(choice) && choice.length === n && new Set(choice).size === n && choice.every((c) => Number.isInteger(c) && c >= 0 && c < n);
   if (pub.type === 'type' || pub.type === 'number') return typeof choice === 'string' && choice.length <= 80;

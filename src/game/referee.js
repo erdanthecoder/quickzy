@@ -14,7 +14,7 @@ import { modeOf } from './modes/index.js';
 
 // a question with a video clip waits for the clip to play out first
 const INTRO_MS = (q) => (q.video && q.video.end > q.video.start
-  ? Math.min(600000, (q.video.end - q.video.start) * 1000 + 2500)
+  ? Math.min(3600000, (q.video.end - q.video.start) * 1000 + 2500)
   : Math.min(5000, 2500 + q.text.length * 25));
 const GRACE_MS = 600;               // network leeway after the timer hits zero
 
@@ -194,7 +194,7 @@ export async function createReferee({ pin, meta: initialMeta, quiz, key, onChang
     for (const p of players.values()) {
       const a = answers.get(p.uid);
       if (!a) {
-        if (q.type !== 'poll') { p.streak = 0; dirty.add(p.uid); }
+        if (q.type !== 'poll' && q.type !== 'fact') { p.streak = 0; dirty.add(p.uid); }
         results[p.uid] = { ok: false, none: true, pts: 0 };
         continue;
       }

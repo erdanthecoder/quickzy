@@ -29,6 +29,8 @@ route('/app/play/:id', () => import('./pages/practice.js').then((m) => ({ defaul
 route('/new', () => import('./pages/create.js'), { auth: true });
 route('/create', () => import('./pages/editor.js'), { auth: true });
 route('/edit/:id', () => import('./pages/editor.js'), { auth: true });
+route('/video', () => import('./pages/video.js'), { auth: true });
+route('/video/:id', () => import('./pages/video.js'), { auth: true });
 route('/library', () => import('./pages/library.js'), { auth: true });
 route('/host/:quizId', () => import('./pages/host-setup.js'), { auth: true });
 route('/lobby/:pin', () => import('./pages/host-live.js'), { chrome: false, auth: true });
