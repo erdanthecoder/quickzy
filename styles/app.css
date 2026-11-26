@@ -2414,11 +2414,12 @@ a.pf-todo-item:hover { background: #ece7ff; }
 .cf-belt.is-on { animation: cf-belt 1s linear infinite; }
 .cf-belt i { position: absolute; top: 6px; left: -40px; width: auto; height: auto; border: 0; background: none; font-size: 30px; font-style: normal; line-height: 1; animation: cf-move 4.2s linear infinite; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .35)); }
 .cf-answer { font: inherit; display: inline-flex; align-items: center; gap: 10px; padding: 14px 26px; border: 0; border-radius: 18px; cursor: pointer; font-size: 20px; font-weight: 900; color: #17133f;
-  background: linear-gradient(#ffe066, #ffc21f); box-shadow: 0 6px 0 #d99a00, 0 14px 22px -12px rgba(217, 154, 0, .8); transition: transform .1s; animation: cf-breathe 1.8s ease-in-out infinite; }
+  background: linear-gradient(#ffe066, #ffc21f); box-shadow: 0 6px 0 #d99a00, 0 14px 22px -12px rgba(217, 154, 0, .8); transition: transform .1s; }
+.cf-answer:not(:disabled) > span { display: inline-block; animation: cf-breathe 1.2s ease-in-out infinite; }
 .cf-answer:active { transform: translateY(4px); box-shadow: 0 2px 0 #d99a00; }
-.cf-answer:disabled { animation: none; filter: grayscale(.5); opacity: .7; cursor: default; }
+.cf-answer:disabled { filter: grayscale(.5); opacity: .7; cursor: default; }
 .cf-answer > span { font-size: 24px; }
-@keyframes cf-breathe { 50% { transform: scale(1.04); } }
+@keyframes cf-breathe { 50% { transform: scale(1.25) rotate(-8deg); } }
 .cf-hint { margin: -4px 0 0; font-weight: 800; color: #7a4a8a; }
 .cf-shop { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; width: min(820px, 100%); }
 .cf-machine { padding: 14px 14px 16px; gap: 3px; border: 0; background: #fff; color: #17133f; box-shadow: 0 4px 0 color-mix(in srgb, var(--c) 45%, #ddd); transition: transform .15s, box-shadow .15s; overflow: hidden; font: inherit; cursor: pointer; }
@@ -2452,8 +2453,9 @@ a.pf-todo-item:hover { background: #ece7ff; }
 .th-status { padding: 6px 16px; border-radius: 999px; background: rgba(255, 255, 255, .8); color: #5a3412; }
 .th-chests { gap: clamp(14px, 4vw, 34px); margin: 8px 0; }
 .th-chest { width: clamp(96px, 26vw, 150px); height: clamp(86px, 23vw, 130px); overflow: visible; }
-.th-chest:not(:disabled) { animation: th-bob 1.6s ease-in-out infinite; }
-.th-chest:not(:disabled):nth-child(2) { animation-delay: -.5s; } .th-chest:not(:disabled):nth-child(3) { animation-delay: -1s; }
+/* the chest's insides bob, not the button itself, so it is still easy to tap */
+.th-chest:not(:disabled) > .th-box, .th-chest:not(:disabled) > .th-lid { animation: th-bob 1.6s ease-in-out infinite; }
+.th-chest:not(:disabled):nth-child(2) > span { animation-delay: -.5s; } .th-chest:not(:disabled):nth-child(3) > span { animation-delay: -1s; }
 @keyframes th-bob { 50% { translate: 0 -6px; } }
 .th-glow { position: absolute; inset: -20% -15% -10%; border-radius: 50%; background: radial-gradient(rgba(255, 230, 100, .8), transparent 65%); opacity: 0; transition: opacity .3s; }
 .th-chest:not(:disabled) .th-glow { opacity: 1; animation: th-glow 1.6s ease-in-out infinite; }
