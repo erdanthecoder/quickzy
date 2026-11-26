@@ -445,3 +445,9 @@ body.in-game { background: var(--night); color: #fff; overscroll-behavior: none;
 .rr3-board { position: absolute; top: 14px; right: 14px; width: min(260px, 30%); padding: 10px 12px; border-radius: 14px; background: rgba(23,19,63,.72); color: #fff; display: grid; gap: 6px; backdrop-filter: blur(4px); }
 .rr3-board h3 { margin: 0; color: #ffcd1f; font: 400 18px 'Bricolage Grotesque', system-ui; }
 .rr3-row { display: flex; gap: 8px; font: 800 14px Figtree, system-ui; }
+/* buttons a computer needs too (Train Travel's coal): a big pill with its key */
+@media (pointer: fine) {
+  .touch-btn.is-desk { right: auto; left: 22px; bottom: 84px; display: inline-flex; align-items: center; gap: 8px; width: auto; height: auto; border-radius: 16px; padding: 14px 20px; font-size: 1.05rem; cursor: pointer; }
+  .touch-btn.is-desk::after { content: 'C'; display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 7px; background: rgba(23, 19, 63, 0.18); font-size: 0.85rem; }
+  .touch-btn.is-desk:hover { filter: brightness(1.06); }
+}

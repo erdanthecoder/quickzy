@@ -193,7 +193,7 @@ export function drawLoco(ctx, x, y, s, { t = 0, wheel = 0, body = '#8a1f1f', blo
 function mountPlayer2D(game) {
   const { stage, uid, live, P } = game;
   const view = makeCanvas(stage);
-  const ctl = controls(stage, { joystick: true, buttons: [{ id: 'coal', label: '⛏ Get coal', className: 'is-right' }] });
+  const ctl = controls(stage, { joystick: true, buttons: [{ id: 'coal', label: '⛏ Get coal', className: 'is-right is-desk' }] });
   const puffs = [];                  // chimney smoke, in boiler space
   game.grantText = (g) => `+${g} coal in the tender`;
 
@@ -630,7 +630,7 @@ function mountPlayer3D(game, holder, W, T) {
       gauge,
       h('div', { class: 'tr3-plate' }, kmEl, stateEl)));
   const world = W.createWorld(T, canvas, {});
-  const ctl = controls(game.stage, { joystick: true, buttons: [{ id: 'coal', label: '⛏ Get coal', className: 'is-right' }] });
+  const ctl = controls(game.stage, { joystick: true, buttons: [{ id: 'coal', label: '⛏ Get coal', className: 'is-right is-desk' }] });
   game.grantText = (g) => `+${g} coal in the tender`;
 
   const names = new Map();
