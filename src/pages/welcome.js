@@ -12,6 +12,12 @@ import { HEARD, saveAbout, knownSchools, join, useOf } from '../services/classes
 import { pageTitle } from './parts.js';
 import { sfx } from '../game/sound.js';
 
+// a picture and a colour for each "how did you find us" answer
+const HEARD_LOOK = {
+  friend: ['👋', '#ff4772'], teacher: ['🏫', '#6b4cff'], youtube: ['▶️', '#ff3b3b'], tiktok: ['🎵', '#17133f'],
+  instagram: ['📸', '#e1306c'], search: ['🔎', '#2f9bff'], family: ['🏠', '#12c9a6'], other: ['✨', '#ff8a2a'],
+};
+
 const safe = (next) => (typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/welcome') ? next : '/');
 
 export default async function Welcome({ query }) {
@@ -34,16 +40,22 @@ export default async function Welcome({ query }) {
 
   /* 1. how did you find out about Quickzy? */
   function heard() {
-    const choices = h('div', { class: 'wl-grid' }, ...HEARD.map(([id, label]) => h('button', {
+    const choices = h('div', { class: 'wl-grid' }, ...HEARD.map(([id, label], i) => h('button', {
       type: 'button', class: `wl-choice${answers.heard === id ? ' is-on' : ''}`,
+      style: { '--c': HEARD_LOOK[id][1], animationDelay: `${i * 0.04}s` },
       onclick: () => { answers.heard = id; sfx('pick'); age(); },
-    }, label)));
+    }, h('span', { class: 'wl-emoji' }, HEARD_LOOK[id][0]), h('span', {}, label))));
     fill(box, ...head(1, 'How did you find out about Quickzy?', 'Tap one.'), choices);
   }
 
   /* 2. how old are you? */
   function age() {
-    const n = h('input', { class: 'input input-xl wl-age', type: 'number', inputmode: 'numeric', min: 4, max: 120, placeholder: 'Your age', value: answers.age || '' });
+    const n = h('input', { class: 'wl-age', type: 'number', inputmode: 'numeric', min: 4, max: 120, placeholder: '?', value: answers.age || '', 'aria-label': 'Your age' });
+    const nudge = (d) => { const v = Math.max(4, Math.min(120, (Math.round(Number(n.value)) || 12) + d)); n.value = v; n.classList.remove('is-bad'); sfx('tap'); };
+    const dial = h('div', { class: 'wl-dial' },
+      h('button', { type: 'button', class: 'wl-step-btn', 'aria-label': 'Younger', onclick: () => nudge(-1) }, '−'),
+      h('div', { class: 'wl-age-box' }, n, h('small', {}, 'years old')),
+      h('button', { type: 'button', class: 'wl-step-btn', 'aria-label': 'Older', onclick: () => nudge(1) }, '+'));
     const go = h('button', { class: 'btn btn-main btn-lg btn-block' }, 'Next', icon('arrowRight', { size: 18 }));
     const submit = () => {
       const a = Math.round(Number(n.value));
@@ -56,16 +68,17 @@ export default async function Welcome({ query }) {
     n.addEventListener('input', () => n.classList.remove('is-bad'));
     go.addEventListener('click', submit);
     steps = 3;
-    fill(box, back(heard), ...head(2, 'How old are you?', 'This sets up the right Quickzy for you. Only you can see it.'), n, go);
+    fill(box, back(heard), ...head(2, 'How old are you?', 'This sets up the right Quickzy for you. Only you can see it.'), dial,
+      h('p', { class: 'wl-lock' }, icon('lock', { size: 14 }), 'Private: never shown on your profile'), go);
     setTimeout(() => n.focus(), 50);
   }
 
   /* 3. grown-ups: for you, or for teaching? */
   function use() {
-    const card = (id, ic, art, title, text) => h('button', { type: 'button', class: `wl-use${answers.use === id ? ' is-on' : ''}`, onclick: () => {
+    const card = (id, ic, art, title, text) => h('button', { type: 'button', class: `wl-use wl-use-${id}${answers.use === id ? ' is-on' : ''}`, onclick: () => {
       answers.use = id; sfx('pick');
       if (id === 'teacher') school(); else save();
-    } }, h('span', { class: 'wl-use-art' }, blook(art, 64)), h('b', {}, icon(ic, { size: 18 }), title), h('small', {}, text));
+    } }, h('span', { class: 'wl-use-art' }, blook(art, 72)), h('b', {}, icon(ic, { size: 18 }), title), h('small', {}, text), h('span', { class: 'wl-use-go' }, 'Choose', icon('arrowRight', { size: 16 })));
     fill(box, back(age), ...head(3, 'What will you use Quickzy for?'),
       h('div', { class: 'wl-uses' },
         card('personal', 'user', 'fox', 'For me', 'Play games, make quizzes and collect blooks.'),
@@ -143,7 +156,9 @@ export default async function Welcome({ query }) {
   }
 
   if (useOf()) done(); else heard();
-  return h('div', { class: 'page wl' },
-    h('div', { class: 'wl-top' }, logo(), h('b', {}, 'Welcome to Quickzy'), dots),
-    box);
+  const floaters = h('div', { class: 'wl-float', 'aria-hidden': 'true' }, ...['dragon', 'unicorn', 'robot', 'panda', 'astronaut', 'cupcake'].map((id, i) => h('span', { style: { '--i': i } }, blook(id, 54))));
+  return h('div', { class: 'page wl-stage' }, floaters,
+    h('div', { class: 'wl' },
+      h('div', { class: 'wl-top' }, logo(), h('b', {}, 'Welcome to Quickzy'), dots),
+      box));
 }

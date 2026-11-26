@@ -14,7 +14,7 @@ import { myQuizzes } from '../services/quizzes.js';
 import { pageTitle } from './parts.js';
 import NotFound from './notfound.js';
 
-export const CLASS_COLORS = ['#6b4cff', '#ff4772', '#12c9a6', '#ff8a2a', '#2f9bff', '#a560ff', '#ffb21f', '#17133f'];
+export const CLASS_COLORS = ['#6b4cff', '#ff4772', '#12c9a6', '#ff8a2a', '#2f9bff', '#a560ff', '#ffb21f', '#0fb5d6'];
 const colorOf = (c) => CLASS_COLORS[(c && c.color) | 0] || CLASS_COLORS[0];
 const due = (ms) => new Date(ms).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -35,6 +35,7 @@ export function joinClassBox({ compact = false } = {}) {
   go.addEventListener('click', submit);
   code.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   return h('div', { class: `cls-join${compact ? ' is-compact' : ''}` },
+    compact ? null : h('span', { class: 'cls-join-ic' }, icon('key', { size: 22 })),
     compact ? null : h('div', {}, h('b', {}, 'Got a class code?'), h('small', { class: 'muted' }, 'Your teacher gives it to you.')),
     h('div', { class: 'row cls-join-row' }, code, go));
 }
@@ -42,10 +43,13 @@ export function joinClassBox({ compact = false } = {}) {
 function classCard(c) {
   const teacher = cls.teaches(c);
   return h('a', { class: 'cls-card', href: `/class/${c.id}`, style: { '--cls': colorOf(c) } },
-    h('div', { class: 'cls-card-top' }, h('b', {}, c.name), h('small', {}, c.school || c.ownerName)),
+    h('div', { class: 'cls-card-top' },
+      h('span', { class: 'cls-initial' }, (c.name || '?').trim().charAt(0).toUpperCase()),
+      teacher ? h('span', { class: 'cls-card-code' }, icon('key', { size: 12 }), c.code) : null,
+      h('b', {}, c.name), h('small', {}, c.school || c.ownerName)),
     h('div', { class: 'cls-card-end' },
       h('span', {}, icon('users', { size: 16 }), plural((c.members || []).length, 'student')),
-      teacher ? h('span', { class: 'pill pill-dark' }, 'Teacher') : h('span', { class: 'muted small' }, c.ownerName)));
+      teacher ? h('span', { class: 'cls-role' }, 'Teacher') : h('span', { class: 'muted small' }, c.ownerName)));
 }
 
 /** Make a class (teachers). */
@@ -89,19 +93,29 @@ export default async function Classes({ query }) {
   const joined = list.filter((c) => !cls.teaches(c));
   if (teach && query.new) setTimeout(() => newClassDialog(), 200);
   const p = session.myProfile() || {};
+  const students = mine.reduce((n, k) => n + (k.members || []).length, 0);
+  const newTile = () => h('button', { type: 'button', class: 'cls-new-tile', onclick: () => newClassDialog() },
+    h('span', {}, icon('plus', { size: 26 })), h('b', {}, 'New class'), h('small', {}, pro ? `${mine.length} of 50` : `${mine.length} of 2 free`));
   return h('div', { class: 'page stack', style: { gap: '22px' } },
     h('section', { class: 'cls-hero' },
-      h('div', { class: 'grow' },
+      h('div', { class: 'cls-hero-art', 'aria-hidden': 'true' },
+        h('span', { class: 'cls-board' }, h('i'), h('i'), h('i')),
+        ...['owl', 'fox', 'unicorn', 'panda', 'robot'].map((id, i) => h('span', { class: 'cls-kid', style: { '--i': i } }, blook(id, i === 0 ? 70 : 46)))),
+      h('div', { class: 'grow cls-hero-copy' },
         h('span', { class: 'pill' }, icon(teach ? 'book' : 'users', { size: 14 }), teach ? `Teacher${p.school ? ` · ${p.school}` : ''}` : 'Classes'),
         h('h1', {}, teach ? 'Your classroom' : 'Your classes'),
         h('p', {}, teach
           ? `Make a class, give students its code, then post announcements, game PINs, homework and quick questions. ${pro ? 'Pro: up to 50 classes of 300 students.' : 'Free: 2 classes of up to 100 students. Quickzy Pro: up to 50 classes of 300.'}`
-          : 'Join your class with the code your teacher gives you. Announcements, games and homework show up here.')),
-      teach ? h('button', { class: 'btn btn-main btn-lg', onclick: () => newClassDialog() }, icon('plus', { size: 18 }), 'New class') : null),
+          : 'Join your class with the code your teacher gives you. Announcements, games and homework show up here.'),
+        teach ? h('div', { class: 'cls-hero-stats' },
+          h('span', {}, h('b', {}, String(mine.length)), plural(mine.length, 'class', 'classes').replace(/^\d+ /, '')),
+          h('span', {}, h('b', {}, String(students)), plural(students, 'student').replace(/^\d+ /, '')),
+          h('span', {}, h('b', {}, pro ? 'Pro' : 'Free'), pro ? '50 classes' : '2 classes')) : null,
+        teach ? h('button', { class: 'btn btn-main btn-lg', onclick: () => newClassDialog() }, icon('plus', { size: 18 }), 'New class') : null)),
     joinClassBox(),
     teach ? h('section', { class: 'stack' },
       h('h2', {}, 'Classes you teach'),
-      mine.length ? h('div', { class: 'cls-grid' }, ...mine.map(classCard))
+      mine.length ? h('div', { class: 'cls-grid' }, ...mine.map(classCard), newTile())
         : h('div', { class: 'card flat' }, empty('No classes yet', 'Make your first class. It takes ten seconds.', h('button', { class: 'btn btn-main', onclick: () => newClassDialog() }, icon('plus', { size: 16 }), 'New class')))) : null,
     joined.length || !teach ? h('section', { class: 'stack' },
       h('h2', {}, teach ? 'Classes you are in' : 'Your classes'),
@@ -124,13 +138,15 @@ export async function ClassPage({ params }) {
   }
   const teacher = cls.teaches(c);
   const stream = h('div', { class: 'stack cls-stream' });
-  const side = h('div', { class: 'stack cls-side' });
+  const side = h('div', { class: `stack cls-side${teacher ? ' is-teacher' : ''}` });
   const reload = async () => { c = (await cls.getClass(c.id)) || c; };
 
   async function drawStream() {
     const rows = await cls.posts(c.id);
     if (!rows.length) {
-      fill(stream, h('div', { class: 'card flat' }, empty(teacher ? 'Post your first announcement' : 'Nothing here yet', teacher ? 'Say hello, send a game PIN, set homework or ask a quick question.' : 'Your teacher has not posted anything yet.')));
+      fill(stream, h('div', { class: 'card cls-empty' }, blook(teacher ? 'owl' : 'panda', 72),
+        h('b', {}, teacher ? 'Post your first announcement' : 'Nothing here yet'),
+        h('p', { class: 'muted' }, teacher ? 'Say hello, send a game PIN, set homework or ask a quick question.' : 'Your teacher has not posted anything yet. Check back soon!')));
       return;
     }
     fill(stream, ...rows.map(postCard));
@@ -157,9 +173,9 @@ export async function ClassPage({ params }) {
         h('span', { class: 'btn btn-sm' }, teacher ? 'See results' : open ? 'Start' : 'Open')));
     }
     if (p.kind === 'question') body.push(questionBox(p));
-    return h('article', { class: 'card cls-post' },
+    return h('article', { class: `card cls-post is-${p.kind}` },
       h('div', { class: 'cls-post-head' },
-        h('span', { class: 'cls-post-ic', style: { background: colorOf(c) } }, icon(kind[0], { size: 16 })),
+        h('span', { class: 'cls-post-ic' }, icon(kind[0], { size: 16 })),
         h('div', { class: 'grow' }, h('b', {}, p.byName), h('small', { class: 'muted' }, `${kind[1]} · ${p.at ? ago(p.at) : 'just now'}`)),
         del),
       ...body);
@@ -266,7 +282,10 @@ export async function ClassPage({ params }) {
       }
     }
     drawTabs(); drawArea();
-    return h('section', { class: 'card cls-compose stack' }, tabs, area);
+    const me2 = session.myProfile() || {};
+    return h('section', { class: 'card cls-compose stack' },
+      h('div', { class: 'cls-compose-head' }, blook(me2.blook || 'owl', 38), h('div', {}, h('b', {}, 'Share with your class'), h('small', { class: 'muted' }, 'Everyone in the class sees it right away.'))),
+      tabs, area);
   }
 
   /* -------------------------------------------------------------- the side */
@@ -364,8 +383,11 @@ export async function ClassPage({ params }) {
   return h('div', { class: 'page stack', style: { gap: '18px' } },
     h('section', { class: 'cls-banner', style: { '--cls': colorOf(c) } },
       h('a', { class: 'cls-back', href: '/classes' }, icon('arrowLeft', { size: 16 }), 'Classes'),
+      h('div', { class: 'cls-banner-art', 'aria-hidden': 'true' }, blook('owl', 92)),
+      h('span', { class: 'cls-banner-tag' }, icon(teacher ? 'book' : 'users', { size: 14 }), teacher ? 'You teach this class' : 'Your class'),
       h('h1', {}, c.name),
-      h('p', {}, `${c.ownerName}${c.school ? ` · ${c.school}` : ''}`)),
+      h('p', {}, `${c.ownerName}${c.school ? ` · ${c.school}` : ''} · ${plural((c.members || []).length, 'student')}`),
+      null),
     h('div', { class: 'cls-layout' },
       h('div', { class: 'stack', style: { gap: '14px' } }, teacher ? composer() : null, stream),
       side));
