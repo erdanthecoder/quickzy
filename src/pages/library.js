@@ -26,7 +26,7 @@ function quizRow(q, redraw) {
     h('div', { class: 'grow', style: { minWidth: '180px' } },
       h('a', { href: `/edit/${q.id}`, class: 'quiz-title' }, q.title),
       h('div', { class: 'row small muted', style: { gap: '10px', marginTop: '4px' } },
-        q.public && !isLive(q) ? h('span', { class: 'pill pill-zing', title: 'Free quizzes are checked before they go live. Pro quizzes go live at once.' }, icon('clock', { size: 12 }), `In review · live ${new Date(q.liveAt).toLocaleDateString()}`)
+        q.public && !isLive(q) ? h('span', { class: 'pill pill-zing', title: 'Every quiz is checked before it goes live: Pro quizzes within a day, free ones in 3-5 days.' }, icon('clock', { size: 12 }), `In review · live ${new Date(q.liveAt).toLocaleDateString()}`)
           : q.public ? h('span', { class: 'pill pill-ok' }, icon('globe', { size: 12 }), 'Published') : h('span', { class: 'pill' }, icon('lock', { size: 12 }), 'Draft'),
         h('span', {}, plural(q.questionCount || 0, 'question')),
         h('span', {}, plural(q.plays || 0, 'play')),

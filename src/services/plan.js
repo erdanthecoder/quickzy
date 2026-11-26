@@ -24,18 +24,18 @@ function testsWithoutTrial() {
 
 export const PLANS = {
   free: {
-    quizzes: 10, players: 40, modes: ['classic', 'robotrun', 'obby', 'train', 'skyrace'],
+    quizzes: 10, players: 40, modes: ['classic', 'robotrun', 'obby', 'train', 'skyrace', 'pizza'],
     minutes: [3, 5, 7, 10], reviewDays: 3,
   },
   pro: {
-    quizzes: 300, players: 100, modes: ['classic', 'lasertag', 'robotrun', 'obby', 'train', 'skyrace', 'treasure', 'candy'],
+    quizzes: 300, players: 100, modes: ['classic', 'lasertag', 'robotrun', 'obby', 'train', 'skyrace', 'treasure', 'candy', 'pizza'],
     minutes: [3, 5, 7, 10, 15, 20, 30], reviewDays: 0,
   },
 };
 
 export const PRO_PERKS = [
   ['check', 'Gold PRO badge', 'Next to your name on every quiz, channel and game.'],
-  ['globe', 'Publish instantly', 'Your quizzes go live right away. Free quizzes wait 3–5 days for a check.'],
+  ['globe', 'Checked within a day', 'Your quizzes are checked and go live within a day. Free quizzes wait 3–5 days.'],
   ['users', 'Up to 100 players', 'Free games hold 40.'],
   ['star', 'Pro-only games', 'Treasure Hunt and Candy Factory: only Pro members can host them.'],
   ['play', 'Every game mode', 'Laser Tag too, and games up to 30 minutes.'],

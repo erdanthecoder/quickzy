@@ -46,6 +46,12 @@ export const MODES = [
     durations: [3], fixedMinutes: 3, releaseAt: RELEASE_1_2, isNew: true,
   },
   {
+    id: 'pizza', name: 'Pizza Party', kind: 'arcade', isNew: true,
+    tagline: 'Answer for ingredients and make the pizzas your customers want. Serve fast for tips!',
+    bg: 'linear-gradient(150deg, #ff6b3d, #ffb21f 60%, #fff1c9)',
+    durations: [3, 5, 7, 10],
+  },
+  {
     id: 'treasure', name: 'Treasure Hunt', kind: 'arcade', proOnly: true,
     tagline: 'Answer to open chests. Gold, double, triple… or steal from a rival!',
     bg: 'linear-gradient(140deg, #8a5a2b, #ffb21f)',
@@ -136,6 +142,14 @@ export function modeArt(id) {
     add('rect', { x: 20, y: 46, width: 60, height: 7, fill: '#ffcd1f' });
     add('rect', { x: 45, y: 50, width: 10, height: 14, rx: 2, fill: '#ffcd1f' });
     for (const [x, y] of [[30, 30], [62, 24], [76, 36]]) add('circle', { cx: x, cy: y, r: 5, fill: '#ffe45c' });
+  }
+  if (id === 'pizza') {
+    add('circle', { cx: 50, cy: 54, r: 36, fill: '#f2b263' });
+    add('circle', { cx: 50, cy: 54, r: 30, fill: '#e8463a' });
+    add('circle', { cx: 50, cy: 54, r: 26, fill: '#ffd25a' });
+    for (const [x, y] of [[40, 44], [60, 46], [46, 64], [64, 62], [34, 58]]) add('circle', { cx: x, cy: y, r: 5, fill: '#c0392b' });
+    for (const [x, y] of [[54, 36], [30, 48], [70, 54]]) add('circle', { cx: x, cy: y, r: 3, fill: '#2d7a3a' });
+    add('path', { d: 'M50 54 L86 40 A38 38 0 0 1 88 62 Z', fill: '#17133f', opacity: 0.18 });
   }
   if (id === 'candy') {
     add('rect', { x: 10, y: 66, width: 80, height: 10, rx: 5, fill: '#17133f' });

@@ -10,7 +10,7 @@
 // else, and every query here asks only for what the rules allow.
 
 import { net } from '../net/index.js';
-import { LIMITS, BADGES } from '../config.js';
+import { LIMITS, BADGES, OWNER_UID, OFFICIAL_UID } from '../config.js';
 import { myProfile, me } from './session.js';
 import { split, join, problem } from '../game/questions.js';
 import { isClean } from './names.js';
@@ -45,6 +45,7 @@ export function publishProblems(quiz) {
 
 /** Free accounts: a published quiz goes live 3 to 5 days later. */
 const reviewDelay = () => Math.round((3 + Math.random() * 2) * 86400000);
+const PRO_REVIEW = 23 * 3600000;
 
 /** Problems that stop a quiz being hosted at all (drafts can be hosted by their author). */
 export function hostProblems(quiz) {
@@ -96,10 +97,12 @@ export async function saveQuiz(quiz, { publish } = {}) {
     const mine = await net.store.count(COL, { where: [['owner', '==', user.uid]] }).catch(() => 0);
     if (mine >= plan.quizzes) throw new Error(`Free accounts can make ${plan.quizzes} quizzes. Delete one, or go Pro for ${PLANS.pro.quizzes}.`);
   }
-  // when it goes live: Pro at once; free quizzes after the 3-5 day check,
-  // and a quiz that is already live stays live
+  // when it goes live: every new public quiz is checked first (free 3-5 days,
+  // Pro within a day); the owner and the official account publish at once;
+  // a quiz that is already live stays live
+  const instant = user.uid === OWNER_UID || user.uid === OFFICIAL_UID;
   let liveAt = 0;
-  if (isPublic && !plan.pro) liveAt = before && before.public ? (before.liveAt || 0) : Date.now() + reviewDelay();
+  if (isPublic && !instant) liveAt = before && before.public ? (before.liveAt || 0) : Date.now() + (plan.pro ? PRO_REVIEW : reviewDelay());
   const doc = {
     // only written when it matters, so older quizzes keep their shape
     ...(liveAt || (before && before.liveAt) ? { liveAt } : {}),

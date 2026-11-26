@@ -57,13 +57,33 @@ if (process.env.EMULATOR === '1') {
 const EMULATOR = process.env.EMULATOR === '1';
 
 async function newPage(who, viewport = { width: 1280, height: 800 }) {
-  const ctx = await browser.newContext({ viewport, hasTouch: who !== 'host' && viewport.width < 600 });
+  // the test driver runs its own scripts in the page, which the site's
+  // Content-Security-Policy would block; the policy itself is checked first, below
+  const ctx = await browser.newContext({ viewport, hasTouch: who !== 'host' && viewport.width < 600, bypassCSP: true });
   if (EMULATOR) await ctx.addInitScript(() => sessionStorage.setItem('quickzy.emulator', '1'));
   // the free Pro test is switched off here, so the free plan gets tested too
   await ctx.addInitScript(() => localStorage.setItem('quickzy.test.noTrial', '1'));
   const page = await ctx.newPage();
   watch(page, who);
   return page;
+}
+
+/* ------------------------------------------- the security policy itself */
+
+// every main page loads under the real Content-Security-Policy with nothing blocked
+{
+  say('security policy: nothing on the main pages is blocked');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const pg = await ctx.newPage();
+  const blocked = [];
+  pg.on('console', (m) => { if (/Content Security Policy|Refused to/i.test(m.text())) blocked.push(m.text().slice(0, 200)); });
+  for (const path of ['/', '/discover', '/blooks', '/join', '/login', '/signup', '/teachers', '/app', '/pro', '/settings']) {
+    await pg.goto(`${BASE}${path}`);
+    await pg.waitForTimeout(900);
+  }
+  if (!(await pg.evaluate(() => document.querySelector('meta') !== null))) fail('the page did not load');
+  await ctx.close();
+  if (blocked.length) fail(`blocked by the policy: ${blocked.join(' | ')}`);
 }
 
 /* ---------------------------------------------------------- the host */
@@ -142,7 +162,7 @@ await host.waitForSelector('text=Sent for checking', { timeout: 8000 }).catch(as
 await host.click('button:has-text("Unpublish")');
 await host.waitForSelector('text=Unpublished');
 
-say('publish (Pro): live at once');
+say('publish (Pro): checked within a day, then the owner approves it');
 // the owner would give Pro from the Owner panel; the test sets it directly
 await host.evaluate(async () => {
   const { net, session } = window.__quickzy;
@@ -151,12 +171,25 @@ await host.evaluate(async () => {
   (await import('/src/services/plan.js')).forget(uid);
 });
 await host.click('button:has-text("Publish")');
-await host.waitForSelector('text=Published. Anyone can find', { timeout: 8000 }).catch(async () => {
+await host.waitForSelector('text=Sent for checking', { timeout: 8000 }).catch(async () => {
   const issues = await host.locator('.modal').innerText().catch(() => '');
-  fail(`did not publish ${issues}`);
+  fail(`Pro publish did not go to review ${issues}`);
 });
 const quizId = host.url().split('/edit/')[1];
 if (!quizId) fail('no quiz id in the address');
+{
+  // wait for this save (the toast from the free publish may still be showing)
+  for (let i = 0; i < 40; i++) {
+    const q = await host.evaluate(async (id) => window.__quickzy.net.store.get('quizzes', id), quizId);
+    if (process.env.DEBUG) console.log('   ', q && q.public, q && q.liveAt);
+    if (q && q.public && q.liveAt > Date.now()) break;
+    await host.waitForTimeout(200);
+  }
+  const waitDays = await host.evaluate(async (id) => ((await window.__quickzy.net.store.get('quizzes', id)).liveAt - Date.now()) / 864e5, quizId);
+  if (!(waitDays > 0.8 && waitDays < 1.2)) fail(`a Pro quiz should wait about a day, not ${waitDays.toFixed(2)} days`);
+  // the owner approves it in the Owner panel (here: straight in the dev store)
+  await host.evaluate(async (id) => window.__quickzy.net.store.update('quizzes', id, { liveAt: Date.now() - 1000 }), quizId);
+}
 
 say('make it together: invite by username');
 await host.click('button:has-text("Together")');
@@ -310,7 +343,7 @@ if (which === 'teams' || which === 'classic' || which === 'all') {
 }
 
 if (which === 'arcade' || which === 'all') {
-  for (const [mode, name] of (process.env.ONLY ? process.env.ONLY.split(',').map((m, i) => [m, process.env.ONLY_NAME.split(',')[i]]) : null) || [['lasertag', 'Laser Tag'], ['robotrun', 'Robot Run'], ['obby', 'Sky Climb'], ['train', 'Train Travel'], ['skyrace', 'Sky Race'], ['treasure', 'Treasure Hunt'], ['candy', 'Candy Factory']]) {
+  for (const [mode, name] of (process.env.ONLY ? process.env.ONLY.split(',').map((m, i) => [m, process.env.ONLY_NAME.split(',')[i]]) : null) || [['lasertag', 'Laser Tag'], ['robotrun', 'Robot Run'], ['obby', 'Sky Climb'], ['train', 'Train Travel'], ['skyrace', 'Sky Race'], ['treasure', 'Treasure Hunt'], ['candy', 'Candy Factory'], ['pizza', 'Pizza Party']]) {
     say(`${mode}: open the lobby`);
     if (mode === 'skyrace') await host.evaluate(() => localStorage.setItem('quickzy.test.early', '1'));
     const pin = await openLobby(name, () => (mode === 'skyrace' ? host.waitForSelector('.set-row:has-text("Game length") .pill:has-text("3 min")') : host.click('.set-row:has-text("Game length") button:has-text("3 min")')));
@@ -396,6 +429,18 @@ if (which === 'arcade' || which === 'all') {
       await cara.waitForFunction(() => /[1-9]/.test(document.querySelector('.cf-rate').innerText), null, { timeout: 8000 })
         .catch(() => fail('candy: buying a machine did not raise the rate'));
       await cara.screenshot({ path: `${SHOTS}/candy.png` });
+    }
+    if (mode === 'pizza') {
+      say('pizza: get ingredients and serve a pizza');
+      // right answers bring what the easiest order still needs
+      for (let i = 0; i < 6 && !(await cara.locator('.pz-serve.is-ready').count()); i++) { await ask(cara); await cara.waitForTimeout(1300); }
+      await cara.waitForSelector('.pz-serve.is-ready', { timeout: 8000 }).catch(() => fail('pizza: no order became ready to serve'));
+      await cara.click('.pz-serve.is-ready >> nth=0');
+      await cara.waitForFunction(() => Number(document.querySelector('.pz-stat b').innerText) >= 1, null, { timeout: 8000 })
+        .catch(() => fail('pizza: serving did not count'));
+      await cara.waitForTimeout(400);
+      await cara.screenshot({ path: `${SHOTS}/pizza.png` });
+      await dev.screenshot({ path: `${SHOTS}/pizza-wide.png` });
     }
     await host.screenshot({ path: `${SHOTS}/${mode}-host.png` });
     say(`${mode}: end`);
@@ -506,7 +551,7 @@ if ((which === 'owner' || which === 'all') && !EMULATOR) {
     await other.locator('button:has-text("Remove blue check")').click();
     await other.locator('button:has-text("Give blue check")').waitFor();
   }
-  await own.click('.seg button:has-text("Quizzes")');
+  await own.click('.seg button:text-is("Quizzes")');
   await own.waitForSelector('.owner-row');
   await own.screenshot({ path: `${SHOTS}/owner-panel.png`, fullPage: true });
 
@@ -695,7 +740,7 @@ if (which === 'account' || which === 'all') {
 
   say('quickzy app: the quiz just played is saved, and plays with no servers');
   {
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, bypassCSP: true });
     const app = await ctx.newPage();
     watchApp(app);
     // copy this device's saved quizzes into the new phone, then cut it off from every server

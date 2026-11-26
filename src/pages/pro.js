@@ -57,7 +57,7 @@ export default async function Pro() {
     h('section', { class: 'pro-hero' },
       h('div', { class: 'pro-hero-badge' }, verifiedBadge(null, 'pro'), 'PRO'),
       h('h1', {}, 'Quickzy Pro'),
-      h('p', {}, 'For the people who make Quickzy great. Publish instantly, host every game for up to 100 players, and wear the gold badge.'),
+      h('p', {}, 'For the people who make Quickzy great. Quizzes checked within a day, host every game for up to 100 players, and wear the gold badge.'),
       trialOn() ? h('div', { class: 'pro-trial' }, icon('star', { size: 18 }),
         `Free test: everyone gets Pro until ${new Date(TRIAL_ENDS).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}`) : null,
       plan.pro

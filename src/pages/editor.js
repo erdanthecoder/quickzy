@@ -116,7 +116,7 @@ export default async function Editor({ params, query = {} }) {
       if (await doSave(next)) {
         const fresh = next && quiz.id ? await getQuiz(quiz.id).catch(() => null) : null;
         if (fresh && !isLive(fresh)) {
-          toast(`Sent for checking. It goes live on ${new Date(fresh.liveAt).toLocaleDateString()}. Pro quizzes go live at once.`, 'ok');
+          toast(`Sent for checking. It goes live by ${new Date(fresh.liveAt).toLocaleDateString()}, or sooner once Quickzy checks it.`, 'ok');
         } else toast(next ? 'Published. Anyone can find and play it now.' : 'Unpublished. Only you can see it.', 'ok');
       }
     }));

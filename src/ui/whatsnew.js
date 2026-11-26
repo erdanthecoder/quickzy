@@ -3,7 +3,7 @@
 import { h } from './dom.js';
 import { icon, logo } from './icons.js';
 import { modal } from './kit.js';
-import { VERSION } from '../config.js';
+import { VERSION, ARCHIVE_URL } from '../config.js';
 import { sfx } from '../game/sound.js';
 import { myProfile } from '../services/session.js';
 import { isOwner } from '../services/site.js';
@@ -66,12 +66,12 @@ export function showWhatsNew() {
   sfx('reveal');
   return modal((close) => [h('div', { class: 'wn' },
     h('div', { class: 'wn-hero' }, logo(), h('div', {}, h('h2', {}, `Quickzy ${VERSION}`), h('p', { style: { margin: 0, fontWeight: 800, opacity: 0.9 } }, VERSION === '1.4' ? 'Quickzy for teachers and classes' : VERSION === '1.3' ? 'Questions in. Games out.' : 'The biggest update yet'))),
-    h('ul', { class: 'wn-list' }, ...NEWS.map(([ic, col, title, text]) => h('li', {},
-      h('span', { class: 'wn-ic', style: { background: col } }, icon(ic, { size: 18 })), h('div', {}, h('b', {}, title), h('small', {}, text))))),
+    // the full list of changes lives in the Quickzy Archive
+    h('p', { class: 'wn-more' }, 'Quickzy was just updated. Every change, with pictures, is in the Quickzy Archive.'),
     h('div', { class: 'row' },
+      h('a', { class: 'btn grow', href: `${ARCHIVE_URL}/#v${VERSION}`, target: '_blank', rel: 'noopener', onclick: () => close() }, icon('list', { size: 16 }), "See what's new"),
       VERSION === '1.4' ? h('a', { class: 'btn grow', href: '/classes', onclick: () => close() }, icon('users', { size: 16 }), 'Open Classes')
         : h('button', { class: 'btn grow', onclick: () => { close(); playFilm(); } }, icon('play', { size: 16 }), `Watch the ${VERSION} film`),
-      h('button', { class: 'btn grow', onclick: () => { close(); playFilm(VERSION === '1.4' ? '1.3' : '1.2'); } }, icon('play', { size: 16 }), VERSION === '1.4' ? 'The 1.3 film' : 'The 1.2 film'),
       h('button', { class: 'btn btn-main grow', onclick: () => close() }, "Let's play")))]);
 }
 

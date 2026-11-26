@@ -63,6 +63,14 @@ service cloud.firestore {
     // ------------------------------------------------------------ profiles
     // Public: display name, username, blook. No email is ever stored here.
     match /users/{uid} {
+      // Blooks: one at a time, never taken away; a blook you don't have yet
+      // costs a box (15+ coins), except the Buddy for inviting a friend
+      function blooksOk(o0, o1, c0, c1) {
+        let changed = o1.diff(o0).affectedKeys();
+        return changed.size() == 0
+          || (changed.size() == 1 && o1.keys().hasAll(o0.keys())
+              && (c1 <= c0 - 15 || changed.hasOnly(['buddy']) || o0.keys().hasAll(changed)));
+      }
       // XP only grows, by one game's worth at a time, and only once per game;
       // coins never go below zero; three custom blooks at most
       function progressOk() {
@@ -74,6 +82,15 @@ service cloud.firestore {
           && (xp1 == xp0 || after.get('lastGame', '') != before.get('lastGame', ''))
           && after.get('coins', 0) is int && after.get('coins', 0) >= 0
           && after.get('coins', 0) - before.get('coins', 0) <= 150
+          // coins can only go up once every 15 seconds (stops scripts farming them);
+          // the moment is stamped by the server, so it can't be faked
+          && (after.get('coins', 0) <= before.get('coins', 0)
+              || (after.get('coinAt', null) == request.time
+                  && (!('coinAt' in before) || before.coinAt < request.time - duration.value(15, 's'))))
+          && (!('coinAt' in after) || after.coinAt == before.get('coinAt', null) || after.coinAt == request.time)
+          // XP only comes with a game's coins (so it shares their 15-second gap)
+          && (xp1 == xp0 || after.get('coins', 0) > before.get('coins', 0))
+          && blooksOk(before.get('owned', {}), after.get('owned', {}), before.get('coins', 0), after.get('coins', 0))
           && after.get('owned', {}).size() <= 40
           && after.get('customs', []).size() <= 3
           && str(after.get('lastGame', ''), 40);
@@ -91,7 +108,7 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username))
         && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == uid;
       allow update: if me(uid)
-        && onlyKeys(['username', 'displayName', 'blook', 'createdAt', 'xp', 'coins', 'owned', 'customs', 'lastGame', 'channel', 'lastGift', 'banner', 'bio', 'metOwner', 'streak', 'lastDay', 'use', 'school'])
+        && onlyKeys(['username', 'displayName', 'blook', 'createdAt', 'xp', 'coins', 'owned', 'customs', 'lastGame', 'channel', 'lastGift', 'banner', 'bio', 'metOwner', 'streak', 'lastDay', 'use', 'school', 'coinAt'])
         && progressOk()
         // the account type from the sign-up questions; an under-18 account stays one
         && request.resource.data.get('use', 'personal') in ['kid', 'personal', 'teacher']
@@ -138,9 +155,11 @@ service cloud.firestore {
           && (d.get('editors', []).size() == 0 || pro()
               || (resource != null && d.get('editors', []) == resource.data.get('editors', [])))
           && d.get('liveAt', 0) is int
-          // free accounts: a newly published quiz goes live 3 days or more later
-          // (it was checked automatically); a quiz already live stays live; Pro at once
-          && (!d.public || pro()
+          // every new public quiz is checked before it goes live: free ones in
+          // 3-5 days, Pro ones within a day; a quiz already live stays live.
+          // Only the owner and the official Quickzy account publish at once.
+          && (!d.public || siteOwner() || request.auth.uid == 'XH9Z5D7tLmRHStlxumgaJyTo1BP2'
+              || (pro() && d.get('liveAt', 0) >= request.time.toMillis() + 79200000)
               || d.get('liveAt', 0) >= request.time.toMillis() + 255600000
               || (resource != null && resource.data.public == true && d.get('liveAt', 0) == resource.data.get('liveAt', 0)))
           && d.owner == request.auth.uid
@@ -184,6 +203,11 @@ service cloud.firestore {
       allow update: if account() && resource.data.public == true
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plays'])
         && request.resource.data.plays == resource.data.plays + 1;
+      // owner power: approve a waiting quiz (it goes live now)
+      allow update: if siteOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveAt'])
+        && resource.data.public == true
+        && request.resource.data.liveAt is int && request.resource.data.liveAt <= request.time.toMillis();
       // owner power: unpublish anyone's quiz
       allow update: if siteOwner()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['public', 'big'])

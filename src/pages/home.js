@@ -7,12 +7,10 @@ import { scanForPin } from '../ui/qr.js';
 import { navigate } from '../router.js';
 import { MODES, modeArt } from '../game/modes/index.js';
 import { signedIn } from '../services/session.js';
-import { popularQuizzes, quizzesBy } from '../services/quizzes.js';
+import { popularQuizzes, quizzesBy, badgeOf } from '../services/quizzes.js';
 import { OFFICIAL_UID } from '../config.js';
 import { quizCard, cover, authorLine } from './parts.js';
 import { ornamentBand } from '../ui/ornament.js';
-import { NEWS, NEWS_13, NEWS_12, NEWS_11, playFilm } from '../ui/whatsnew.js';
-import { VERSION } from '../config.js';
 
 export function joinBox() {
   const pin = h('input', {
@@ -100,6 +98,7 @@ export default async function Home() {
   const nudge = (dir) => rail.scrollBy({ left: dir * Math.min(rail.clientWidth * 0.8, 600), behavior: 'smooth' });
 
   return h('div', { class: 'page hm' },
+    signedIn() ? meCard() : null,
     h('section', { class: 'hm-hero' },
       h('div', { class: 'hm-hero-copy' },
         h('span', { class: 'hm-eyebrow' }, h('i'), 'Quiz games for classrooms and friends'),
@@ -144,8 +143,6 @@ export default async function Home() {
 
     classSlot,
 
-    whatsNew(),
-
     installSlot,
     inviteSlot,
 
@@ -164,6 +161,43 @@ export default async function Home() {
   );
 }
 
+/** You, at the top of Home: your banner, blook, level, coins and streak. */
+function meCard() {
+  const slot = h('div', { class: 'me-card-slot' });
+  Promise.all([import('../services/session.js'), import('../services/progress.js'), import('../ui/banner.js'), import('../ui/badges.js'), import('../config.js')])
+    .then(async ([s, pr, bn, bd, cfg]) => {
+      const p = await s.whenProfile();
+      if (!p) return;
+      const uid = s.me().uid;
+      const li = pr.levelInfo(p.xp || 0);
+      const owned = Object.keys(p.owned || {}).length;
+      const kind = await badgeOf(uid).catch(() => cfg.BADGES[uid] || '');
+      const streak = Number(p.streak) || 0;
+      const stat = (v, label, ic) => h('div', { class: 'me-stat' }, h('span', { class: 'me-stat-ic' }, ic), h('b', {}, v), h('small', {}, label));
+      fill(slot, h('section', { class: 'me-card' },
+        h('div', { class: 'me-banner' }, bn.profileBanner(p.banner, { owner: uid === cfg.OWNER_UID })),
+        h('div', { class: 'me-body' },
+          h('a', { class: 'me-blook', href: `/u/${p.username}`, 'aria-label': 'Your profile' }, blook(p.blook, 96)),
+          h('div', { class: 'me-who' },
+            h('small', {}, greet()),
+            h('h2', {}, p.displayName, kind ? bd.nameBadges(kind) : null),
+            h('span', { class: 'me-user' }, `@${p.username}`),
+            h('div', { class: 'me-level', title: `${li.into} / ${li.need} XP to level ${li.level + 1}` },
+              h('b', {}, `Level ${li.level}`), h('div', { class: 'me-level-bar' }, h('i', { style: { width: `${Math.round(li.frac * 100)}%` } })),
+              h('small', {}, li.need ? `${li.need - li.into} XP to go` : 'Max level'))),
+          h('div', { class: 'me-stats' },
+            stat(String(p.coins || 0), 'coins', '\u{1FA99}'),
+            stat(String(streak), streak === 1 ? 'day streak' : 'day streak', '\u{1F525}'),
+            stat(String(owned), 'blooks', '\u2B50')),
+          h('div', { class: 'me-actions' },
+            h('a', { class: 'btn btn-main', href: `/u/${p.username}` }, icon('user', { size: 16 }), 'My profile'),
+            h('a', { class: 'btn', href: '/blooks' }, icon('star', { size: 16 }), 'Open a box'),
+            h('a', { class: 'btn', href: '/settings#profile' }, icon('edit', { size: 16 }), 'Edit')))));
+    }).catch(() => {});
+  return slot;
+}
+const greet = () => { const hr = new Date().getHours(); return hr < 5 ? 'Up late?' : hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening'; };
+
 /** Classes on the home page: your classroom (teachers), or join with a code. */
 async function classesCard(c) {
   if (!c.classesOpen()) return null;
@@ -176,22 +210,6 @@ async function classesCard(c) {
       h('a', { class: 'btn btn-sm', href: teach && !list.length ? '/classes?new=1' : '/classes' }, teach && !list.length ? 'Make a class' : 'All classes', icon('arrowRight', { size: 16 }))),
     items.length ? h('div', { class: 'hm-class-row' }, ...items) : h('p', { class: 'muted', style: { margin: 0 } }, teach ? 'Make a class and give your students its code.' : 'Got a class code from your teacher? Type it here.'),
     teach ? null : joinClassBox({ compact: true }));
-}
-
-/** The changelog, right on the home page: this version first, older ones folded away. */
-function whatsNew() {
-  const list = (items) => h('ul', { class: 'cl-list' }, ...items.map(([ic, col, title, text]) => h('li', {},
-    h('span', { class: 'cl-ic', style: { background: col } }, icon(ic, { size: 18 })), h('div', {}, h('b', {}, title), h('p', {}, text)))));
-  const older = [['1.3', NEWS_13], ['1.2', NEWS_12], ['1.1', NEWS_11]].filter(([v]) => v !== VERSION);
-  const film = VERSION === '1.4'
-    ? h('a', { class: 'btn btn-sm', href: '/classes' }, icon('users', { size: 16 }), 'Open Classes')
-    : h('button', { class: 'btn btn-sm', onclick: () => playFilm() }, icon('play', { size: 16 }), `Watch the ${VERSION} film`);
-  return h('section', { class: 'cl reveal', id: 'whats-new' },
-    h('div', { class: 'cl-head' },
-      h('div', {}, h('span', { class: 'cl-ver' }, `Quickzy ${VERSION}`), h('h2', { class: 'hm-h2' }, "What's new")),
-      film),
-    list(NEWS),
-    ...older.map(([v, items]) => h('details', { class: 'cl-old' }, h('summary', {}, `Quickzy ${v}`, h('small', {}, `${items.length} changes`)), list(items))));
 }
 
 /** "Got a PIN?" on one line, right under the headline. */
