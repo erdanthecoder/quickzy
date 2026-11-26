@@ -244,6 +244,19 @@ export async function post(cid, kind, fields) {
 }
 
 export const deletePost = (cid, pid) => net.store.del(`classes/${cid}/posts`, pid);
+export const pinPost = (cid, pid, pinned) => net.store.update(`classes/${cid}/posts`, pid, { pinned: Boolean(pinned) });
+
+/* --------------------------------------------------------------- reactions */
+
+export const REACTIONS = [['heart', '\u2764\uFE0F'], ['like', '\u{1F44D}'], ['laugh', '\u{1F602}'], ['party', '\u{1F389}'], ['wow', '\u{1F62E}']];
+export const reactions = (cid, pid) => net.store.query(`classes/${cid}/posts/${pid}/reactions`, { limit: 300 }).catch(() => []);
+export async function react(cid, pid, e) {
+  const uid = me().uid;
+  const mine = await net.store.get(`classes/${cid}/posts/${pid}/reactions`, uid).catch(() => null);
+  if (mine && mine.e === e) { await net.store.del(`classes/${cid}/posts/${pid}/reactions`, uid); return null; }
+  await net.store.set(`classes/${cid}/posts/${pid}/reactions`, uid, { e, at: net.store.serverTime() });
+  return e;
+}
 
 /* ------------------------------------------- one-question quizzes in posts */
 
