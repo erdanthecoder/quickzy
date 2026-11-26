@@ -35,6 +35,16 @@ function drawingMark(size) {
   return el;
 }
 
+/** The Quickzy intro mark: four answer-colour tiles fly in, snap together,
+ *  and a lightning flash turns them into the logo. */
+function assembleMark(size) {
+  return h('span', { class: 'ld-assemble', style: { width: `${size}px`, height: `${size}px` }, 'aria-hidden': 'true' },
+    h('i', { class: 'is-a' }), h('i', { class: 'is-b' }), h('i', { class: 'is-c' }), h('i', { class: 'is-d' }),
+    h('span', { class: 'ld-flash' }),
+    h('span', { class: 'ld-logo' }, logo()),
+    ...[0, 1, 2, 3, 4, 5].map((k) => h('b', { class: 'ld-spark', style: { '--k': k } })));
+}
+
 // the boot screen's progress, moved on by main.js as each step finishes
 let boot = null;
 /** Move the boot screen on: k from 0 to 1, with what is happening now. */
@@ -65,7 +75,7 @@ export function loader({ full = false, text = '' } = {}) {
   const root = h('div', { class: 'loader ld-boot', role: 'status', 'aria-live': 'polite' },
     h('div', { class: 'ld-glow', 'aria-hidden': 'true' }),
     h('div', { class: 'ld-center' },
-      drawingMark(96),
+      assembleMark(104),
       h('div', { class: 'ld-word' }, wordmark()),
       h('div', { class: 'ld-progress' }, h('div', { class: 'ld-track' }, fillEl), h('div', { class: 'ld-row' }, label, pct))),
     h('div', { class: 'ld-foot' },

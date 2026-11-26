@@ -1,0 +1,44 @@
+name: Publish the official quizzes
+
+# Publishes tools/quizzes*.mjs on Discover as the official Quickzy account,
+# with the Firebase service account (no password). Runs when the quizzes
+# change on main, or by hand from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths: ['tools/quizzes*.mjs', 'tools/covers.mjs', 'tools/seed-admin.mjs', '.github/workflows/seed.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seed
+
+jobs:
+  seed:
+    name: Publish the official quizzes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PROJECT: akylduukodo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check every question
+        run: node tools/seed-admin.mjs --dry
+      - name: Sign in with the service account
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AKYLDUUKODO }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+      - name: Publish
+        run: |
+          npm install --no-save --no-package-lock firebase-admin@12.7.0 >/dev/null 2>&1
+          set -o pipefail; node tools/seed-admin.mjs 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Forget the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

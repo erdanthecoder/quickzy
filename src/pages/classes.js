@@ -149,7 +149,35 @@ export async function ClassPage({ params }) {
         h('p', { class: 'muted' }, teacher ? 'Say hello, send a game PIN, set homework or ask a quick question.' : 'Your teacher has not posted anything yet. Check back soon!')));
       return;
     }
+    // pinned posts first, then the newest
+    rows.sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.at || 0) - (a.at || 0));
     fill(stream, ...rows.map(postCard));
+  }
+
+  /** The reaction bar under a post: tap one, tap again to take it back. */
+  function reactBar(p) {
+    const bar = h('div', { class: 'cls-react' });
+    let rows = [];
+    const draw = () => {
+      const mine = (rows.find((r) => r.id === session.me().uid) || {}).e;
+      fill(bar, ...cls.REACTIONS.map(([k, pic]) => {
+        const n = rows.filter((r) => r.e === k).length;
+        const b = h('button', { type: 'button', class: `cls-react-btn${mine === k ? ' is-on' : ''}${n ? ' has' : ''}`, 'aria-label': `React ${k}` }, h('span', {}, pic), n ? h('b', {}, String(n)) : null);
+        b.addEventListener('click', async () => {
+          b.classList.add('is-pop');
+          try {
+            const e = await cls.react(c.id, p.id, k);
+            rows = rows.filter((r) => r.id !== session.me().uid);
+            if (e) rows.push({ id: session.me().uid, e });
+            draw();
+          } catch { toast('Could not react', 'bad'); }
+        });
+        return b;
+      }));
+    };
+    cls.reactions(c.id, p.id).then((r) => { rows = r; draw(); });
+    draw();
+    return bar;
   }
 
   function postCard(p) {
@@ -173,12 +201,16 @@ export async function ClassPage({ params }) {
         h('span', { class: 'btn btn-sm' }, teacher ? 'See results' : open ? 'Start' : 'Open')));
     }
     if (p.kind === 'question') body.push(questionBox(p));
-    return h('article', { class: `card cls-post is-${p.kind}` },
+    const pin = teacher ? h('button', { class: `btn btn-ghost btn-sm btn-icon${p.pinned ? ' is-pinned' : ''}`, title: p.pinned ? 'Unpin' : 'Pin to the top', 'aria-label': p.pinned ? 'Unpin' : 'Pin to the top', onclick: async () => {
+      await cls.pinPost(c.id, p.id, !p.pinned).catch(() => toast('Could not pin', 'bad')); drawStream();
+    } }, '\u{1F4CC}') : null;
+    return h('article', { class: `card cls-post is-${p.kind}${p.pinned ? ' is-pinned' : ''}` },
       h('div', { class: 'cls-post-head' },
         h('span', { class: 'cls-post-ic' }, icon(kind[0], { size: 16 })),
-        h('div', { class: 'grow' }, h('b', {}, p.byName), h('small', { class: 'muted' }, `${kind[1]} · ${p.at ? ago(p.at) : 'just now'}`)),
-        del),
-      ...body);
+        h('div', { class: 'grow' }, h('b', {}, p.byName), h('small', { class: 'muted' }, `${p.pinned ? 'Pinned \u00b7 ' : ''}${kind[1]} · ${p.at ? ago(p.at) : 'just now'}`)),
+        pin, del),
+      ...body,
+      reactBar(p));
   }
 
   function questionBox(p) {

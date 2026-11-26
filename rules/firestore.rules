@@ -427,6 +427,20 @@ service cloud.firestore {
           && request.resource.data.get('answer', 0) is int
           && request.resource.data.at == request.time;
         allow delete: if signedIn() && teaches(cls());
+        // teachers pin a post to the top
+        allow update: if account() && teaches(cls())
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned'])
+          && request.resource.data.pinned is bool;
+
+        // a reaction each: everyone in the class can react to a post
+        match /reactions/{uid} {
+          allow read: if inIt(cls());
+          allow create, update: if me(uid) && account() && inIt(cls())
+            && onlyKeys(['e', 'at'])
+            && request.resource.data.e in ['heart', 'like', 'laugh', 'party', 'wow']
+            && request.resource.data.at == request.time;
+          allow delete: if me(uid);
+        }
 
         // the one-question quiz in an announcement: one answer each
         match /answers/{uid} {
