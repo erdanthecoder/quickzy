@@ -97,6 +97,17 @@ export default async function HostLive({ params }) {
 
   /* ------------------------------------------------------------ lobby */
 
+  // teachers: post this game's PIN to a class
+  function sendToClass() {
+    const slot = h('span');
+    import('../services/classes.js').then((c) => {
+      if (!c.classesOpen() || !c.canTeach()) return;
+      fill(slot, h('button', { class: 'btn btn-ghost btn-sm', style: { color: '#fff' },
+        onclick: () => import('./classes.js').then((m) => m.sendPinDialog({ pin, title: quiz.title })) }, icon('users', { size: 16 }), 'Send to a class'));
+    }).catch(() => {});
+    return slot;
+  }
+
   function lobbyView() {
     const grid = h('div', { class: 'lobby-players' });
     const count = h('b', {}, '0');
@@ -122,7 +133,9 @@ export default async function HostLive({ params }) {
         h('div', { class: 'lobby-join' },
           h('p', {}, 'Join at ', h('b', {}, `${location.host}/join`), ' or scan the code'),
           pinText(true),
-          h('button', { class: 'btn btn-ghost btn-sm', style: { color: '#fff' }, onclick: () => copy(joinURL, 'Join link copied') }, icon('copy', { size: 16 }), 'Copy join link')),
+          h('div', { class: 'row', style: { justifyContent: 'center' } },
+            h('button', { class: 'btn btn-ghost btn-sm', style: { color: '#fff' }, onclick: () => copy(joinURL, 'Join link copied') }, icon('copy', { size: 16 }), 'Copy join link'),
+            sendToClass())),
         qrBox),
       h('section', { class: 'lobby-mid' },
         h('div', { class: 'row' }, icon('users'), count, h('span', {}, 'players'), lock),

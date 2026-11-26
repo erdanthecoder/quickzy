@@ -11,7 +11,7 @@ import * as session from '../services/session.js';
 import { myQuizzes, deleteQuiz, myReports, deleteReport, verifiedProgress, syncAuthor } from '../services/quizzes.js';
 import { strength } from './auth.js';
 import { pageTitle } from './parts.js';
-import { LIMITS, BADGES, VERSION, OWNER_UID, OFFICIAL_UID, PRO_FREE } from '../config.js';
+import { LIMITS, BADGES, VERSION, OWNER_UID, OFFICIAL_UID, PRO_FREE, released14 } from '../config.js';
 import { sfx } from '../game/sound.js';
 import { nameBadges } from '../ui/badges.js';
 import * as siteSvc from '../services/site.js';
@@ -39,7 +39,7 @@ export function blookPicker(current, onPick) {
 }
 
 function section(title, ...rows) {
-  const ic = { Profile: 'user', Account: 'key', 'Account & password': 'key', 'Display & games': 'eye', 'Your data': 'download', About: 'info', Security: 'shield', 'Quickzy Pro': 'star', 'More settings': 'gear', 'Sound & screen': 'volume', 'Trusted quiz maker': 'check', 'Your badge': 'shield', 'Your badges': 'shield' }[title] || 'gear';
+  const ic = { 'Account type': 'users', Profile: 'user', Account: 'key', 'Account & password': 'key', 'Display & games': 'eye', 'Your data': 'download', About: 'info', Security: 'shield', 'Quickzy Pro': 'star', 'More settings': 'gear', 'Sound & screen': 'volume', 'Trusted quiz maker': 'check', 'Your badge': 'shield', 'Your badges': 'shield' }[title] || 'gear';
   const id = `set-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`;
   return h('section', { class: 'card stack set-card', id },
     h('h2', { class: 'set-title' }, h('span', { class: 'set-ic' }, icon(ic, { size: 18 })), title), ...rows);
@@ -359,6 +359,13 @@ async function deleteAccount() {
         for (const q of await myQuizzes()) await deleteQuiz(q.id);
         for (const r of await myReports()) await deleteReport(r.id);
         await unfollowAll();
+        // leave every class, and forget the sign-up answers
+        const classes = await import('../services/classes.js');
+        for (const k of await classes.myClasses()) {
+          if (k.owner === u.uid) await classes.deleteClass(k).catch(() => {});
+          else if ((k.members || []).includes(u.uid)) await classes.leave(k).catch(() => {});
+        }
+        await net.store.del('about', u.uid).catch(() => {});
         const steps = [{ op: 'del', col: 'users', id: u.uid }];
         if (p && p.username) steps.unshift({ op: 'del', col: 'usernames', id: p.username });
         await net.store.batch(steps);
@@ -620,6 +627,34 @@ function moreSection() {
   ];
 }
 
+/** Account type: from the sign-up questions. Grown-ups switch between personal
+ *  and teaching; an under-18 account stays one. */
+function accountTypeSection() {
+  const p = session.myProfile() || {};
+  const use = p.use || '';
+  const box = h('div', { class: 'stack', style: { gap: '12px' } });
+  const label = { kid: 'Under 18', personal: 'For me', teacher: 'For teaching' }[use] || (session.me().uid === OWNER_UID ? 'Creator' : 'Not chosen yet');
+  if (use === 'kid' || session.me().uid === OWNER_UID) {
+    fill(box, row('Your account', use === 'kid' ? 'Blooks, boxes, games and classes. Ask your teacher for a class code.' : 'You can do everything, including classes.', h('span', { class: 'pill' }, label)));
+  } else if (!use) {
+    fill(box, row('Your account', 'Answer a few quick questions to set up Quickzy for you.', h('a', { class: 'btn btn-sm btn-main', href: '/welcome?next=/settings%23more/type' }, 'Start')));
+  } else {
+    const school = input({ value: p.school || '', maxlength: 80, placeholder: 'Your school' });
+    const saveSchool = h('button', { class: 'btn btn-sm' }, 'Save');
+    saveSchool.addEventListener('click', busy(saveSchool, async () => {
+      if (school.input ? !school.input.value.trim() : !school.value.trim()) { toast('Type your school', 'bad'); return; }
+      try { await session.patchProfile({ school: (school.input || school).value.trim().slice(0, 80) }); toast('School saved', 'ok'); } catch (e) { toast(explain(e), 'bad'); }
+    }));
+    fill(box,
+      row('Used for', 'Teaching adds Classes: announcements, homework, class codes and game PINs for your students.',
+        segmented([['personal', 'For me'], ['teacher', 'For teaching']], use, async (v) => {
+          try { await session.patchProfile({ use: v }); toast(v === 'teacher' ? 'Teacher tools are on. Find them in Classes.' : 'Switched to personal use', 'ok'); } catch (e) { toast(explain(e), 'bad'); }
+        })),
+      use === 'teacher' ? row('School', 'Shown on your classes.', h('div', { class: 'row' }, school, saveSchool)) : null);
+  }
+  return section('Account type', box);
+}
+
 /** More settings: a list of buttons; each one opens its own page, with Back. */
 function morePane(parts) {
   const views = parts.map(([key, label, , , card]) => h('div', { class: 'set-view stack', 'data-view': key, hidden: true },
@@ -699,6 +734,7 @@ export default async function Settings({ query }) {
     signedUp && { key: 'pro', label: 'Quickzy Pro', icon: 'star', body: [proSection()] },
     { key: 'sound', label: 'Sound & screen', icon: 'volume', body: [deviceSection()] },
     morePane([['account', 'Account & password', 'key', 'Email, password, sign out, delete account', accountSection()],
+      ...(released14() || session.me().uid === OWNER_UID ? [['type', 'Account type', 'users', 'For me, for teaching, or under 18; your school', accountTypeSection()]] : []),
       ...moreSection()]),
   ].filter(Boolean);
   return h('div', { class: 'page set-page' },

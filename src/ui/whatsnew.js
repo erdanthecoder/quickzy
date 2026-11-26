@@ -49,18 +49,29 @@ export const NEWS_13 = [
   ['play', '#ff8a2a', 'Train Travel, Laser Tag and Robot Run in 3D', 'Big-screen camera shots, neon arenas and a sunset city run.'],
 ];
 
-export const NEWS = VERSION === '1.3' ? NEWS_13 : VERSION === '1.2' ? NEWS_12 : NEWS_11;
+export const NEWS_14 = [
+  ['book', '#6b4cff', 'Quickzy for teachers', 'Pick "For teaching" and choose your school. Make classes for every group you teach.'],
+  ['users', '#12c9a6', 'Classes with a class code', 'Students type the code to join. Set your own code or get a random one, and add students or other teachers by username.'],
+  ['info', '#2f9bff', 'Announcements', 'Post news to the whole class. Everyone sees it on their class page.'],
+  ['play', '#ff4772', 'Send game PINs to your class', 'Host a game and press "Send to a class". Students tap Join game.'],
+  ['clock', '#ff8a2a', 'Homework in classes', 'Set one of your quizzes as homework right from the class, with a due date and every score.'],
+  ['hash', '#ffb21f', 'Quick questions', 'Ask the class one question in an announcement. See who got it right, live.'],
+  ['user', '#a560ff', 'A Quickzy that fits you', 'A few quick questions when you sign up: under 18 gets blooks, boxes and games; grown-ups pick personal or teaching.'],
+];
+
+export const NEWS = VERSION === '1.4' ? NEWS_14 : VERSION === '1.3' ? NEWS_13 : VERSION === '1.2' ? NEWS_12 : NEWS_11;
 
 export function showWhatsNew() {
   try { localStorage.setItem(KEY, VERSION); } catch { /* private mode */ }
   sfx('reveal');
   return modal((close) => [h('div', { class: 'wn' },
-    h('div', { class: 'wn-hero' }, logo(), h('div', {}, h('h2', {}, `Quickzy ${VERSION}`), h('p', { style: { margin: 0, fontWeight: 800, opacity: 0.9 } }, VERSION === '1.3' ? 'Questions in. Games out.' : 'The biggest update yet'))),
+    h('div', { class: 'wn-hero' }, logo(), h('div', {}, h('h2', {}, `Quickzy ${VERSION}`), h('p', { style: { margin: 0, fontWeight: 800, opacity: 0.9 } }, VERSION === '1.4' ? 'Quickzy for teachers and classes' : VERSION === '1.3' ? 'Questions in. Games out.' : 'The biggest update yet'))),
     h('ul', { class: 'wn-list' }, ...NEWS.map(([ic, col, title, text]) => h('li', {},
       h('span', { class: 'wn-ic', style: { background: col } }, icon(ic, { size: 18 })), h('div', {}, h('b', {}, title), h('small', {}, text))))),
     h('div', { class: 'row' },
-      h('button', { class: 'btn grow', onclick: () => { close(); playFilm(); } }, icon('play', { size: 16 }), `Watch the ${VERSION} film`),
-      h('button', { class: 'btn grow', onclick: () => { close(); playFilm('1.2'); } }, icon('play', { size: 16 }), 'The 1.2 film'),
+      VERSION === '1.4' ? h('a', { class: 'btn grow', href: '/classes', onclick: () => close() }, icon('users', { size: 16 }), 'Open Classes')
+        : h('button', { class: 'btn grow', onclick: () => { close(); playFilm(); } }, icon('play', { size: 16 }), `Watch the ${VERSION} film`),
+      h('button', { class: 'btn grow', onclick: () => { close(); playFilm(VERSION === '1.4' ? '1.3' : '1.2'); } }, icon('play', { size: 16 }), VERSION === '1.4' ? 'The 1.3 film' : 'The 1.2 film'),
       h('button', { class: 'btn btn-main grow', onclick: () => close() }, "Let's play")))]);
 }
 
@@ -78,6 +89,8 @@ export function maybeShowWhatsNew() {
 
 /** The film for this version: 1.2 is the 3D Sky Race film; 1.1 the plane film. */
 export function playFilm(version = VERSION) {
+  // 1.4 has no film: the highlights instead
+  if (version === '1.4') return Promise.resolve(showWhatsNew());
   // 1.3: Questions in. Games out.
   if (version === '1.3') return import('./film13.js').then((f) => f.playFilm13());
   // 1.2: the Sky Race film, then the teacher's story (once)

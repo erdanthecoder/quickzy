@@ -33,13 +33,16 @@ service cloud.firestore {
     // the owner can stop an account from publishing
     function banned() { return exists(/databases/$(database)/documents/bans/$(request.auth.uid)); }
     // Pro members (the owner and the official account always are)
-    function pro() {
+    function pro() { return signedIn() && proUid(request.auth.uid); }
+    function proUid(u) {
       // the free test is over: the owner, the official account and ugemnomads
-      return siteOwner() || request.auth.uid == 'XH9Z5D7tLmRHStlxumgaJyTo1BP2'
-        || request.auth.uid == 'f4BZrMpjQnV2B7n3iKq68J8poJ63'
-        || (exists(/databases/$(database)/documents/members/$(request.auth.uid))
-            && get(/databases/$(database)/documents/members/$(request.auth.uid)).data.until > request.time.toMillis());
+      return u == 'KWIRRSUM2VQVWnr1nUDbPP9bqMk2' || u == 'XH9Z5D7tLmRHStlxumgaJyTo1BP2'
+        || u == 'f4BZrMpjQnV2B7n3iKq68J8poJ63'
+        || (exists(/databases/$(database)/documents/members/$(u))
+            && get(/databases/$(database)/documents/members/$(u)).data.until > request.time.toMillis());
     }
+    // classes: free teachers have 2 (ids uid_1 and uid_2) of up to 100 students; Pro more
+    function roomFor(owner, n) { return n <= 100 || (n <= 300 && proUid(owner)); }
 
     // ------------------------------------------------------ sign out everywhere
     // the moment every older sign-in stops working; only the account itself
@@ -88,8 +91,12 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username))
         && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == uid;
       allow update: if me(uid)
-        && onlyKeys(['username', 'displayName', 'blook', 'createdAt', 'xp', 'coins', 'owned', 'customs', 'lastGame', 'channel', 'lastGift', 'banner', 'bio', 'metOwner', 'streak', 'lastDay'])
+        && onlyKeys(['username', 'displayName', 'blook', 'createdAt', 'xp', 'coins', 'owned', 'customs', 'lastGame', 'channel', 'lastGift', 'banner', 'bio', 'metOwner', 'streak', 'lastDay', 'use', 'school'])
         && progressOk()
+        // the account type from the sign-up questions; an under-18 account stays one
+        && request.resource.data.get('use', 'personal') in ['kid', 'personal', 'teacher']
+        && (resource.data.get('use', '') != 'kid' || request.resource.data.get('use', '') == 'kid')
+        && str(request.resource.data.get('school', ''), 80)
         && str(request.resource.data.get('banner', ''), 300)
         && str(request.resource.data.get('bio', ''), 160)
         && request.resource.data.get('metOwner', false) is bool
@@ -275,6 +282,138 @@ service cloud.firestore {
           && request.resource.data.right >= 0 && request.resource.data.right <= request.resource.data.total && request.resource.data.total <= 200
           && request.resource.data.at == request.time
           && get(/databases/$(database)/documents/homework/$(hid)).data.dueAt > request.time.toMillis();
+      }
+    }
+
+    // ------------------------------------------------------------ classes
+    // How someone found Quickzy and their age: private to them (and the owner)
+    match /about/{uid} {
+      allow read: if me(uid) || siteOwner();
+      allow create, update: if me(uid) && account()
+        && onlyKeys(['heard', 'age', 'at'])
+        && str(request.resource.data.heard, 40)
+        && request.resource.data.age is int && request.resource.data.age >= 4 && request.resource.data.age <= 120
+        && request.resource.data.at == request.time;
+      allow delete: if me(uid);
+    }
+
+    // A class code points at its class; codes are unique because each is a document
+    match /classcodes/{code} {
+      allow get: if account();
+      allow create: if account() && onlyKeys(['cid', 'owner'])
+        && code.matches('^[A-Z0-9]{4,10}$')
+        && request.resource.data.owner == request.auth.uid
+        && getAfter(/databases/$(database)/documents/classes/$(request.resource.data.cid)).data.code == code
+        && (getAfter(/databases/$(database)/documents/classes/$(request.resource.data.cid)).data.owner == request.auth.uid
+            || request.auth.uid in getAfter(/databases/$(database)/documents/classes/$(request.resource.data.cid)).data.get('teachers', []));
+      allow delete: if signedIn() && (resource.data.owner == request.auth.uid
+        || get(/databases/$(database)/documents/classes/$(resource.data.cid)).data.owner == request.auth.uid
+        || request.auth.uid in get(/databases/$(database)/documents/classes/$(resource.data.cid)).data.get('teachers', []));
+    }
+
+    // Classes: a teacher makes one, students join with its code
+    match /classes/{cid} {
+      function teacherAccount() {
+        return siteOwner() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('use', '') == 'teacher';
+      }
+      function teaches(c) { return signedIn() && (c.owner == request.auth.uid || request.auth.uid in c.get('teachers', [])); }
+      function inIt(c) { return teaches(c) || (signedIn() && request.auth.uid in c.get('members', [])); }
+      function cls() { return get(/databases/$(database)/documents/classes/$(cid)).data; }
+      function codeOk(d) {
+        return d.code is string && existsAfter(/databases/$(database)/documents/classcodes/$(d.code))
+          && getAfter(/databases/$(database)/documents/classcodes/$(d.code)).data.cid == cid;
+      }
+
+      // the id is only known from its code or by being in it
+      allow get: if account();
+      allow list: if account() && (resource.data.owner == request.auth.uid
+        || request.auth.uid in resource.data.members || request.auth.uid in resource.data.teachers);
+      allow create: if account() && !banned() && teacherAccount()
+        && (cid == request.auth.uid + '_1' || cid == request.auth.uid + '_2' || pro())
+        && onlyKeys(['owner', 'ownerName', 'name', 'school', 'code', 'members', 'teachers', 'color', 'createdAt'])
+        && request.resource.data.owner == request.auth.uid
+        && str(request.resource.data.ownerName, 30)
+        && str(request.resource.data.name, 60) && request.resource.data.name.size() > 0
+        && str(request.resource.data.school, 80)
+        && request.resource.data.members == [] && request.resource.data.teachers == []
+        && request.resource.data.color is int
+        && request.resource.data.createdAt == request.time
+        && codeOk(request.resource.data);
+      // teachers run it; only the owner chooses the other teachers
+      allow update: if account() && teaches(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'school', 'code', 'members', 'teachers', 'color'])
+        && (resource.data.owner == request.auth.uid || request.resource.data.teachers == resource.data.teachers)
+        && request.resource.data.owner == resource.data.owner
+        && str(request.resource.data.name, 60) && request.resource.data.name.size() > 0
+        && str(request.resource.data.school, 80)
+        && request.resource.data.members is list
+        && (request.resource.data.members.size() <= resource.data.members.size() || roomFor(resource.data.owner, request.resource.data.members.size()))
+        && request.resource.data.teachers is list && request.resource.data.teachers.size() <= 10
+        && (request.resource.data.code == resource.data.code || codeOk(request.resource.data));
+      // a student joins (with the code, checked on their people entry) ...
+      allow update: if account()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && !(request.auth.uid in resource.data.members)
+        && request.resource.data.members.size() == resource.data.members.size() + 1
+        && request.resource.data.members.hasAll(resource.data.members)
+        && request.auth.uid in request.resource.data.members
+        && roomFor(resource.data.owner, request.resource.data.members.size())
+        && existsAfter(/databases/$(database)/documents/classes/$(cid)/people/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/classes/$(cid)/people/$(request.auth.uid)).data.get('code', '') == resource.data.code;
+      // ... or leaves
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.auth.uid in resource.data.members
+        && !(request.auth.uid in request.resource.data.members)
+        && request.resource.data.members.size() == resource.data.members.size() - 1
+        && resource.data.members.hasAll(request.resource.data.members);
+      allow delete: if signedIn() && (resource.data.owner == request.auth.uid || siteOwner());
+
+      match /people/{uid} {
+        function personOk() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['name', 'username', 'blook', 'role', 'code', 'at'])
+            && str(d.name, 30) && str(d.username, 20) && str(d.blook, 20)
+            && d.role in ['student', 'teacher'] && d.at == request.time;
+        }
+        allow read: if inIt(cls());
+        // joining yourself needs the class code
+        allow create: if me(uid) && account() && personOk()
+          && request.resource.data.role == 'student'
+          && request.resource.data.code == cls().code;
+        // teachers add and remove people
+        allow create, update: if account() && teaches(cls()) && personOk()
+          && (request.resource.data.role == 'student' || cls().owner == request.auth.uid);
+        allow delete: if signedIn() && (request.auth.uid == uid || teaches(cls()));
+      }
+
+      match /posts/{pid} {
+        allow read: if inIt(cls());
+        allow create: if account() && !banned() && teaches(cls())
+          && onlyKeys(['by', 'byName', 'kind', 'text', 'pin', 'title', 'hwId', 'dueAt', 'options', 'answer', 'at'])
+          && request.resource.data.by == request.auth.uid
+          && str(request.resource.data.byName, 30)
+          && request.resource.data.kind in ['note', 'game', 'homework', 'question']
+          && str(request.resource.data.text, 1000)
+          && str(request.resource.data.get('pin', ''), 6)
+          && str(request.resource.data.get('title', ''), 80)
+          && str(request.resource.data.get('hwId', ''), 60)
+          && request.resource.data.get('dueAt', 0) is int
+          && request.resource.data.get('options', []) is list && request.resource.data.get('options', []).size() <= 4
+          && request.resource.data.get('answer', 0) is int
+          && request.resource.data.at == request.time;
+        allow delete: if signedIn() && teaches(cls());
+
+        // the one-question quiz in an announcement: one answer each
+        match /answers/{uid} {
+          allow read: if signedIn() && (request.auth.uid == uid || teaches(cls()));
+          allow create: if me(uid) && account() && inIt(cls())
+            && onlyKeys(['name', 'choice', 'at'])
+            && str(request.resource.data.name, 30)
+            && request.resource.data.choice is int && request.resource.data.choice >= 0 && request.resource.data.choice < 4
+            && request.resource.data.at == request.time
+            && get(/databases/$(database)/documents/classes/$(cid)/posts/$(pid)).data.kind == 'question';
+        }
       }
     }
 

@@ -11,7 +11,7 @@ import { popularQuizzes, quizzesBy } from '../services/quizzes.js';
 import { OFFICIAL_UID } from '../config.js';
 import { quizCard, cover, authorLine } from './parts.js';
 import { ornamentBand } from '../ui/ornament.js';
-import { NEWS, NEWS_12, NEWS_11, playFilm } from '../ui/whatsnew.js';
+import { NEWS, NEWS_13, NEWS_12, NEWS_11, playFilm } from '../ui/whatsnew.js';
 import { VERSION } from '../config.js';
 
 export function joinBox() {
@@ -56,6 +56,8 @@ export default async function Home() {
   // one official quiz a day, the same for everyone that day
   const daily = h('div');
   const inviteSlot = h('div');
+  const classSlot = h('div');
+  if (signedIn()) import('../services/classes.js').then((c) => classesCard(c)).then((el) => { if (el) fill(classSlot, el); }).catch(() => {});
   const installSlot = h('div');
   import('../ui/install.js').then((m) => {
     const draw = () => fill(installSlot, m.canInstall() ? h('div', { class: 'install-card' },
@@ -142,6 +144,8 @@ export default async function Home() {
       h('a', { class: 'hm-tile hm-tile-safe', href: '/teachers' },
         h('small', {}, 'For schools'), h('h3', {}, 'No ads. No chat. No accounts for kids.'), h('p', {}, 'Players only see names and scores, and hosts can remove anyone.'))),
 
+    classSlot,
+
     whatsNew(),
 
     installSlot,
@@ -162,12 +166,28 @@ export default async function Home() {
   );
 }
 
+/** Classes on the home page: your classroom (teachers), or join with a code. */
+async function classesCard(c) {
+  if (!c.classesOpen()) return null;
+  const [{ joinClassBox }, list] = await Promise.all([import('./classes.js'), c.myClasses()]);
+  const teach = c.canTeach();
+  const items = list.slice(0, 4).map((k) => h('a', { class: 'hm-class', href: `/class/${k.id}` }, h('b', {}, k.name), h('small', {}, c.teaches(k) ? `${(k.members || []).length} students · code ${k.code}` : k.ownerName)));
+  return h('section', { class: 'hm-classes reveal' },
+    h('div', { class: 'hm-classes-head' },
+      h('div', {}, h('span', { class: 'cl-ver' }, 'New in 1.4'), h('h2', { class: 'hm-h2' }, teach ? 'Your classroom' : 'Your classes')),
+      h('a', { class: 'btn btn-sm', href: teach && !list.length ? '/classes?new=1' : '/classes' }, teach && !list.length ? 'Make a class' : 'All classes', icon('arrowRight', { size: 16 }))),
+    items.length ? h('div', { class: 'hm-class-row' }, ...items) : h('p', { class: 'muted', style: { margin: 0 } }, teach ? 'Make a class and give your students its code.' : 'Got a class code from your teacher? Type it here.'),
+    teach ? null : joinClassBox({ compact: true }));
+}
+
 /** The changelog, right on the home page: this version first, older ones folded away. */
 function whatsNew() {
   const list = (items) => h('ul', { class: 'cl-list' }, ...items.map(([ic, col, title, text]) => h('li', {},
     h('span', { class: 'cl-ic', style: { background: col } }, icon(ic, { size: 18 })), h('div', {}, h('b', {}, title), h('p', {}, text)))));
-  const older = [['1.2', NEWS_12], ['1.1', NEWS_11]].filter(([v]) => v !== VERSION);
-  const film = h('button', { class: 'btn btn-sm', onclick: () => playFilm() }, icon('play', { size: 16 }), `Watch the ${VERSION} film`);
+  const older = [['1.3', NEWS_13], ['1.2', NEWS_12], ['1.1', NEWS_11]].filter(([v]) => v !== VERSION);
+  const film = VERSION === '1.4'
+    ? h('a', { class: 'btn btn-sm', href: '/classes' }, icon('users', { size: 16 }), 'Open Classes')
+    : h('button', { class: 'btn btn-sm', onclick: () => playFilm() }, icon('play', { size: 16 }), `Watch the ${VERSION} film`);
   return h('section', { class: 'cl reveal', id: 'whats-new' },
     h('div', { class: 'cl-head' },
       h('div', {}, h('span', { class: 'cl-ver' }, `Quickzy ${VERSION}`), h('h2', { class: 'hm-h2' }, "What's new")),
