@@ -467,3 +467,7 @@ body.in-game { background: var(--night); color: #fff; overscroll-behavior: none;
 .verdict-streak.is-3, .verdict-streak.is-4 { background: linear-gradient(90deg, #ff8a2a, #ff4772); }
 .verdict-streak.is-5 { background: linear-gradient(90deg, #ffcd1f, #ff4772, #a560ff); box-shadow: 0 0 24px rgba(255, 138, 42, .7); animation: cheer-in .5s cubic-bezier(.2, 1.6, .4, 1) .3s both, streak-glow 1s ease-in-out .8s infinite alternate; }
 @keyframes streak-glow { to { box-shadow: 0 0 40px rgba(255, 71, 114, .9); } }
+.pad.pad-fact { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 14px; }
+.pad-fact-card { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; background: #fff4cc; color: #5a4300; font-weight: 900; }
+.pad-fact-card span { font-size: 24px; animation: cheer-in .6s cubic-bezier(.2, 1.6, .4, 1) both; }
+.pad.pad-fact .pad-gotit { width: auto; height: auto; min-height: 0; padding: 16px 34px; font-size: 1.2rem; }

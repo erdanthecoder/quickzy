@@ -216,6 +216,9 @@ export default async function HostLive({ params }) {
   }
 
   function tiles(q, reveal) {
+    if (q.type === 'fact') {
+      return h('div', { class: 'type-wait fact-show' }, icon('info', { size: 44 }), h('b', {}, reveal ? 'Everyone read it' : 'A fact: read it on your device and tap Got it'));
+    }
     if (q.type === 'type' || q.type === 'number') {
       return h('div', { class: 'type-wait' }, icon(q.type === 'number' ? 'hash' : 'type', { size: 40 }),
         reveal ? h('div', {}, h('small', {}, 'The answer'), h('b', {}, reveal.display)) : h('b', {}, q.type === 'number' ? 'Players are typing a number' : 'Players are typing their answers'));
@@ -253,7 +256,7 @@ export default async function HostLive({ params }) {
         bar(h('span', { class: 'pill pill-dark' }, progress)),
         h('div', { class: 'q-intro' },
           h('p', { class: 'q-type' }, typeLabel),
-          h('h1', {}, q.text),
+          h('h1', {}, q.type === 'fact' && q.video ? 'Watch the video\u2026' : q.text),
           q.video ? videoClip(q.video) : picture(q.img),
           bar2),
         h('div', { class: 'host-foot' }, pinText(false), h('button', { class: 'btn btn-dark', onclick: () => ref.next() }, q.video ? 'Skip the video' : 'Show answers now')));

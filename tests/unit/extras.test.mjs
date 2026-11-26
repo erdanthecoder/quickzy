@@ -55,8 +55,31 @@ test('video clips: YouTube links, times, limits', async () => {
   assert.equal(q.parseTime('90'), 90);
   assert.deepEqual(q.cleanVideo({ id: 'dQw4w9WgXcQ', start: 10, end: 40 }), { id: 'dQw4w9WgXcQ', start: 10, end: 40 });
   assert.equal(q.cleanVideo({ id: 'dQw4w9WgXcQ', start: 40, end: 10 }), null);
-  assert.equal(q.cleanVideo({ id: 'dQw4w9WgXcQ', start: 0, end: 900 }), null);
+  // a clip may be up to an hour long (a video quiz's stops can be far apart)
+  assert.deepEqual(q.cleanVideo({ id: 'dQw4w9WgXcQ', start: 0, end: 900 }), { id: 'dQw4w9WgXcQ', start: 0, end: 900 });
+  assert.equal(q.cleanVideo({ id: 'dQw4w9WgXcQ', start: 0, end: 3700 }), null);
   const { pub, key } = q.split([{ id: 'a', type: 'tf', text: 'Watch', time: 10, points: 'standard', answer: true, video: { id: 'dQw4w9WgXcQ', start: 0, end: 20 } }]);
   assert.equal(pub[0].video.end, 20);
   assert.equal(q.join(pub, key)[0].video.id, 'dQw4w9WgXcQ');
+});
+
+test('facts: nothing to get right, they just count as read', async () => {
+  const q = await import('../../src/game/questions.js');
+  const fact = { id: 'f1', type: 'fact', text: 'Rabbits see almost all the way round.', time: 15, points: 'none' };
+  assert.equal(q.problem(fact), '');
+  assert.equal(q.problem({ ...fact, text: ' ' }), 'Write the fact.');
+  const { pub, key } = q.split([fact]);
+  assert.equal(pub[0].points, 'none');
+  assert.equal(key[0], null);
+  assert.equal(q.validChoice(pub[0], 0), true);
+  assert.equal(q.validChoice(pub[0], 1), false);
+  assert.deepEqual(q.check(pub[0], key[0], 0), { correct: false, poll: true, fact: true, display: '' });
+});
+
+test('video quiz: stops become back-to-back clips of one video', async () => {
+  const { stopsToQuestions, isVideoLesson } = await import('../../src/pages/video.js').catch(() => ({}));
+  if (!stopsToQuestions) return; // the page needs a browser to load; covered by the browser tests
+  const qs = stopsToQuestions('dQw4w9WgXcQ', [{ id: 'b', type: 'fact', at: 40, text: 'x' }, { id: 'a', type: 'tf', at: 10, text: 'y', answer: true }]);
+  assert.deepEqual(qs.map((x) => [x.id, x.video.start, x.video.end]), [['a', 0, 10], ['b', 10, 40]]);
+  assert.equal(isVideoLesson({ questions: qs }), true);
 });

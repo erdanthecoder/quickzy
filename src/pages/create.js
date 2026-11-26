@@ -9,7 +9,7 @@ import { pageTitle } from './parts.js';
 
 const KINDS = [
   ['/create', 'Quiz', 'Questions with answers. Host it live, play it as a game or set it as homework.', 'list', '#6b4cff', false],
-  ['/create?video=1', 'Video quiz', 'A YouTube clip plays, stops by itself, then the question is asked.', 'play', '#ff4772', true],
+  ['/video', 'Video quiz', 'One YouTube video. Add questions and facts anywhere in it: the video pauses there for everyone.', 'play', '#ff4772', true],
   ['/present', 'Presentation+', 'Slides with live polls, guess-the-graph and quiz slides. Import from PowerPoint.', 'chart', '#12c9a6', true],
 ];
 

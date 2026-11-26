@@ -31,6 +31,12 @@ export function answerPad(q, { showText = true, onSubmit, compact = false }) {
     return root;
   }
 
+  if (q.type === 'fact') {
+    root.append(h('div', { class: 'pad-fact-card' }, h('span', {}, '\u{1F4A1}'), h('b', {}, 'Did you know?')),
+      h('button', { type: 'button', class: 'btn btn-main btn-xl pad-gotit', onclick: () => { sfx('pick'); send(0); } }, icon('check', { size: 22 }), 'Got it!'));
+    return root;
+  }
+
   if (q.type === 'tf') {
     root.classList.add('n2');
     root.append(big(1, 'True', () => send(true)), big(0, 'False', () => send(false)));
@@ -118,7 +124,8 @@ function countUp(el, to) {
   requestAnimationFrame(step);
 }
 
-export function verdict({ ok, poll, pts, display, streak }) {
+export function verdict({ ok, poll, pts, display, streak, fact }) {
+  if (fact) return h('div', { class: 'verdict is-poll' }, icon('info', { size: 56 }), h('h2', {}, 'Got it'), h('p', { class: 'verdict-cheer' }, 'On with the video!'));
   if (poll) return h('div', { class: 'verdict is-poll' }, icon('chart', { size: 56 }), h('h2', {}, 'Vote counted'));
   const ptsEl = ok ? h('div', { class: 'verdict-pts' }, `+${pts}`) : null;
   if (ptsEl) countUp(ptsEl, pts);
