@@ -101,12 +101,33 @@ export function answerPad(q, { showText = true, onSubmit, compact = false }) {
 }
 
 /** The big "Correct / Not quite" card shown after an answer is marked. */
+const CHEERS = ['Brain power!', 'Genius!', 'Nailed it!', 'Superstar!', 'On point!', 'Big brain!', 'Legend!', 'Too easy!', 'Smart move!', 'Unstoppable!'];
+const COMFORT = ['So close!', 'Next one is yours!', 'Shake it off!', 'Keep going!', 'You will get the next one!'];
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
+
+/** Points that count up, for a little drama. */
+function countUp(el, to) {
+  if (document.documentElement.dataset.motion === 'calm' || !(to > 0)) { el.textContent = `+${to}`; return; }
+  const start = performance.now();
+  const step = (t) => {
+    const k = Math.min(1, (t - start) / 700);
+    el.textContent = `+${Math.round(to * (1 - (1 - k) ** 3))}`;
+    if (k < 1 && el.isConnected !== false) requestAnimationFrame(step);
+  };
+  el.textContent = '+0';
+  requestAnimationFrame(step);
+}
+
 export function verdict({ ok, poll, pts, display, streak }) {
   if (poll) return h('div', { class: 'verdict is-poll' }, icon('chart', { size: 56 }), h('h2', {}, 'Vote counted'));
+  const ptsEl = ok ? h('div', { class: 'verdict-pts' }, `+${pts}`) : null;
+  if (ptsEl) countUp(ptsEl, pts);
+  const fire = ok && streak > 1 ? Math.min(streak, 5) : 0;
   return h('div', { class: `verdict ${ok ? 'is-ok' : 'is-bad'}` },
     h('div', { class: 'verdict-icon' }, icon(ok ? 'check' : 'close', { size: 60, stroke: 3.6 })),
     h('h2', {}, ok ? 'Correct' : 'Not quite'),
-    ok ? h('div', { class: 'verdict-pts' }, `+${pts}`) : null,
-    ok && streak > 1 ? h('div', { class: 'pill pill-zing' }, icon('bolt', { size: 14 }), `${streak} in a row`) : null,
+    h('p', { class: 'verdict-cheer' }, ok ? pick(CHEERS) : pick(COMFORT)),
+    ptsEl,
+    fire ? h('div', { class: `verdict-streak is-${fire}` }, h('span', {}, '\u{1F525}'.repeat(Math.min(fire, 3))), `${streak} in a row`, streak >= 5 ? ' \u2014 on fire!' : '') : null,
     !ok && display ? h('p', {}, 'The answer was ', h('b', {}, display)) : null);
 }

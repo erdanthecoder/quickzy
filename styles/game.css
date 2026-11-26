@@ -459,3 +459,11 @@ body.in-game { background: var(--night); color: #fff; overscroll-behavior: none;
 .key-hint span kbd:last-of-type { margin-right: 3px; }
 .key-hint.is-faded { opacity: 0.45; }
 @media (pointer: fine) { .key-hint { display: flex; } }
+/* the answer screen: a cheer, points that count up, and a growing streak */
+.verdict-cheer { margin: -4px 0 4px; font-weight: 900; font-size: 1.15rem; opacity: 0.92; animation: cheer-in .5s cubic-bezier(.2, 1.6, .4, 1) .15s both; }
+@keyframes cheer-in { from { transform: scale(.4) rotate(-8deg); opacity: 0; } }
+.verdict-streak { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.22); font-weight: 900; animation: cheer-in .5s cubic-bezier(.2, 1.6, .4, 1) .3s both; }
+.verdict-streak span { font-size: 1.2em; letter-spacing: -2px; }
+.verdict-streak.is-3, .verdict-streak.is-4 { background: linear-gradient(90deg, #ff8a2a, #ff4772); }
+.verdict-streak.is-5 { background: linear-gradient(90deg, #ffcd1f, #ff4772, #a560ff); box-shadow: 0 0 24px rgba(255, 138, 42, .7); animation: cheer-in .5s cubic-bezier(.2, 1.6, .4, 1) .3s both, streak-glow 1s ease-in-out .8s infinite alternate; }
+@keyframes streak-glow { to { box-shadow: 0 0 40px rgba(255, 71, 114, .9); } }
