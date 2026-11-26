@@ -125,6 +125,66 @@ export async function openBox(boxId, rand = Math.random) {
   return { id, duplicate, refund };
 }
 
+// one batch of packs at a time, so two batches never write over each other
+let opening = Promise.resolve();
+
+/**
+ * Open n packs in a row. Each pack is its own save (the rules allow one new
+ * blook per save). Coins may only go up once every 15 seconds, so the coins
+ * back from repeats pay for the next packs, and whatever is left over is
+ * added once at the end. onEach(result, i) is called as each pack opens.
+ */
+export function openBoxes(boxId, n, onEach = () => {}, rand = Math.random) {
+  const run = opening.then(() => openMany(boxId, n, onEach, rand));
+  opening = run.catch(() => {});
+  return run;
+}
+
+function rarestFor(pool, rand) {
+  const rank = (x) => ['common', 'uncommon', 'rare', 'epic', 'legendary'].indexOf(rarityOf(x).id);
+  const top = Math.max(...pool.map(rank));
+  const best = pool.filter((x) => rank(x) === top);
+  const fresh = best.filter((x) => !(x in me().owned));
+  const from = fresh.length ? fresh : best;
+  return from[Math.floor(rand() * from.length)];
+}
+
+async function openMany(boxId, n, onEach, rand) {
+  if (!signedIn()) throw new Error('Sign in to open boxes.');
+  const count = Math.max(1, Math.min(10, Math.floor(n) || 1));
+  await reloadProfile();
+  const box = BOXES.find((b) => b.id === boxId);
+  if (!box) throw new Error('That box does not exist.');
+  if (!boxOpen(box)) throw new Error(`The ${box.name} was a limited edition and has closed.`);
+  if (levelOf(me().xp) < box.level) throw new Error(`The ${box.name} opens at level ${box.level}.`);
+  if (me().coins < box.price * count) throw new Error(`You need ${box.price * count} coins.`);
+  const luck = box.luck + (eventBoosts(await currentEvent().catch(() => null)).lucky ? 1 : 0);
+  const rank = (x) => ['common', 'uncommon', 'rare', 'epic', 'legendary'].indexOf(rarityOf(x).id);
+  let credit = 0;
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const m = me();
+    let id = drawFromBox(rand, box.pool);
+    for (let k = 1; k < luck; k++) { const next = drawFromBox(rand, box.pool); if (rank(next) > rank(id)) id = next; }
+    // the creator always gets the rarest in the pack, one not found yet if there is one
+    if (who()?.uid === OWNER_UID) id = rarestFor(box.pool, rand);
+    const duplicate = owns(id);
+    const refund = duplicate ? rarityOf(id).refund : 0;
+    const known = id in m.owned;
+    const owned = { ...m.owned, [id]: (m.owned[id] || (STARTERS.includes(id) ? 1 : 0)) + 1 };
+    credit += refund;
+    let coins = m.coins - box.price;
+    // a repeat of a blook already saved can take some coins back now
+    if (known) { const use = Math.min(credit, box.price); coins += use; credit -= use; }
+    await patchProfile({ coins, owned });
+    const res = { id, duplicate, refund };
+    out.push(res);
+    onEach(res, i);
+  }
+  if (credit > 0) await patchProfile({ coins: me().coins + credit });
+  return out;
+}
+
 /** Save a custom blook into a slot (0, 1 or 2). */
 export async function saveCustom(slot, id) {
   if (!isCustom(id)) throw new Error('That blook is not finished.');

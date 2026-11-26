@@ -63,6 +63,10 @@ function daysLeft(ends) {
   return d <= 1 ? 'Last day!' : `${d} days left`;
 }
 
+// how many of each pack you last chose to open
+const pickCount = {};
+const COUNTS = [1, 5, 10];
+
 function boxes(redraw) {
   const m = progress.me();
   const lvl = progress.levelOf(m.xp);
@@ -70,29 +74,36 @@ function boxes(redraw) {
   const list = progress.BOXES.filter((b) => progress.boxOpen(b)).sort((x, y) => Number(Boolean(y.limited)) - Number(Boolean(x.limited)));
   return h('div', { class: 'boxes' }, ...list.map((box) => {
     const locked = lvl < box.level;
-    const btn = h('button', { class: 'btn btn-main', disabled: locked || m.coins < box.price }, coin(), String(box.price));
-    btn.addEventListener('click', busy(btn, async () => {
-      try {
-        let again = true;
-        while (again) {
-          const res = await progress.openBox(box.id);
-          again = (await reveal(res, box)) === 'again';
-        }
-        redraw();
-      } catch (err) { toast(err.message, 'bad'); }
+    const can = Math.floor(m.coins / box.price);
+    let n = Math.max(1, Math.min(pickCount[box.id] || 1, ...COUNTS.filter((c) => c <= Math.max(1, can))));
+    const open = h('button', { class: 'btn btn-main box-open', disabled: locked || can < 1 });
+    const label = () => fill(open, n > 1 ? `Open ${n}` : 'Open', coin(), String(box.price * n));
+    const chips = COUNTS.map((c) => h('button', { type: 'button', class: 'pk-n', disabled: locked || c > can, 'aria-pressed': String(c === n) }, `×${c}`));
+    chips.forEach((b, i) => b.addEventListener('click', () => {
+      n = COUNTS[i];
+      pickCount[box.id] = n;
+      chips.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      sfx('pick');
+      label();
+    }));
+    label();
+    open.addEventListener('click', busy(open, async () => {
+      try { await openPacks(box, n); } catch (err) { toast(err.message, 'bad'); }
+      redraw();
     }));
     const odds = boxOdds(box).map(([r, p]) => h('li', {}, h('i', { style: { background: r.colour } }), `${r.name} ${fmtPct(p)}`));
-    const peek = h('div', { class: 'box-peek', 'aria-label': 'Blooks in this box' },
+    const peek = h('div', { class: 'box-peek', 'aria-label': 'Blooks in this pack' },
       ...box.pool.slice().sort((x, y) => ORDER.indexOf(rarityOf(y).id) - ORDER.indexOf(rarityOf(x).id)).slice(0, 6)
         .map((id) => { const el = blook(id); if (!progress.owns(id)) el.classList.add('is-unknown'); return el; }));
-    return h('div', { class: `box-card${locked ? ' is-locked' : ''}${box.limited ? ' is-limited' : ''}`, style: { background: box.colour } },
+    return h('div', { class: `box-card pk-${box.id}${locked ? ' is-locked' : ''}${box.limited ? ' is-limited' : ''}`, style: { background: box.colour } },
       box.limited ? h('div', { class: 'snow', 'aria-hidden': 'true' }) : null,
       box.limited ? h('span', { class: 'limited-tag' }, icon('star', { size: 12 }), box.blurb, ' · ', daysLeft(box.ends)) : null,
-      h('div', { class: 'box-art' }, boxArt(box.limited)),
+      h('div', { class: 'box-art' }, boxArt(box)),
       h('h3', {}, box.name),
       peek,
       locked ? h('p', {}, icon('lock', { size: 14 }), ` Opens at level ${box.level}`) : h('ul', { class: 'odds' }, ...odds),
-      btn);
+      locked ? null : h('div', { class: 'pk-count', role: 'group', 'aria-label': 'How many packs to open' }, ...chips),
+      open);
   }));
 }
 
@@ -107,190 +118,195 @@ function luckyChance(id, draws) {
 }
 const fmtPct = (p) => `${p < 0.1 ? (p * 100).toFixed(1) : Math.round(p * 100)}%`;
 
-function boxArt(winter = false) {
+// every pack has its own look
+const ART = {
+  // a purple gift box with the Q on it
+  basic: '<rect x="18" y="40" width="64" height="46" rx="10" fill="#fff"/><rect x="12" y="28" width="76" height="18" rx="8" fill="#efe9ff"/>'
+    + '<rect x="45" y="28" width="10" height="58" fill="#6b4cff"/><path d="M50 28 C36 8 22 18 34 28 Z M50 28 C64 8 78 18 66 28 Z" fill="#ffcd1f"/>'
+    + '<circle cx="50" cy="64" r="13" fill="#6b4cff"/><text x="50" y="70" text-anchor="middle" font-size="17" font-weight="900" fill="#fff" font-family="sans-serif">Q</text>',
+  // a Christmas present under snow
+  winter: '<rect x="18" y="40" width="64" height="46" rx="10" fill="#fff"/><rect x="12" y="28" width="76" height="18" rx="8" fill="#fff"/>'
+    + '<rect x="45" y="28" width="10" height="58" fill="#e2384d"/><path d="M50 28 C36 8 22 18 34 28 Z M50 28 C64 8 78 18 66 28 Z" fill="#e2384d"/>'
+    + '<path d="M14 30 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0" fill="none" stroke="#dff1ff" stroke-width="5" stroke-linecap="round"/>'
+    + '<circle cx="72" cy="62" r="5" fill="#19a35b"/><circle cx="64" cy="72" r="4" fill="#ffcd1f"/><circle cx="28" cy="66" r="4" fill="#19a35b"/>',
+  // a wooden cargo crate on rails
+  rails: '<rect x="8" y="84" width="84" height="5" rx="2" fill="#5a3b22"/><rect x="16" y="78" width="6" height="12" fill="#3b2a1e"/><rect x="47" y="78" width="6" height="12" fill="#3b2a1e"/><rect x="78" y="78" width="6" height="12" fill="#3b2a1e"/>'
+    + '<rect x="16" y="26" width="68" height="52" rx="6" fill="#d9954f"/><rect x="16" y="26" width="68" height="52" rx="6" fill="none" stroke="#7a4b24" stroke-width="5"/>'
+    + '<path d="M19 29 L81 75 M81 29 L19 75" stroke="#7a4b24" stroke-width="5"/><circle cx="50" cy="52" r="11" fill="#ffcd1f" stroke="#7a4b24" stroke-width="3"/>'
+    + '<path d="M44 52 h12 M50 46 v12" stroke="#7a4b24" stroke-width="3" stroke-linecap="round"/>',
+  // a picnic basket with a paw print
+  animal: '<path d="M26 42 C26 14 74 14 74 42" fill="none" stroke="#8b5a2b" stroke-width="7" stroke-linecap="round"/>'
+    + '<path d="M12 40 H88 L80 86 H20 Z" fill="#e0a95f"/><path d="M16 52 H84 M18 64 H82 M19 76 H81" stroke="#b67a3a" stroke-width="3"/>'
+    + '<rect x="10" y="36" width="80" height="10" rx="5" fill="#b67a3a"/>'
+    + '<ellipse cx="50" cy="68" rx="9" ry="8" fill="#fff"/><circle cx="38" cy="56" r="4.5" fill="#fff"/><circle cx="46" cy="51" r="4.5" fill="#fff"/><circle cx="54" cy="51" r="4.5" fill="#fff"/><circle cx="62" cy="56" r="4.5" fill="#fff"/>',
+  // a shiny crisp packet
+  snack: '<path d="M22 14 H78 L74 22 C82 46 82 62 74 82 L78 90 H22 L26 82 C18 62 18 46 26 22 Z" fill="#ffd23f"/>'
+    + '<path d="M22 14 H78 L74 22 H26 Z M26 82 H74 L78 90 H22 Z" fill="#ff4772"/>'
+    + '<path d="M22 14 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3" fill="none" stroke="#c22a52" stroke-width="2"/>'
+    + '<ellipse cx="50" cy="52" rx="18" ry="14" fill="#ff8a2a"/><text x="50" y="57" text-anchor="middle" font-size="12" font-weight="900" fill="#fff" font-family="sans-serif">YUM</text>'
+    + '<path d="M32 30 C30 40 30 48 31 54" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".6"/>',
+  // a planet with a ring and stars
+  space: '<circle cx="50" cy="52" r="26" fill="#7b5cff"/><circle cx="42" cy="44" r="6" fill="#a58bff"/><circle cx="58" cy="62" r="4" fill="#5a3fd6"/>'
+    + '<ellipse cx="50" cy="54" rx="44" ry="11" fill="none" stroke="#ffcd1f" stroke-width="5" transform="rotate(-14 50 54)"/>'
+    + '<path d="M50 26 A26 26 0 0 1 76 52" fill="none" stroke="#fff" stroke-width="3" opacity=".35"/>'
+    + '<path d="M16 16 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 Z M84 78 l1.5 4 l4 1.5 l-4 1.5 l-1.5 4 l-1.5 -4 l-4 -1.5 l4 -1.5 Z M82 18 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1 Z" fill="#fff"/>',
+  // a treasure chest full of gold
+  gold: '<path d="M14 44 C14 20 86 20 86 44 Z" fill="#b8551f"/><rect x="14" y="44" width="72" height="42" rx="6" fill="#d66a26"/>'
+    + '<rect x="14" y="40" width="72" height="8" fill="#ffcd1f"/><rect x="24" y="24" width="6" height="62" fill="#ffcd1f"/><rect x="70" y="24" width="6" height="62" fill="#ffcd1f"/>'
+    + '<rect x="42" y="40" width="16" height="18" rx="3" fill="#ffe27a" stroke="#8a4a12" stroke-width="2.5"/><circle cx="50" cy="48" r="3" fill="#8a4a12"/>'
+    + '<path d="M36 20 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 Z M66 12 l1.5 4 l4 1.5 l-4 1.5 l-1.5 4 l-1.5 -4 l-4 -1.5 l4 -1.5 Z" fill="#fff6c2"/>',
+};
+
+function boxArt(box) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   s.setAttribute('viewBox', '0 0 100 100');
-  const ribbon = winter ? '#e2384d' : '#17133f';
-  s.innerHTML = '<rect x="18" y="38" width="64" height="48" rx="10" fill="#fff" opacity=".95"/>'
-    + '<rect x="12" y="26" width="76" height="20" rx="8" fill="#fff"/>'
-    + `<rect x="44" y="26" width="12" height="60" fill="${ribbon}" opacity=".9"/>`
-    + `<path d="M50 26 C36 6 22 16 34 26 Z M50 26 C64 6 78 16 66 26 Z" fill="${winter ? '#e2384d' : '#fff'}"/>`
-    + (winter ? '<path d="M14 28 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0 q6 -6 12 0" fill="none" stroke="#dff1ff" stroke-width="5" stroke-linecap="round"/><circle cx="72" cy="62" r="5" fill="#19a35b"/><circle cx="64" cy="70" r="4" fill="#ffcd1f"/>' : '');
+  s.setAttribute('aria-hidden', 'true');
+  s.innerHTML = ART[box.id] || ART.basic;
   return s;
 }
 
-/**
- * Opening a box: tap it three times. Each tap shakes it harder and the glow
- * climbs the rarity ladder towards what is inside, so a legendary teases you
- * all the way up. Then it bursts, and the card flips out.
- * Resolves 'again' to open another of the same box, or nothing when done.
- */
-function reveal({ id, duplicate, refund }, box) {
-  const r = rarityOf(id);
-  const rank = ORDER.indexOf(r.id);
-  const big = rank >= 3;
-  const calm = document.documentElement.dataset.motion === 'calm';
-  // the glows shown on taps 1, 2 and 3: they never go past the real rarity
-  const ladder = [0, Math.min(rank, 1 + Math.floor(rank / 2)), rank].map((i) => RARITIES[Math.max(0, i)]);
-  return new Promise((resolve) => {
-    let taps = 0;
-    let done = false;
-    const art = h('div', { class: 'ub-box' }, boxArt(Boolean(box.limited)));
-    const glow = h('div', { class: 'ub-glow' });
-    const hint = h('p', { class: 'ub-hint' }, 'Tap the box!');
-    const dots = h('div', { class: 'ub-dots' }, h('i'), h('i'), h('i'));
-    const stage = h('div', { class: 'ub-stage' }, glow, art);
-    const skip = h('button', { class: 'btn btn-sm ub-skip' }, 'Skip');
-    const root = h('div', { class: `ub-root${calm ? ' ub-calm' : ''}`, role: 'dialog', 'aria-label': `Opening the ${box.name}` },
-      h('div', { class: 'ub-rays' }), h('h2', { class: 'ub-name' }, box.name), stage, dots, hint, skip);
-    document.body.append(root);
+/** Open packs, one batch after another, without leaving the opening screen. */
+async function openPacks(box, n) {
+  let count = n;
+  while (count) count = await packShow(box, count);
+}
 
-    const finish = (value) => {
+/**
+ * The opening screen. Tap the pack to tear it open, then every card flips
+ * out one by one (tap for the next, or Skip to see them all). At the end you
+ * see everything you got, and can open more right there.
+ * Resolves the number of packs to open next, or 0 when done.
+ */
+function packShow(box, n) {
+  const calm = document.documentElement.dataset.motion === 'calm';
+  const wait = (ms) => new Promise((res) => setTimeout(res, calm ? Math.min(ms, 30) : ms));
+  return new Promise((resolve) => {
+    const results = [];
+    let failed = null;
+    let wake = () => {};
+    const ready = (i) => new Promise((res) => {
+      const check = () => { if (results[i] || failed) res(); else wake = check; };
+      check();
+    });
+    const job = progress.openBoxes(box.id, n, (res, i) => { results[i] = res; wake(); })
+      .catch((err) => { failed = err; wake(); });
+
+    let done = false;
+    let skipping = false;
+    let shown = false;
+    const count = h('span', { class: 'pk-left' });
+    const skip = h('button', { class: 'btn btn-sm pk-skip' }, n > 1 ? 'Skip to all' : 'Skip');
+    const stage = h('div', { class: 'pk-stage' });
+    const hint = h('p', { class: 'pk-hint' });
+    const foot = h('div', { class: 'pk-foot' });
+    const root = h('div', { class: `pk-root pk-${box.id}${calm ? ' pk-calm' : ''}`, role: 'dialog', 'aria-label': `Opening ${n > 1 ? `${n} × ` : ''}${box.name}`, style: { '--pack': box.colour } },
+      h('div', { class: 'pk-bg', 'aria-hidden': 'true' }),
+      h('div', { class: 'pk-top' }, h('h2', {}, box.name), count, skip),
+      stage, hint, foot);
+    document.body.append(root);
+    const setCount = (i) => fill(count, n > 1 ? `${Math.min(i, n)} / ${n}` : '');
+    setCount(0);
+
+    let next = () => {};
+    const tapNext = () => next();
+    const key = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); if (shown) close(0); else skipAll(); } else if (e.key === ' ' || e.key === 'Enter') {
+        if (e.target instanceof HTMLButtonElement && root.contains(e.target) && !e.target.classList.contains('pk-skip')) return;
+        e.preventDefault(); tapNext();
+      }
+    };
+    document.addEventListener('keydown', key);
+    const close = (value) => {
       if (done) return;
       done = true;
       document.removeEventListener('keydown', key);
-      root.classList.add('ub-out');
-      setTimeout(() => { root.remove(); resolve(value); }, 250);
+      root.classList.add('pk-out');
+      setTimeout(() => { root.remove(); resolve(value); }, 220);
     };
-    const key = (e) => {
-      if (e.key === 'Escape') finish();
-      else if ((e.key === ' ' || e.key === 'Enter') && taps < 3) { e.preventDefault(); tap(); }
-    };
-    document.addEventListener('keydown', key);
+    const tapped = () => new Promise((res) => { next = () => { next = () => {}; res(); }; });
+    function skipAll() { skipping = true; next(); }
+    skip.onclick = skipAll;
+    stage.addEventListener('click', tapNext);
 
-    const wait = (ms) => new Promise((res) => setTimeout(res, calm ? Math.min(ms, 30) : ms));
-    const say = (text, cls = '') => { fill(hint, text); hint.className = `ub-hint ${cls}`; };
+    (async () => {
+      // 1. the pack: tap to tear it open
+      const pack = h('button', { type: 'button', class: 'pk-pack', 'aria-label': `Open the ${box.name}` }, boxArt(box),
+        n > 1 ? h('span', { class: 'pk-stack', 'aria-hidden': 'true' }, `×${n}`) : null);
+      stage.replaceChildren(h('div', { class: 'pk-halo' }), pack);
+      fill(hint, n > 1 ? `Tap to open all ${n}!` : 'Tap to open!');
+      sfx('pack-tap');
+      await tapped();
+      pack.classList.add('pk-rip');
+      sfx('pack-open');
+      fill(hint, '');
+      await wait(380);
 
-    async function burst() {
-      sfx('boom');
-      root.style.setProperty('--rc', ladder[0].colour);
-      root.classList.add('ub-burst');
-      say(''); dots.remove(); skip.remove();
-      sparks(ladder[0].colour);
-      await wait(420);
-
-      // 1. a mystery card: just a black shadow, spinning, while the drums roll
-      const shadow = blook(id);
-      shadow.classList.add('is-unknown');
-      const mystery = h('div', { class: 'bcard is-big ub-mystery' }, h('div', { class: 'ub-q' }, '?'), h('div', { class: 'bcard-art' }, shadow));
-      stage.replaceChildren(h('div', { class: 'ub-shine' }), mystery);
-      say('Who is it…?');
-      for (let i = 0; i < 6; i++) { sfx('tick'); await wait(110); }
-
-      // 2. the surprise: rare or better can start looking ordinary, then upgrade
-      const fakeOut = rank >= 2 && (rank === 4 || Math.random() < 0.6);
-      if (fakeOut) {
-        mystery.style.setProperty('--rc', RARITIES[0].colour);
-        root.style.setProperty('--rc', RARITIES[0].colour);
-        say('Hmm, just a common…');
-        await wait(900);
-        say('WAIT!', 'ub-wait');
-        sfx('tagged');
-        mystery.classList.add('ub-crack');
-        await wait(600);
-        for (let i = 1; i <= rank; i++) {
-          const c = RARITIES[i].colour;
-          mystery.style.setProperty('--rc', c);
-          root.style.setProperty('--rc', c);
-          say(`${RARITIES[i].name}…`, 'ub-up');
-          sfx(i === rank ? 'go' : 'jump');
-          sparks(c);
-          await wait(i === rank ? 500 : 420);
+      // 2. the cards, one by one
+      for (let i = 0; i < n && !skipping; i++) {
+        await ready(i);
+        if (failed && !results[i]) break;
+        const res = results[i];
+        const r = rarityOf(res.id);
+        const rank = ORDER.indexOf(r.id);
+        setCount(i + 1);
+        const card = blookCard(res.id, { big: true });
+        card.classList.add('pk-card', `pk-card-${r.id}`);
+        root.style.setProperty('--rc', r.colour);
+        root.dataset.rarity = r.id;
+        stage.replaceChildren(h('div', { class: 'pk-glow' }), card);
+        fill(hint,
+          h('b', { class: 'pk-rarity', style: { color: r.colour } }, r.name),
+          res.duplicate ? h('span', {}, ' · repeat, ', coin(), `+${res.refund}`) : h('span', { class: 'pk-new' }, 'NEW'));
+        sfx(`card-${rank}`);
+        if (!calm && rank >= 3) setTimeout(() => celebrate([r.colour, '#ffffff', '#ffcd1f']), 200);
+        if (n > 1) {
+          fill(foot, i < n - 1
+            ? h('button', { class: 'btn btn-main', onclick: tapNext }, 'Next', h('small', {}, ` ${i + 2}/${n}`))
+            : h('button', { class: 'btn btn-main', onclick: tapNext }, 'See them all'));
+          await tapped();
+        } else {
+          await wait(500);
         }
       }
+      // let every save finish before the summary
+      await job;
+      if (failed) toast(failed.message, 'bad');
+      summary();
+    })().catch((err) => { console.error(err); close(0); });
 
-      // 3. legendary: lights out, then the letters slam in one by one
-      if (rank === 4) {
-        root.classList.add('ub-dark');
-        say('');
-        const word = h('div', { class: 'ub-word', style: { color: r.colour } });
-        root.append(word);
-        for (const ch of 'LEGENDARY') {
-          word.append(h('span', {}, ch));
-          sfx('drum');
-          await wait(150);
-        }
-        await wait(500);
-        word.remove();
-        root.classList.remove('ub-dark');
-      }
-
-      // 4. the reveal
-      root.style.setProperty('--rc', r.colour);
-      root.classList.add(`ub-${r.id}`);
-      const card = blookCard(id, { big: true });
-      card.classList.add('ub-card', `ub-card-${r.id}`);
-      if (rank >= 2) card.append(h('i', { class: 'ub-holo', 'aria-hidden': 'true' }));
-      // hold it in your hand: the card tilts towards the finger or mouse
-      const tilt = (e) => {
-        const b = card.getBoundingClientRect();
-        const px = ((e.touches ? e.touches[0].clientX : e.clientX) - b.left) / b.width - 0.5;
-        const py = ((e.touches ? e.touches[0].clientY : e.clientY) - b.top) / b.height - 0.5;
-        card.style.setProperty('--rx', `${(-py * 18).toFixed(1)}deg`);
-        card.style.setProperty('--ry', `${(px * 22).toFixed(1)}deg`);
-        card.style.setProperty('--hx', `${Math.round((px + 0.5) * 360)}deg`);
-      };
-      root.addEventListener('pointermove', tilt);
-      root.addEventListener('touchmove', tilt, { passive: true });
-      root.classList.add('ub-revealed');
-      root.append(h('div', { class: 'ub-beams', 'aria-hidden': 'true' }, ...Array.from({ length: 12 }, (_, k) => h('i', { style: { '--k': k } }))),
-        h('div', { class: 'ub-stars', 'aria-hidden': 'true' }, ...Array.from({ length: 16 }, (_, k) => h('i', { style: { '--k': k } }))));
-      sparks(r.colour, 22);
-      const again = progress.me().coins >= box.price && progress.boxOpen(box)
-        ? h('button', { class: 'btn btn-main', onclick: () => finish('again') }, 'Open another', coin(), String(box.price)) : null;
-      stage.replaceChildren(h('div', { class: 'ub-shine' }), h('div', { class: 'ub-ring' }), card);
-      say('');
-      root.append(h('div', { class: 'ub-result' },
-        h('h2', { class: 'ub-rarity', style: { color: r.colour } }, `${r.name}!`),
-        duplicate
-          ? h('p', {}, `${blookName(id)} again. `, h('b', {}, `+${refund} coins`), ' back.')
-          : h('p', {}, h('span', { class: 'ub-new' }, 'NEW'), ` ${blookName(id)} is yours!`),
-        h('div', { class: 'row', style: { justifyContent: 'center' } },
-          again, h('button', { class: `btn${again ? '' : ' btn-main'}`, onclick: () => finish() }, 'Done'))));
-      sfx(big ? 'win' : rank >= 2 ? 'checkpoint' : 'reveal');
-      if (duplicate) coinRain(Math.min(24, 4 + refund));
-      if (!calm && rank >= 2) setTimeout(() => celebrate([r.colour, '#ffffff', '#ffcd1f']), 250);
-      if (!calm && rank === 4) { setTimeout(() => celebrate([r.colour, '#ffcd1f']), 1100); coinRain(30); }
+    function summary() {
+      const got = results.filter(Boolean);
+      if (!got.length) { close(0); return; }
+      shown = true;
+      skip.remove();
+      setCount(n);
+      root.removeAttribute('data-rarity');
+      const best = got.reduce((a, b) => (ORDER.indexOf(rarityOf(b.id).id) > ORDER.indexOf(rarityOf(a.id).id) ? b : a));
+      root.style.setProperty('--rc', rarityOf(best.id).colour);
+      const fresh = got.filter((x) => !x.duplicate).length;
+      const back = got.reduce((s, x) => s + x.refund, 0);
+      const sorted = got.slice().sort((a, b) => ORDER.indexOf(rarityOf(b.id).id) - ORDER.indexOf(rarityOf(a.id).id));
+      const grid = h('div', { class: `pk-grid${got.length === 1 ? ' is-one' : ''}` }, ...sorted.map((x, k) => {
+        const c = blookCard(x.id, { big: got.length === 1 });
+        c.style.setProperty('--k', k);
+        c.append(x.duplicate ? h('span', { class: 'pk-tag' }, coin(), `+${x.refund}`) : h('span', { class: 'pk-tag is-new' }, 'NEW'));
+        return c;
+      }));
+      stage.replaceChildren(grid);
+      stage.classList.add('is-summary');
+      if (got.length === 1) {
+        const r = rarityOf(got[0].id);
+        fill(hint, h('b', { class: 'pk-rarity', style: { color: r.colour } }, r.name),
+          got[0].duplicate ? h('span', {}, ' · repeat, ', coin(), `+${got[0].refund}`) : h('span', { class: 'pk-new' }, 'NEW'));
+      } else fill(hint, h('b', {}, `${fresh} new`), ` · ${got.length - fresh} repeat${got.length - fresh === 1 ? '' : 's'}`,
+        back ? h('span', {}, ' · ', coin(), `+${back} back`) : '');
+      const coins = progress.me().coins;
+      const again = progress.boxOpen(box) ? COUNTS.filter((c) => c * box.price <= coins)
+        .map((c) => h('button', { class: 'btn', onclick: () => { pickCount[box.id] = c; close(c); } }, `Open ${c} more`, coin(), String(c * box.price))) : [];
+      fill(foot, h('div', { class: 'pk-again' }, ...again, h('button', { class: 'btn btn-main', onclick: () => close(0) }, 'Done')));
+      sfx('pack-done');
+      foot.querySelector('.btn-main').focus();
     }
-
-    function sparks(colour, n = 14) {
-      if (calm) return;
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2;
-        const d = 140 + Math.random() * 60;
-        const sp = h('i', { class: 'ub-spark', style: { '--dx': `${Math.cos(a) * d}px`, '--dy': `${Math.sin(a) * d}px`, background: i % 2 ? colour : '#fff' } });
-        stage.append(sp);
-        setTimeout(() => sp.remove(), 800);
-      }
-    }
-
-    function coinRain(n) {
-      if (calm) return;
-      for (let i = 0; i < n; i++) {
-        const c = h('span', { class: 'coin ub-coin', style: { left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 0.8}s`, animationDuration: `${1.2 + Math.random()}s` } }, 'Q');
-        root.append(c);
-        setTimeout(() => c.remove(), 2600);
-      }
-      sfx('coin');
-    }
-
-    function tap() {
-      if (done || taps >= 3) return;
-      taps += 1;
-      const tier = ladder[taps - 1];
-      dots.children[taps - 1].classList.add('is-on');
-      dots.children[taps - 1].style.background = tier.colour;
-      glow.style.background = `radial-gradient(circle, ${tier.colour} 0%, transparent 65%)`;
-      glow.style.opacity = String(0.35 + taps * 0.2);
-      art.classList.remove('ub-shake1', 'ub-shake2', 'ub-shake3');
-      void art.offsetWidth;
-      art.classList.add(`ub-shake${taps}`);
-      sfx(taps === 1 ? 'tap' : taps === 2 ? 'drum' : 'boost');
-      fill(hint, taps === 1 ? 'Again!' : taps === 2 ? (rank >= 3 ? 'Something big is in there…' : 'One more!') : '');
-      if (taps === 3) setTimeout(() => { burst().catch((e) => { console.error(e); finish(); }); }, calm ? 0 : 450);
-    }
-    stage.addEventListener('click', tap);
-    skip.onclick = () => { while (taps < 2) { taps += 1; dots.children[taps - 1].classList.add('is-on'); } taps = 2; tap(); };
   });
 }
 

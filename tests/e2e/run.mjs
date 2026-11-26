@@ -781,18 +781,42 @@ if (which === 'account' || which === 'all') {
   }
 
   say('blooks: open boxes with starting coins');
+  // a game's coins first, so there are enough for five packs in one go
+  await host.evaluate(async () => {
+    const p = await import('/src/services/progress.js');
+    await p.claimGame('test:0', { s: 20000, c: 10, r: 1 }, 5);
+  });
   await host.goto(`${BASE}/blooks`);
   await host.waitForSelector('.level-badge');
   // starting coins plus the solo reward: open boxes until the coins run out
-  const boxBtn = host.locator('.box-card:has-text("Quickzy Box") button');
+  const boxCard = host.locator('.box-card:has-text("Quickzy Box")');
+  const boxBtn = boxCard.locator('button.box-open');
   let opened = 0;
-  while (!(await boxBtn.isDisabled()) && opened < 40) {
+  // several packs in one go when there are enough coins: every card, then all of them together
+  await host.screenshot({ path: `${SHOTS}/box-shop.png`, fullPage: true });
+  if (!(await boxCard.locator('.pk-n:text-is("×5")').isDisabled())) {
+    await boxCard.locator('.pk-n:text-is("×5")').click();
     await boxBtn.click();
-    for (let t = 0; t < 3; t++) { await host.click('.ub-stage'); await host.waitForTimeout(120); }
-    await host.waitForSelector('.ub-card', { timeout: 15000 });
-    if (opened === 0) await host.screenshot({ path: `${SHOTS}/box-reveal.png` });
-    await host.click('.ub-result button:has-text("Done")');
-    await host.waitForSelector('.ub-root', { state: 'detached' });
+    await host.click('.pk-pack');
+    await host.waitForSelector('.pk-card', { timeout: 15000 });
+    await host.screenshot({ path: `${SHOTS}/box-reveal.png` });
+    await host.click('.pk-foot button:has-text("Next")');
+    await host.click('.pk-skip');
+    await host.waitForSelector('.pk-grid .bcard >> nth=4', { timeout: 20000 });
+    await host.waitForTimeout(900);
+    await host.screenshot({ path: `${SHOTS}/box-summary.png` });
+    await host.click('.pk-again button:has-text("Done")');
+    await host.waitForSelector('.pk-root', { state: 'detached' });
+    opened += 5;
+  }
+  while (!(await boxBtn.isDisabled()) && opened < 40) {
+    const one = boxCard.locator('.pk-n:text-is("×1")');
+    if ((await one.getAttribute('aria-pressed')) !== 'true') await one.click();
+    await boxBtn.click();
+    await host.click('.pk-pack');
+    await host.waitForSelector('.pk-grid .bcard', { timeout: 20000 });
+    await host.click('.pk-again button:has-text("Done")');
+    await host.waitForSelector('.pk-root', { state: 'detached' });
     opened++;
   }
   if (opened < 2) fail(`only ${opened} boxes opened`);

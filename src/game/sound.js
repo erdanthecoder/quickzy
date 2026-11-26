@@ -358,6 +358,15 @@ const SOUNDS = {
     INST.bell(midi(96), t + 1.2, 0.6);
   },
   drum: () => { const t = now(); thud(t, { f: 72, gain: 0.35, cut: 600, d: 0.3 }); },
+  // opening packs: only soft music-box chimes and a harp, never booms or drums
+  'pack-tap': () => { const t = now(); INST.marimba(midi(76 + Math.floor(rnd(0, 2)) * 3), t, 0.55); },
+  'pack-open': () => { play('pluck', [67, 72, 76, 79, 84], 0.04, 0.45, { bright: 0.5 }); const t = now(); INST.glock(midi(91), t + 0.22, 0.3); },
+  'card-0': () => { const t = now(); INST.glock(midi(84), t, 0.4); },
+  'card-1': () => play('glock', [79, 84], 0.07, 0.4),
+  'card-2': () => { play('bell', [76, 79, 84], 0.08, 0.45); },
+  'card-3': () => { play('bell', [72, 76, 79, 84], 0.08, 0.5); const t = now(); INST.glock(midi(96), t + 0.36, 0.3); },
+  'card-4': () => { play('pluck', [72, 76, 79, 84, 88, 91], 0.06, 0.5, { bright: 0.6 }); const t = now(); [84, 88, 91].forEach((n) => INST.bell(midi(n), t + 0.4, 0.45)); },
+  'pack-done': () => play('marimba', [72, 76, 79, 84], 0.09, 0.6),
   // a steam train's whistle: three detuned pipes and a puff of steam
   whistle: () => {
     const t = now(); const dur = 0.9;
