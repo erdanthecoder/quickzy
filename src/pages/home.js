@@ -11,8 +11,6 @@ import { popularQuizzes, quizzesBy } from '../services/quizzes.js';
 import { OFFICIAL_UID } from '../config.js';
 import { quizCard, cover, authorLine } from './parts.js';
 import { ornamentBand } from '../ui/ornament.js';
-import { NEWS, NEWS_13, NEWS_12, NEWS_11, playFilm } from '../ui/whatsnew.js';
-import { VERSION } from '../config.js';
 
 export function joinBox() {
   const pin = h('input', {
@@ -144,8 +142,6 @@ export default async function Home() {
 
     classSlot,
 
-    whatsNew(),
-
     installSlot,
     inviteSlot,
 
@@ -176,22 +172,6 @@ async function classesCard(c) {
       h('a', { class: 'btn btn-sm', href: teach && !list.length ? '/classes?new=1' : '/classes' }, teach && !list.length ? 'Make a class' : 'All classes', icon('arrowRight', { size: 16 }))),
     items.length ? h('div', { class: 'hm-class-row' }, ...items) : h('p', { class: 'muted', style: { margin: 0 } }, teach ? 'Make a class and give your students its code.' : 'Got a class code from your teacher? Type it here.'),
     teach ? null : joinClassBox({ compact: true }));
-}
-
-/** The changelog, right on the home page: this version first, older ones folded away. */
-function whatsNew() {
-  const list = (items) => h('ul', { class: 'cl-list' }, ...items.map(([ic, col, title, text]) => h('li', {},
-    h('span', { class: 'cl-ic', style: { background: col } }, icon(ic, { size: 18 })), h('div', {}, h('b', {}, title), h('p', {}, text)))));
-  const older = [['1.3', NEWS_13], ['1.2', NEWS_12], ['1.1', NEWS_11]].filter(([v]) => v !== VERSION);
-  const film = VERSION === '1.4'
-    ? h('a', { class: 'btn btn-sm', href: '/classes' }, icon('users', { size: 16 }), 'Open Classes')
-    : h('button', { class: 'btn btn-sm', onclick: () => playFilm() }, icon('play', { size: 16 }), `Watch the ${VERSION} film`);
-  return h('section', { class: 'cl reveal', id: 'whats-new' },
-    h('div', { class: 'cl-head' },
-      h('div', {}, h('span', { class: 'cl-ver' }, `Quickzy ${VERSION}`), h('h2', { class: 'hm-h2' }, "What's new")),
-      film),
-    list(NEWS),
-    ...older.map(([v, items]) => h('details', { class: 'cl-old' }, h('summary', {}, `Quickzy ${v}`, h('small', {}, `${items.length} changes`)), list(items))));
 }
 
 /** "Got a PIN?" on one line, right under the headline. */

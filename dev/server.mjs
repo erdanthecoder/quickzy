@@ -17,6 +17,12 @@ import { join, extname, normalize, resolve } from 'node:path';
 import { randomBytes, createHash, createHmac } from 'node:crypto';
 
 const ROOT = resolve(process.argv[2] || process.cwd());
+// the site's Content-Security-Policy, from firebase.json (minus the https upgrade, which a localhost server can't use)
+const CSP = await readFile(join(ROOT, 'firebase.json'), 'utf8').then((t) => {
+  const all = JSON.parse(t).hosting.headers.flatMap((x) => x.headers);
+  const v = (all.find((x) => x.key === 'Content-Security-Policy') || {}).value || '';
+  return v.split(';').map((x) => x.trim()).filter((x) => x && x !== 'upgrade-insecure-requests').join('; ');
+}).catch(() => '');
 const PORT = Number(process.env.PORT || 5173);
 
 const TYPES = {
@@ -486,7 +492,8 @@ async function serveFile(req, res) {
     file = join(ROOT, 'index.html');
   }
   const body = await readFile(file);
-  res.writeHead(200, { 'Content-Type': TYPES[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+  // the same Content-Security-Policy as the real site, so the tests catch anything it would block
+  res.writeHead(200, { 'Content-Type': TYPES[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache', ...(CSP ? { 'Content-Security-Policy': CSP } : {}) });
   res.end(body);
 }
 

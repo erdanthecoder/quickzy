@@ -2475,3 +2475,4 @@ a.pf-todo-item:hover { background: #ece7ff; }
 .cf-screen h2 { text-shadow: 0 3px 0 #9c2f8f; }
 .hm-bento { justify-items: stretch; text-align: left; } .hm-bento > .hm-tile { width: auto; margin: 0; }
 .hm-tile-present p { max-width: 24ch; }
+.wn-more { margin: 4px 0 14px; color: var(--ink-2); font-weight: 700; line-height: 1.5; }

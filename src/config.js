@@ -64,7 +64,10 @@ export const released12 = (now = Date.now()) => now >= RELEASE_1_2;
 export const RELEASE_1_4 = Date.UTC(2026, 10, 26, 7, 25, 0);
 export const released14 = (now = Date.now()) => now >= RELEASE_1_4;
 
-/** Shown in the sidebar and the What's new popup. */
+/** Every version and what changed lives in the Quickzy Archive. */
+export const ARCHIVE_URL = 'https://archivedquickzy.web.app';
+
+/** Shown in the sidebar and the update popup. */
 export const VERSION = released14() ? '1.4' : '1.3';
 
 /** Pro for free, given by the owner: ugemnomads. (The rules hold the same list.) */

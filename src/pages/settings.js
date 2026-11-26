@@ -11,7 +11,7 @@ import * as session from '../services/session.js';
 import { myQuizzes, deleteQuiz, myReports, deleteReport, verifiedProgress, syncAuthor } from '../services/quizzes.js';
 import { strength } from './auth.js';
 import { pageTitle } from './parts.js';
-import { LIMITS, BADGES, VERSION, OWNER_UID, OFFICIAL_UID, PRO_FREE, released14 } from '../config.js';
+import { LIMITS, BADGES, VERSION, OWNER_UID, OFFICIAL_UID, PRO_FREE, released14, ARCHIVE_URL } from '../config.js';
 import { sfx } from '../game/sound.js';
 import { nameBadges } from '../ui/badges.js';
 import * as siteSvc from '../services/site.js';
@@ -622,7 +622,7 @@ function moreSection() {
       row('Download your data', 'Your profile, quizzes and game reports in one file.', dl),
       row('Clear this device', 'Offline quizzes, best scores and settings saved in this browser.', clear))],
     ['about', 'About', 'info', `Quickzy ${VERSION}, updates, legal`, section('About',
-      row(`Quickzy ${VERSION}`, h('span', {}, 'Get the newest version straight away. ', h('a', { href: '/#whats-new' }, "See what's new")), update),
+      row(`Quickzy ${VERSION}`, h('span', {}, 'Get the newest version straight away. ', h('a', { href: ARCHIVE_URL, target: '_blank', rel: 'noopener' }, "See what's new")), update),
       row('Legal', h('span', {}, h('a', { href: '/terms' }, 'Terms of use'), ' · ', h('a', { href: '/privacy' }, 'Privacy notice')), null))],
   ];
 }

@@ -143,11 +143,43 @@ export async function updateProfile(patch) {
 }
 
 /** Write progress fields (xp, coins, owned, customs…) and tell everyone. */
+// The database lets coins go up only once every 15 seconds (so nobody can farm
+// them with a script). Two rewards close together (a daily chest and an invite
+// gift) wait their turn instead of being lost.
+const COIN_GAP = 16000;
+let lastCoinUp = 0;
+const nap = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export async function patchProfile(fields) {
   if (!signedIn()) throw new Error('not signed in');
-  await net.store.update('users', user.uid, fields);
-  profile = { ...profile, ...fields };
-  emit();
+  if (typeof fields.coins !== 'number') {
+    await net.store.update('users', user.uid, fields);
+    profile = { ...profile, ...fields };
+    emit();
+    return;
+  }
+  const gain = fields.coins - ((profile || {}).coins || 0);
+  const write = async (extra) => {
+    const f = { ...fields, ...extra, coinAt: net.store.serverTime() };
+    await net.store.update('users', user.uid, f);
+    profile = { ...profile, ...f, coinAt: Date.now() };
+    emit();
+  };
+  if (gain <= 0) return write({});
+  // wait for this device's last raise, then add the gain to the newest total
+  const fresh = async () => ({ coins: (((await net.store.get('users', user.uid)) || {}).coins || 0) + gain });
+  const wait = lastCoinUp + COIN_GAP - Date.now();
+  let extra = {};
+  if (wait > 0) { await nap(wait); extra = await fresh(); }
+  try {
+    lastCoinUp = Date.now();
+    await write(extra);
+  } catch (err) {
+    // another device (or a reload) raised them a moment ago: try once more
+    await nap(COIN_GAP);
+    lastCoinUp = Date.now();
+    await write(await fresh());
+  }
 }
 
 export async function changeUsername(next) {
