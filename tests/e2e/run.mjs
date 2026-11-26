@@ -323,7 +323,7 @@ if (which === 'teams' || which === 'classic' || which === 'all') {
 }
 
 if (which === 'arcade' || which === 'all') {
-  for (const [mode, name] of (process.env.ONLY ? process.env.ONLY.split(',').map((m, i) => [m, process.env.ONLY_NAME.split(',')[i]]) : null) || [['lasertag', 'Laser Tag'], ['robotrun', 'Robot Run'], ['obby', 'Sky Climb'], ['train', 'Train Travel'], ['skyrace', 'Sky Race'], ['treasure', 'Treasure Hunt'], ['candy', 'Candy Factory']]) {
+  for (const [mode, name] of (process.env.ONLY ? process.env.ONLY.split(',').map((m, i) => [m, process.env.ONLY_NAME.split(',')[i]]) : null) || [['lasertag', 'Laser Tag'], ['robotrun', 'Robot Run'], ['obby', 'Sky Climb'], ['train', 'Train Travel'], ['skyrace', 'Sky Race'], ['treasure', 'Treasure Hunt'], ['candy', 'Candy Factory'], ['pizza', 'Pizza Party']]) {
     say(`${mode}: open the lobby`);
     if (mode === 'skyrace') await host.evaluate(() => localStorage.setItem('quickzy.test.early', '1'));
     const pin = await openLobby(name, () => (mode === 'skyrace' ? host.waitForSelector('.set-row:has-text("Game length") .pill:has-text("3 min")') : host.click('.set-row:has-text("Game length") button:has-text("3 min")')));
@@ -409,6 +409,18 @@ if (which === 'arcade' || which === 'all') {
       await cara.waitForFunction(() => /[1-9]/.test(document.querySelector('.cf-rate').innerText), null, { timeout: 8000 })
         .catch(() => fail('candy: buying a machine did not raise the rate'));
       await cara.screenshot({ path: `${SHOTS}/candy.png` });
+    }
+    if (mode === 'pizza') {
+      say('pizza: get ingredients and serve a pizza');
+      // right answers bring what the easiest order still needs
+      for (let i = 0; i < 6 && !(await cara.locator('.pz-serve.is-ready').count()); i++) { await ask(cara); await cara.waitForTimeout(1300); }
+      await cara.waitForSelector('.pz-serve.is-ready', { timeout: 8000 }).catch(() => fail('pizza: no order became ready to serve'));
+      await cara.click('.pz-serve.is-ready >> nth=0');
+      await cara.waitForFunction(() => Number(document.querySelector('.pz-stat b').innerText) >= 1, null, { timeout: 8000 })
+        .catch(() => fail('pizza: serving did not count'));
+      await cara.waitForTimeout(400);
+      await cara.screenshot({ path: `${SHOTS}/pizza.png` });
+      await dev.screenshot({ path: `${SHOTS}/pizza-wide.png` });
     }
     await host.screenshot({ path: `${SHOTS}/${mode}-host.png` });
     say(`${mode}: end`);
