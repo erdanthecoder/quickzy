@@ -16,6 +16,7 @@ const STEPS = [
 ];
 
 const WHY = [
+  ['book', 'Classes (new in 1.4)', 'Sign up "for teaching", make a class and give students its code. Post announcements, homework, game PINs and quick questions.'],
   ['check', 'Free to use', 'Classic, Robot Run, Sky Climb and Sky Race are free for every teacher, for up to 40 players.'],
   ['star', 'Students beg to play', 'Ten game modes: racing planes, treasure chests, towers, robots. Everyone answers at once, so nobody sits waiting.'],
   ['list', 'Real learning', 'Multiple choice, true/false, type the answer, put in order, numbers, polls, pictures and video questions.'],

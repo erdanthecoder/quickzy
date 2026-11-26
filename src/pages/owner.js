@@ -40,6 +40,30 @@ function stats() {
   return box;
 }
 
+/* --------------------------------------------- sign-ups: how people found Quickzy */
+
+async function signups() {
+  const { allAbout, HEARD } = await import('../services/classes.js');
+  const [rows, teachers, kids, personal] = await Promise.all([
+    allAbout(),
+    net.store.count('users', { where: [['use', '==', 'teacher']] }).catch(() => 0),
+    net.store.count('users', { where: [['use', '==', 'kid']] }).catch(() => 0),
+    net.store.count('users', { where: [['use', '==', 'personal']] }).catch(() => 0),
+  ]);
+  const total = rows.length || 1;
+  const by = HEARD.map(([id, label]) => [label, rows.filter((r) => r.heard === id).length]).sort((a, b) => b[1] - a[1]);
+  const ages = [['Under 13', (a) => a < 13], ['13 to 17', (a) => a >= 13 && a < 18], ['18 and over', (a) => a >= 18]].map(([l, f]) => [l, rows.filter((r) => f(r.age)).length]);
+  const bars = (list) => h('div', { class: 'stack', style: { gap: '8px' } }, ...list.map(([label, n]) => h('div', { class: 'owner-bar' },
+    h('span', {}, label), h('i', { style: { width: `${Math.round((n / total) * 100)}%` } }), h('b', {}, fmt(n)))));
+  return h('div', { class: 'stack', style: { gap: '18px' } },
+    h('div', { class: 'owner-stats' },
+      h('div', { class: 'owner-stat' }, icon('book', { size: 22 }), h('b', {}, fmt(teachers)), h('small', {}, 'Teachers')),
+      h('div', { class: 'owner-stat' }, icon('user', { size: 22 }), h('b', {}, fmt(personal)), h('small', {}, 'Personal')),
+      h('div', { class: 'owner-stat' }, icon('star', { size: 22 }), h('b', {}, fmt(kids)), h('small', {}, 'Under 18'))),
+    h('section', { class: 'card stack' }, h('h2', {}, 'How people found Quickzy'), h('p', { class: 'muted', style: { margin: 0 } }, `${fmt(rows.length)} answers`), bars(by)),
+    h('section', { class: 'card stack' }, h('h2', {}, 'Ages'), bars(ages)));
+}
+
 /* ---------------------------------------------------------- announcement */
 
 async function announcement() {
@@ -279,13 +303,13 @@ export default async function Owner() {
   pageTitle('Owner');
   let tab = 'quizzes';
   const body = h('div', { class: 'stack', style: { gap: '18px' } });
-  const sections = { quizzes, users, games: async () => games(), abuse: async () => abuse(), events, announcement };
+  const sections = { signups, quizzes, users, games: async () => games(), abuse: async () => abuse(), events, announcement };
   const draw = async () => { fill(body, h('div', { class: 'loading' }, h('div', { class: 'spinner' }))); fill(body, await sections[tab]()); };
   draw();
   return h('div', { class: 'page stack', style: { gap: '18px' } },
     h('div', { class: 'row', style: { gap: '10px' } }, h('h1', {}, 'Owner'), h('span', { style: { transform: 'scale(1.5)', display: 'inline-flex' } }, verifiedBadge(null, 'owner'))),
     h('p', { class: 'muted', style: { margin: 0 } }, 'Only your account can open this page, and the database refuses these actions from anyone else.'),
     stats(),
-    segmented([['quizzes', 'Quizzes'], ['users', 'Players'], ['games', 'Live games'], ['abuse', 'Admin abuse'], ['events', 'Events'], ['announcement', 'Announcement & countdown']], tab, (v) => { tab = v; draw(); }),
+    segmented([['quizzes', 'Quizzes'], ['signups', 'Sign-ups'], ['users', 'Players'], ['games', 'Live games'], ['abuse', 'Admin abuse'], ['events', 'Events'], ['announcement', 'Announcement & countdown']], tab, (v) => { tab = v; draw(); }),
     body);
 }

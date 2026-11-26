@@ -10,7 +10,7 @@ import { connect, net } from './net/index.js';
 import * as session from './services/session.js';
 import { levelOf as levelOfXp } from './services/progress.js';
 import { route, onRoute, render, navigate } from './router.js';
-import { VERSION, RELEASE_1_2 } from './config.js';
+import { VERSION, RELEASE_1_4, released14 } from './config.js';
 
 const app = document.getElementById('app');
 
@@ -41,6 +41,9 @@ route('/present', () => import('./pages/present.js'), { auth: true });
 route('/present/:id/live', () => import('./pages/present.js').then((m) => ({ default: m.PresentLive })), { chrome: false, auth: true });
 route('/present/:id', () => import('./pages/present.js'), { auth: true });
 route('/show/:pin', () => import('./pages/present.js').then((m) => ({ default: m.Audience })), { chrome: false });
+route('/welcome', () => import('./pages/welcome.js'), { auth: true });
+route('/classes', () => import('./pages/classes.js'), { auth: true });
+route('/class/:id', () => import('./pages/classes.js').then((m) => ({ default: m.ClassPage })), { auth: true });
 route('/homework', () => import('./pages/homework.js').then((m) => ({ default: m.MyHomework })));
 route('/blooks', () => import('./pages/blooks.js'));
 route('/owner', () => import('./pages/owner.js'), { auth: true });
@@ -82,7 +85,8 @@ function sidebar(path) {
         h('small', {}, 'Create'),
         link('/new', 'Create', 'plus'),
         link('/library', 'My quizzes', 'list'),
-        link('/homework', 'Homework', 'book')) : null,
+        link('/homework', 'Homework', 'book'),
+        released14() || (user && user.uid === OWNER_UID) ? link('/classes', 'Classes', 'users', '', h('span', { class: 'side-new' }, 'NEW')) : null) : null,
       h('div', { class: 'side-group' },
         h('small', {}, 'Quickzy'),
         h('a', { href: '/pro', class: `side-link side-pro ${isOn(path, '/pro')}` }, verifiedBadge(null, 'pro'), h('span', {}, 'Quickzy Pro')),
@@ -202,8 +206,8 @@ function drawCountdown(c) {
 async function loadBanner() {
   const { announce, announceAt, event, countdown } = await site(true).catch(() => ({ announce: '' }));
   drawEvent(event);
-  // the owner's own countdown wins; otherwise count down to Quickzy 1.2
-  drawCountdown(countdown || (Date.now() < RELEASE_1_2 + 3600000 ? { title: 'Quickzy 1.2 lands in', to: RELEASE_1_2 } : null));
+  // the owner's own countdown wins; otherwise count down to Quickzy 1.4
+  drawCountdown(countdown || (Date.now() < RELEASE_1_4 + 3600000 ? { title: 'Quickzy 1.4 for teachers lands in', to: RELEASE_1_4 } : null));
   let dismissed = '';
   try { dismissed = localStorage.getItem('quickzy.announce.closed') || ''; } catch { /* ignore */ }
   const id = `${announceAt}`;
@@ -213,6 +217,14 @@ async function loadBanner() {
       banner.hidden = true;
       try { localStorage.setItem('quickzy.announce.closed', id); } catch { /* ignore */ }
     } }, icon('close', { size: 16 })));
+}
+
+const NO_QUESTIONS = ['/welcome', '/terms', '/privacy', '/login', '/signup', '/reset'];
+function needsQuestions() {
+  if (!released14() || !session.signedIn() || navigator.webdriver && !localStorage.getItem('quickzy.test.questions')) return false;
+  const p = session.myProfile();
+  if (!p || p.use || session.me().uid === OWNER_UID) return false;
+  return !NO_QUESTIONS.includes(location.pathname);
 }
 
 let inLiveGame = false;
@@ -226,6 +238,11 @@ onRoute(async (match, mod, query, keep) => {
     return;
   }
   const chrome = match.opts.chrome !== false;
+  // Quickzy 1.4: every account answers the sign-up questions once (not the creator)
+  if (chrome && needsQuestions()) {
+    navigate(`/welcome?next=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
+    return;
+  }
   document.body.classList.toggle('in-game', !chrome);
   // Settings → More settings → "Ask before leaving a game"
   inLiveGame = /^\/(play|lobby)\//.test(location.pathname);
@@ -314,6 +331,8 @@ async function boot() {
     if (side) side.replaceWith(sidebar(location.pathname));
     if (bar) bar.replaceWith(topbar(location.pathname));
     if (tabs) tabs.replaceWith(tabbar(location.pathname));
+    // a freshly signed-in account answers the sign-up questions first
+    if (needsQuestions() && !document.body.classList.contains('in-game')) { navigate(`/welcome?next=${encodeURIComponent(location.pathname + location.search)}`, { replace: true }); return; }
     // signing out of a page that needs an account leaves it
     const now = session.signedIn();
     if (wasSignedIn && !now) render();
