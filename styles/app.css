@@ -2476,3 +2476,73 @@ a.pf-todo-item:hover { background: #ece7ff; }
 .hm-bento { justify-items: stretch; text-align: left; } .hm-bento > .hm-tile { width: auto; margin: 0; }
 .hm-tile-present p { max-width: 24ch; }
 .wn-more { margin: 4px 0 14px; color: var(--ink-2); font-weight: 700; line-height: 1.5; }
+
+/* ========================================================== you, on Home */
+.me-card { position: relative; border-radius: 26px; overflow: hidden; background: var(--card); border: 1px solid var(--line); box-shadow: 0 2px 0 rgba(23,19,63,.04), 0 24px 50px -30px rgba(23,19,63,.4); text-align: left; }
+.me-banner { height: 110px; position: relative; overflow: hidden; }
+.me-banner > .bn { position: absolute; inset: 0; height: 100%; border-radius: 0; }
+.me-banner img { width: 100%; height: 100%; object-fit: cover; }
+.me-body { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 6px 20px; padding: 0 24px 20px; }
+.me-blook { margin-top: -54px; padding: 8px; border-radius: 26px; background: var(--card); box-shadow: 0 10px 24px -12px rgba(23,19,63,.5); align-self: start; transition: transform .2s; }
+.me-blook:hover { transform: translateY(-3px) rotate(-3deg); }
+.me-who { display: grid; gap: 2px; padding-top: 12px; min-width: 0; }
+.me-who small { color: var(--violet); font-weight: 800; font-size: 13px; }
+.me-who h2 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: clamp(22px, 3vw, 30px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-user { color: var(--muted); font-weight: 700; }
+.me-level { display: grid; grid-template-columns: auto minmax(80px, 260px) auto; align-items: center; gap: 10px; margin-top: 6px; font-size: 14px; }
+.me-level-bar { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.me-level-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6b4cff, #ff4772); }
+.me-level small { color: var(--muted); font-weight: 700; }
+.me-stats { display: flex; gap: 10px; }
+.me-stat { display: grid; justify-items: center; min-width: 76px; padding: 10px 12px; border-radius: 16px; background: var(--bg); }
+.me-stat-ic { font-size: 20px; line-height: 1; }
+.me-stat b { font-size: 20px; }
+.me-stat small { color: var(--muted); font-weight: 700; font-size: 12px; }
+.me-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+@media (max-width: 760px) {
+  .me-body { grid-template-columns: auto minmax(0, 1fr); }
+  .me-stats { grid-column: 1 / -1; }
+  .me-stat { flex: 1; }
+  .me-level { grid-template-columns: auto 1fr; } .me-level small { grid-column: 1 / -1; }
+}
+
+/* ===================================== the menu: left, right, or a bottom dock */
+@media (min-width: 721px) {
+  html[data-nav="right"] #app.with-side { padding-left: 0; padding-right: 248px; }
+  html[data-nav="right"] .sidebar { left: auto; right: 0; border-right: 0; border-left: 1px solid rgba(255,255,255,.06); }
+  html[data-nav="right"] .side-link:hover { transform: translateX(-3px); }
+
+  html[data-nav="bottom"] #app.with-side { padding-left: 0; padding-bottom: 108px; }
+  html[data-nav="bottom"] #toasts { bottom: 110px; }
+  html[data-nav="bottom"] .sidebar {
+    top: auto; bottom: 14px; left: 50%; right: auto; width: auto; max-width: calc(100vw - 28px); transform: translateX(-50%);
+    flex-direction: row; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 24px; overflow-x: auto; overflow-y: visible;
+    background: rgba(18, 13, 48, .86); backdrop-filter: blur(18px) saturate(1.5); -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid rgba(255,255,255,.12); box-shadow: 0 24px 50px -16px rgba(8, 5, 30, .65), inset 0 1px 0 rgba(255,255,255,.08);
+    scrollbar-width: none; animation: dock-in .5s cubic-bezier(.2, 1.4, .4, 1) both;
+  }
+  html[data-nav="bottom"] .sidebar::-webkit-scrollbar { display: none; }
+  @keyframes dock-in { from { transform: translate(-50%, 140%); } }
+  html[data-nav="bottom"] .side-logo { padding: 0 4px; }
+  html[data-nav="bottom"] .side-logo .wordmark, html[data-nav="bottom"] .side-logo .ver { display: none; }
+  html[data-nav="bottom"] .side-join { width: auto; padding: 10px 14px; border-radius: 16px; font-size: 14px; white-space: nowrap; }
+  html[data-nav="bottom"] .side-nav { display: flex; gap: 2px; }
+  html[data-nav="bottom"] .side-group { display: flex; align-items: center; gap: 2px; }
+  html[data-nav="bottom"] .side-group + .side-group { margin-left: 4px; padding-left: 6px; border-left: 1px solid rgba(255,255,255,.12); }
+  html[data-nav="bottom"] .side-group > small { display: none; }
+  html[data-nav="bottom"] .side-link { flex-direction: column; justify-content: center; gap: 3px; min-width: 60px; padding: 7px 8px 6px; border-radius: 14px; font-size: 11px; font-weight: 700; white-space: nowrap; transition: transform .2s cubic-bezier(.2, 1.6, .4, 1), background .15s; }
+  html[data-nav="bottom"] .side-link svg { width: 22px; height: 22px; opacity: .9; }
+  html[data-nav="bottom"] .side-link:hover { transform: translateY(-6px) scale(1.08); background: rgba(255,255,255,.08); }
+  html[data-nav="bottom"] .side-link.is-on { background: rgba(107, 76, 255, .55); box-shadow: none; }
+  html[data-nav="bottom"] .side-link.is-on::after { content: ''; position: absolute; bottom: -5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--zing); }
+  html[data-nav="bottom"] .side-link .side-new, html[data-nav="bottom"] .side-link > .badge-set { display: none; }
+  html[data-nav="bottom"] .side-end { margin: 0 0 0 4px; padding: 0 0 0 8px; border-top: 0; border-left: 1px solid rgba(255,255,255,.12); display: flex; align-items: center; gap: 6px; }
+  html[data-nav="bottom"] .side-card { padding: 4px; background: none; }
+  html[data-nav="bottom"] .side-card-text { display: none; }
+  html[data-nav="bottom"] .side-card .blook { width: 42px; height: 42px; }
+  html[data-nav="bottom"] .side-auth { display: flex; gap: 6px; }
+  html[data-nav="bottom"] .side-auth .btn { white-space: nowrap; }
+  html[data-nav="bottom"] .side-tools { gap: 4px; }
+}
+.me-card { animation: wl-in .5s ease both; }
+.me-blook { position: relative; z-index: 2; }

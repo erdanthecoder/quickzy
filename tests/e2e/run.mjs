@@ -142,7 +142,7 @@ await host.waitForSelector('text=Sent for checking', { timeout: 8000 }).catch(as
 await host.click('button:has-text("Unpublish")');
 await host.waitForSelector('text=Unpublished');
 
-say('publish (Pro): live at once');
+say('publish (Pro): checked within a day, then the owner approves it');
 // the owner would give Pro from the Owner panel; the test sets it directly
 await host.evaluate(async () => {
   const { net, session } = window.__quickzy;
@@ -151,12 +151,25 @@ await host.evaluate(async () => {
   (await import('/src/services/plan.js')).forget(uid);
 });
 await host.click('button:has-text("Publish")');
-await host.waitForSelector('text=Published. Anyone can find', { timeout: 8000 }).catch(async () => {
+await host.waitForSelector('text=Sent for checking', { timeout: 8000 }).catch(async () => {
   const issues = await host.locator('.modal').innerText().catch(() => '');
-  fail(`did not publish ${issues}`);
+  fail(`Pro publish did not go to review ${issues}`);
 });
 const quizId = host.url().split('/edit/')[1];
 if (!quizId) fail('no quiz id in the address');
+{
+  // wait for this save (the toast from the free publish may still be showing)
+  for (let i = 0; i < 40; i++) {
+    const q = await host.evaluate(async (id) => window.__quickzy.net.store.get('quizzes', id), quizId);
+    if (process.env.DEBUG) console.log('   ', q && q.public, q && q.liveAt);
+    if (q && q.public && q.liveAt > Date.now()) break;
+    await host.waitForTimeout(200);
+  }
+  const waitDays = await host.evaluate(async (id) => ((await window.__quickzy.net.store.get('quizzes', id)).liveAt - Date.now()) / 864e5, quizId);
+  if (!(waitDays > 0.8 && waitDays < 1.2)) fail(`a Pro quiz should wait about a day, not ${waitDays.toFixed(2)} days`);
+  // the owner approves it in the Owner panel (here: straight in the dev store)
+  await host.evaluate(async (id) => window.__quickzy.net.store.update('quizzes', id, { liveAt: Date.now() - 1000 }), quizId);
+}
 
 say('make it together: invite by username');
 await host.click('button:has-text("Together")');
@@ -506,7 +519,7 @@ if ((which === 'owner' || which === 'all') && !EMULATOR) {
     await other.locator('button:has-text("Remove blue check")').click();
     await other.locator('button:has-text("Give blue check")').waitFor();
   }
-  await own.click('.seg button:has-text("Quizzes")');
+  await own.click('.seg button:text-is("Quizzes")');
   await own.waitForSelector('.owner-row');
   await own.screenshot({ path: `${SHOTS}/owner-panel.png`, fullPage: true });
 

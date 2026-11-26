@@ -155,9 +155,11 @@ service cloud.firestore {
           && (d.get('editors', []).size() == 0 || pro()
               || (resource != null && d.get('editors', []) == resource.data.get('editors', [])))
           && d.get('liveAt', 0) is int
-          // free accounts: a newly published quiz goes live 3 days or more later
-          // (it was checked automatically); a quiz already live stays live; Pro at once
-          && (!d.public || pro()
+          // every new public quiz is checked before it goes live: free ones in
+          // 3-5 days, Pro ones within a day; a quiz already live stays live.
+          // Only the owner and the official Quickzy account publish at once.
+          && (!d.public || siteOwner() || request.auth.uid == 'XH9Z5D7tLmRHStlxumgaJyTo1BP2'
+              || (pro() && d.get('liveAt', 0) >= request.time.toMillis() + 79200000)
               || d.get('liveAt', 0) >= request.time.toMillis() + 255600000
               || (resource != null && resource.data.public == true && d.get('liveAt', 0) == resource.data.get('liveAt', 0)))
           && d.owner == request.auth.uid
@@ -201,6 +203,11 @@ service cloud.firestore {
       allow update: if account() && resource.data.public == true
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plays'])
         && request.resource.data.plays == resource.data.plays + 1;
+      // owner power: approve a waiting quiz (it goes live now)
+      allow update: if siteOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveAt'])
+        && resource.data.public == true
+        && request.resource.data.liveAt is int && request.resource.data.liveAt <= request.time.toMillis();
       // owner power: unpublish anyone's quiz
       allow update: if siteOwner()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['public', 'big'])

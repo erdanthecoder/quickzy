@@ -35,7 +35,7 @@ export const PLANS = {
 
 export const PRO_PERKS = [
   ['check', 'Gold PRO badge', 'Next to your name on every quiz, channel and game.'],
-  ['globe', 'Publish instantly', 'Your quizzes go live right away. Free quizzes wait 3–5 days for a check.'],
+  ['globe', 'Checked within a day', 'Your quizzes are checked and go live within a day. Free quizzes wait 3–5 days.'],
   ['users', 'Up to 100 players', 'Free games hold 40.'],
   ['star', 'Pro-only games', 'Treasure Hunt and Candy Factory: only Pro members can host them.'],
   ['play', 'Every game mode', 'Laser Tag too, and games up to 30 minutes.'],

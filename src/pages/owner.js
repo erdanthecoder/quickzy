@@ -91,6 +91,37 @@ async function announcement() {
       title, when, h('div', { class: 'row end' }, stopIt, start)));
 }
 
+/* ------------------------------------------------- waiting for a check */
+
+// every new public quiz (free and Pro) waits here; approve it to put it live
+// now, or unpublish it. Your own quizzes never wait.
+async function review() {
+  const now = Date.now();
+  const rows = await net.store.query('quizzes', { where: [['liveAt', '>', now]], limit: 200 }).catch(() => []);
+  const list = rows.filter((q) => q.public).sort((a, b) => a.liveAt - b.liveAt);
+  const box = h('div', { class: 'stack', style: { gap: '8px' } });
+  const draw = () => fill(box, ...(list.length ? list.map((q) => {
+    const row = h('div', { class: 'card row owner-row' },
+      h('div', { class: 'grow' }, h('b', {}, q.title), h('small', { class: 'muted' }, ` · @${q.authorUsername || '?'} · ${q.questionCount || 0} questions · goes live ${new Date(q.liveAt).toLocaleDateString()} by itself`)),
+      h('a', { class: 'btn btn-sm', href: `/quiz/${q.id}`, target: '_blank' }, icon('eye', { size: 14 }), 'Look'),
+      act(h('button', { class: 'btn btn-sm btn-main' }, icon('check', { size: 14 }), 'Approve'), async () => {
+        await net.store.update('quizzes', q.id, { liveAt: Date.now() - 1000 });
+        list.splice(list.indexOf(q), 1); draw();
+      }, 'Approved: it is live now'),
+      act(h('button', { class: 'btn btn-sm' }, icon('lock', { size: 14 }), 'Reject'), async () => {
+        if (!(await confirm({ title: `Reject "${q.title}"?`, text: 'It is unpublished. Its author can still see and edit it.', yes: 'Reject' }))) return;
+        await siteSvc.unpublish(q.id);
+        list.splice(list.indexOf(q), 1); draw();
+      }, 'Rejected'));
+    return row;
+  }) : [h('p', { class: 'muted' }, 'Nothing is waiting for a check.')]));
+  draw();
+  return h('section', { class: 'stack', style: { gap: '10px' } },
+    h('h2', {}, `Waiting for a check (${list.length})`),
+    h('p', { class: 'muted small', style: { margin: 0 } }, 'Free quizzes go live by themselves after 3-5 days, Pro ones after a day. Approve one to put it live now.'),
+    box);
+}
+
 /* --------------------------------------------------------------- quizzes */
 
 async function quizzes() {
@@ -303,13 +334,13 @@ export default async function Owner() {
   pageTitle('Owner');
   let tab = 'quizzes';
   const body = h('div', { class: 'stack', style: { gap: '18px' } });
-  const sections = { signups, quizzes, users, games: async () => games(), abuse: async () => abuse(), events, announcement };
+  const sections = { review, signups, quizzes, users, games: async () => games(), abuse: async () => abuse(), events, announcement };
   const draw = async () => { fill(body, h('div', { class: 'loading' }, h('div', { class: 'spinner' }))); fill(body, await sections[tab]()); };
   draw();
   return h('div', { class: 'page stack', style: { gap: '18px' } },
     h('div', { class: 'row', style: { gap: '10px' } }, h('h1', {}, 'Owner'), h('span', { style: { transform: 'scale(1.5)', display: 'inline-flex' } }, verifiedBadge(null, 'owner'))),
     h('p', { class: 'muted', style: { margin: 0 } }, 'Only your account can open this page, and the database refuses these actions from anyone else.'),
     stats(),
-    segmented([['quizzes', 'Quizzes'], ['signups', 'Sign-ups'], ['users', 'Players'], ['games', 'Live games'], ['abuse', 'Admin abuse'], ['events', 'Events'], ['announcement', 'Announcement & countdown']], tab, (v) => { tab = v; draw(); }),
+    segmented([['review', 'Check quizzes'], ['quizzes', 'Quizzes'], ['signups', 'Sign-ups'], ['users', 'Players'], ['games', 'Live games'], ['abuse', 'Admin abuse'], ['events', 'Events'], ['announcement', 'Announcement & countdown']], tab, (v) => { tab = v; draw(); }),
     body);
 }

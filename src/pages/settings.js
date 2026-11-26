@@ -688,6 +688,8 @@ function deviceSection() {
     row('Music', 'Background music in the lobby and in games.', toggle(p.music, (v) => session.setPrefs({ music: v }))),
     row('Animations', 'Turn off for calmer screens with less movement.', toggle(p.motion, (v) => session.setPrefs({ motion: v }))),
     row('Vibration', 'A little buzz on your phone for right and wrong answers.', toggle(p.vibrate !== false, (v) => { session.setPrefs({ vibrate: v }); if (v && navigator.vibrate) navigator.vibrate(40); })),
+    row('Menu', 'Where the menu sits on a computer or tablet: on the left, as a dock at the bottom, or on the right.',
+      segmented([['left', 'Left'], ['bottom', 'Bottom'], ['right', 'Right']], p.nav || 'left', (v) => session.setPrefs({ nav: v }))),
     row('Theme', 'Light, dark, or the same as your device.', segmented([['light', 'Light'], ['dark', 'Dark'], ['auto', 'Auto']], p.theme || 'light', (v) => session.setPrefs({ theme: v }))),
     installRow());
 }
