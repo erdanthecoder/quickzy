@@ -1763,8 +1763,7 @@ button.bcard.is-slot { color: var(--violet); border-color: var(--violet); backgr
 .hm-slide span { margin-top: 4px; height: 22px; border-radius: 5px; background: linear-gradient(90deg, #e2334f 25%, #1f7ae0 25% 50%, #d89a00 50% 75%, #138a56 75%); }
 .hm-tile-blooks { grid-column: span 3; }
 .hm-blook-row { display: flex; gap: 4px; margin-top: 14px; }
-.hm-tile-ai { grid-column: span 3; }
-.hm-tile-safe { grid-column: span 3; background: #fff8e1; border-color: #ffe7a3; }
+.hm-tile-safe { grid-column: span 6; background: #fff8e1; border-color: #ffe7a3; }
 @media (max-width: 980px) { .hm-hero { grid-template-columns: minmax(0, 1fr); } .hm-bento { grid-template-columns: 1fr 1fr; } .hm-bento > * { grid-column: span 1 !important; grid-row: auto !important; } .hm-tile-app { grid-column: span 2 !important; min-height: 260px; } }
 @media (max-width: 640px) {
   .hm-hero { border-radius: 20px; }
@@ -2474,3 +2473,5 @@ a.pf-todo-item:hover { background: #ece7ff; }
 .th-screen h2 { text-shadow: 0 3px 0 #b5652a; }
 .cf-screen { background: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, .2) 1.5px, transparent 0) 0 0 / 22px 22px, linear-gradient(140deg, #ff8fb1, #a560ff); }
 .cf-screen h2 { text-shadow: 0 3px 0 #9c2f8f; }
+.hm-bento { justify-items: stretch; text-align: left; } .hm-bento > .hm-tile { width: auto; margin: 0; }
+.hm-tile-present p { max-width: 24ch; }
