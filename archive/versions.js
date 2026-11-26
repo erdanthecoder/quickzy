@@ -2,6 +2,46 @@
 // the top and its pictures in shots/<version>/.
 window.VERSIONS = [
   {
+    v: '1.4', date: '26 November 2026', name: 'For teachers', colour: '#12c9a6',
+    intro: 'Quickzy for classrooms: teachers make classes, students join with a code, and everyone gets a Quickzy that fits them. Plus calm classical music and two rebuilt games.',
+    news: [
+      ['Sign-up questions', 'How did you find Quickzy, and how old are you? Under 18 gets blooks, boxes and games; grown-ups pick personal or teaching.'],
+      ['Classes', 'Teachers pick their school, make classes and give students a class code (their own or a random one).'],
+      ['Announcements', 'Post news to the whole class, send game PINs straight from the lobby, and add students or other teachers by username.'],
+      ['Homework in classes', 'Set one of your quizzes as homework from the class, with a due date and every score.'],
+      ['Quick questions', 'One question in an announcement. Students answer once; the teacher sees who got it right.'],
+      ['Calm classical music', 'Gymnopedie, Bach, Pachelbel\'s Canon and Ode to Joy on piano and strings. No more creepy loops.'],
+      ['Candy Factory and Treasure Hunt, rebuilt', 'A real candy factory with a conveyor belt, and a treasure beach with chests that pop open.'],
+      ['Keys on computers', 'Every arcade game shows which keys to press, and Train Travel got a Get coal button.'],
+      ['Free and Pro classes', 'Free teachers get 2 classes of 100 students; Pro gets up to 50 classes of 300.'],
+    ],
+    shots: [
+      ['questions', 'The sign-up questions'], ['teaching', 'For me, or for teaching'], ['classes', 'Your classroom'],
+      ['class', 'A class: posts, a quick question and the class code'], ['kid-class', 'A student in their class (phone)'],
+      ['candy', 'Candy Factory, rebuilt (phone)'], ['treasure-player-wide', 'Treasure Hunt, rebuilt'],
+      ['obby-player-wide', 'Sky Climb with key hints'], ['skyrace-player-wide', 'Sky Race with key hints'],
+    ],
+  },
+  {
+    v: '1.3', date: '23 November 2026', name: 'Questions in. Games out.', colour: '#6b4cff',
+    intro: 'A Quickzy app that plays offline, a Windows app, real recorded sounds, a brand new home page and 3D games on the big screen.',
+    news: [
+      ['The Quickzy app plays offline', 'Install it on a phone or computer. 53 quizzes built in, and every solo quiz is saved for no-internet play.'],
+      ['Quickzy for Windows', 'A real desktop app, downloaded from the Quickzy app page.'],
+      ['Presentation+, rebuilt like PowerPoint', 'A ribbon, 10 layouts, 8 themes, transitions, speaker notes and pictures.'],
+      ['Real sounds', 'Every click, right answer, laser and win is a real recording.'],
+      ['A new home page', 'Questions in. Games out. An example game plays itself, and you join with a PIN in one line.'],
+      ['Blooks, organised', 'Shop, Collection, Custom and Levels tabs, with filters by rarity and pack.'],
+      ['Real-looking profiles', 'A cover photo, your bio, where you are from, and your followers.'],
+      ['Train Travel, Laser Tag and Robot Run in 3D', 'Big-screen camera shots, neon arenas and a sunset city run.'],
+    ],
+    shots: [
+      ['home', 'Questions in. Games out.'], ['app-home', 'The Quickzy app (phone)'], ['train-player-wide', 'Train Travel'],
+      ['robotrun-player-wide', 'Robot Run'], ['lasertag-player-wide', 'Laser Tag'], ['blooks-page', 'Blooks, organised'],
+      ['solo-modes', 'Five ways to play alone'],
+    ],
+  },
+  {
     v: '1.2', date: '21 November 2026', name: 'The big one', colour: '#ff8a2a',
     intro: 'Planes, profiles and presentations. Quickzy grew up: a new logo, a sky race, homework for teachers and minigames to play alone.',
     news: [
