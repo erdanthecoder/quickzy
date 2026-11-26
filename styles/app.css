@@ -2623,3 +2623,27 @@ html body { transition: transform .8s cubic-bezier(.4, 1.4, .5, 1); }
 @keyframes abuse-spin { 50% { transform: rotate(180deg) scale(.6); } 100% { transform: rotate(360deg) scale(1); } }
 .abuse-tiny { animation: abuse-tiny 3s cubic-bezier(.4, 1.6, .5, 1) both; transform-origin: 50% 40%; }
 @keyframes abuse-tiny { 20%, 70% { transform: scale(.25); } 100% { transform: none; } }
+
+/* ============================================ the Quickzy intro animation */
+.ld-assemble { position: relative; display: block; margin: 0 auto; }
+.ld-assemble > i { position: absolute; width: 46%; height: 46%; border-radius: 26%; animation: ld-fly .7s cubic-bezier(.2, 1.5, .4, 1) both, ld-hide .25s ease 1.05s forwards; }
+.ld-assemble > i.is-a { left: 2%; top: 2%; background: #ff4772; --fx: -160px; --fy: -120px; animation-delay: 0s, 1.05s; }
+.ld-assemble > i.is-b { right: 2%; top: 2%; background: #2f9bff; --fx: 160px; --fy: -120px; animation-delay: .08s, 1.05s; }
+.ld-assemble > i.is-c { left: 2%; bottom: 2%; background: #ffcd1f; --fx: -160px; --fy: 120px; animation-delay: .16s, 1.05s; }
+.ld-assemble > i.is-d { right: 2%; bottom: 2%; background: #12c9a6; --fx: 160px; --fy: 120px; animation-delay: .24s, 1.05s; }
+@keyframes ld-fly { from { transform: translate(var(--fx), var(--fy)) rotate(180deg) scale(.3); opacity: 0; } }
+@keyframes ld-hide { to { transform: scale(.6); opacity: 0; } }
+.ld-flash { position: absolute; inset: -30%; border-radius: 50%; background: radial-gradient(circle, #fff 0%, rgba(255, 230, 120, .8) 30%, transparent 65%); opacity: 0; animation: ld-flash .55s ease-out 1s both; pointer-events: none; }
+@keyframes ld-flash { 0% { opacity: 0; transform: scale(.3); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.6); } }
+.ld-logo { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; animation: ld-logo .6s cubic-bezier(.2, 1.6, .4, 1) 1.08s forwards, ld-float 2.6s ease-in-out 1.9s infinite; }
+.ld-logo > * { width: 100%; height: 100%; }
+@keyframes ld-logo { from { opacity: 0; transform: scale(.4) rotate(-20deg); } to { opacity: 1; transform: none; } }
+@keyframes ld-float { 50% { transform: translateY(-6px) rotate(-3deg); } }
+.ld-spark { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 2px; background: #ffcd1f; opacity: 0; transform: rotate(45deg);
+  animation: ld-spark .8s ease-out calc(1.05s + var(--k) * .04s) both; }
+.ld-spark:nth-of-type(2n) { background: #fff; }
+@keyframes ld-spark { 0% { opacity: 1; transform: rotate(45deg) translate(0, 0) scale(1); } 100% { opacity: 0; transform: rotate(calc(45deg + var(--k) * 60deg)) translate(80px, 0) scale(.3); } }
+.ld-boot .ld-word { animation: ld-word .6s cubic-bezier(.2, 1.4, .4, 1) 1.3s both; }
+@keyframes ld-word { from { opacity: 0; transform: translateY(16px); filter: blur(6px); } }
+html[data-motion="calm"] .ld-assemble > i { display: none; }
+html[data-motion="calm"] .ld-logo { opacity: 1; animation: none; }
