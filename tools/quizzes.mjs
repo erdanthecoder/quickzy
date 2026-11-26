@@ -15,6 +15,7 @@ const num = (text, answer, tolerance = 0, unit = '', time = 20) => ({ id: id(), 
 const poll = (text, options) => ({ id: id(), type: 'poll', text, options, time: 20, points: 'none' });
 
 import { MORE } from './quizzes2.mjs';
+import { EVEN_MORE } from './quizzes3.mjs';
 
 const BASE = [
   {
@@ -199,4 +200,4 @@ const BASE = [
   },
 ];
 
-export const QUIZZES = [...BASE, ...MORE];
+export const QUIZZES = [...BASE, ...MORE, ...EVEN_MORE];

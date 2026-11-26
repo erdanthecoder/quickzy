@@ -57,13 +57,33 @@ if (process.env.EMULATOR === '1') {
 const EMULATOR = process.env.EMULATOR === '1';
 
 async function newPage(who, viewport = { width: 1280, height: 800 }) {
-  const ctx = await browser.newContext({ viewport, hasTouch: who !== 'host' && viewport.width < 600 });
+  // the test driver runs its own scripts in the page, which the site's
+  // Content-Security-Policy would block; the policy itself is checked first, below
+  const ctx = await browser.newContext({ viewport, hasTouch: who !== 'host' && viewport.width < 600, bypassCSP: true });
   if (EMULATOR) await ctx.addInitScript(() => sessionStorage.setItem('quickzy.emulator', '1'));
   // the free Pro test is switched off here, so the free plan gets tested too
   await ctx.addInitScript(() => localStorage.setItem('quickzy.test.noTrial', '1'));
   const page = await ctx.newPage();
   watch(page, who);
   return page;
+}
+
+/* ------------------------------------------- the security policy itself */
+
+// every main page loads under the real Content-Security-Policy with nothing blocked
+{
+  say('security policy: nothing on the main pages is blocked');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const pg = await ctx.newPage();
+  const blocked = [];
+  pg.on('console', (m) => { if (/Content Security Policy|Refused to/i.test(m.text())) blocked.push(m.text().slice(0, 200)); });
+  for (const path of ['/', '/discover', '/blooks', '/join', '/login', '/signup', '/teachers', '/app', '/pro', '/settings']) {
+    await pg.goto(`${BASE}${path}`);
+    await pg.waitForTimeout(900);
+  }
+  if (!(await pg.evaluate(() => document.querySelector('meta') !== null))) fail('the page did not load');
+  await ctx.close();
+  if (blocked.length) fail(`blocked by the policy: ${blocked.join(' | ')}`);
 }
 
 /* ---------------------------------------------------------- the host */
@@ -720,7 +740,7 @@ if (which === 'account' || which === 'all') {
 
   say('quickzy app: the quiz just played is saved, and plays with no servers');
   {
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, bypassCSP: true });
     const app = await ctx.newPage();
     watchApp(app);
     // copy this device's saved quizzes into the new phone, then cut it off from every server
