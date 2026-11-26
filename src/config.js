@@ -59,10 +59,9 @@ export const OWNER_UID = 'KWIRRSUM2VQVWnr1nUDbPP9bqMk2';
 export const RELEASE_1_2 = Date.UTC(2026, 10, 21, 9, 0, 0);   // 12:00 PM (noon) in Amman (UTC+3), 21 Nov 2026
 export const released12 = (now = Date.now()) => now >= RELEASE_1_2;
 
-/** Quickzy 1.4 (teachers and classes) arrives by itself at 12:00 PM noon in
- *  Amman (UTC+3) on 26 November 2026. Until then the site counts down to it;
- *  the owner can try it early. */
-export const RELEASE_1_4 = Date.UTC(2026, 10, 26, 9, 0, 0);
+/** Quickzy 1.4 (teachers and classes): released early, on the owner's word,
+ *  at 10:25 AM in Amman (UTC+3) on 26 November 2026. */
+export const RELEASE_1_4 = Date.UTC(2026, 10, 26, 7, 25, 0);
 export const released14 = (now = Date.now()) => now >= RELEASE_1_4;
 
 /** Shown in the sidebar and the What's new popup. */
