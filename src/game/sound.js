@@ -419,85 +419,206 @@ export function sfx(name) {
 
 /* ------------------------------------------------------------------ music */
 
-// Little songs, played by a scheduler that looks a little ahead so nothing
-// stutters. Each has drums, a bass line, a pad on the chords, a rhythm part
-// and a melody on a real-sounding instrument, with an A part and a B part.
+// Calm, beautiful music: famous classical pieces (all hundreds of years old,
+// so free for everyone) played on a soft grand piano with a string section
+// behind it, in a big warm hall. No drums.
 //
-// Drum letters: x = hit, o = soft hit, . = rest.
-// Chords are MIDI notes above the key. Melody arrays hold notes above the key
-// (null = rest), one per sixteenth note.
+//   menu     Satie, Gymnopédie No. 1
+//   lobby    Bach, Prelude in C major
+//   game     Pachelbel, Canon in D
+//   arcade   Beethoven, Ode to Joy (Sky Race and the other arcade games)
+//   tense    Bach (Petzold), Minuet in G: the last 30 seconds, lively but sweet
+//   victory  Ode to Joy again, bigger, with the strings singing along
 
-const N = null;
+const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+/** 'F#4' → 66 */
+function nm(name) {
+  const m = /^([A-G])(#|b)?(-?\d)$/.exec(name);
+  if (!m) throw new Error(`bad note ${name}`);
+  return 12 * (Number(m[3]) + 1) + PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+}
+/** 'F#5:1 r:.5 E5:.5' → [[66, 1], [null, .5], [64, .5]] */
+const tune = (text) => text.trim().split(/\s+/).filter((w) => w !== '|').map((w) => {
+  const [n, d = '1'] = w.split(':');
+  return [n === 'r' ? null : nm(n), Number(d)];
+});
+const chord = (text) => text.trim().split(/\s+/).map(nm);
+
+/* the piano: each note is worked out once (partials that ring and fade, a
+   soft hammer, two strings a hair apart) and kept, like a real recording */
+const pianoNotes = new Map();
+function pianoBuf(m) {
+  if (pianoNotes.has(m)) return pianoNotes.get(m);
+  const sr = ctx.sampleRate;
+  const f0 = midi(m);
+  const secs = Math.max(1.6, Math.min(4.2, 4.6 - (m - 40) * 0.05));
+  const n = Math.floor(sr * secs);
+  const buf = ctx.createBuffer(1, n, sr);
+  const d = buf.getChannelData(0);
+  const B = 0.00008 * 2 ** ((m - 60) / 12);           // string stiffness
+  const top = Math.min(12, Math.floor((sr * 0.42) / f0));
+  for (let k = 1; k <= top; k++) {
+    const fk = f0 * k * Math.sqrt(1 + B * k * k);
+    const amp = (k === 1 ? 1 : k === 2 ? 0.55 : k === 3 ? 0.3 : 0.5 / (k * k * 0.25)) * (m > 84 ? 1 / k : 1);
+    const tau = (secs * 0.42) / (1 + (k - 1) * 0.55) * (m < 48 ? 1.2 : 1);
+    for (const det of k <= 3 ? [-0.6, 0.6] : [0]) {
+      const w = (2 * Math.PI * fk * 2 ** (det / 1200)) / sr;
+      const cw = Math.cos(w); const sw = Math.sin(w);
+      let c = Math.cos(Math.random() * 6.28); let si = Math.sin(Math.random() * 6.28);
+      const fall = Math.exp(-1 / (tau * sr));
+      let a = amp * (k <= 3 ? 0.5 : 1);
+      for (let i = 0; i < n; i++) {
+        d[i] += a * si;
+        const c2 = c * cw - si * sw; si = si * cw + c * sw; c = c2;
+        a *= fall;
+      }
+    }
+  }
+  // the felt hammer: a tiny soft knock
+  let lp = 0;
+  const hn = Math.floor(sr * 0.02);
+  for (let i = 0; i < hn; i++) { lp += ((Math.random() * 2 - 1) - lp) * 0.18; d[i] += lp * 0.25 * (1 - i / hn); }
+  let peak = 0;
+  for (let i = 0; i < n; i++) {
+    const att = i < 90 ? i / 90 : 1;
+    const tail = i > n - sr * 0.3 ? (n - i) / (sr * 0.3) : 1;
+    d[i] *= att * tail;
+    peak = Math.max(peak, Math.abs(d[i]));
+  }
+  const norm = 0.5 / (peak || 1);
+  for (let i = 0; i < n; i++) d[i] *= norm;
+  pianoNotes.set(m, buf);
+  return buf;
+}
+function piano(m, t, out, v = 0.6, len = 9) {
+  const s = ctx.createBufferSource(); s.buffer = pianoBuf(m);
+  const g = ctx.createGain();
+  // softer notes are also darker, like a real piano
+  const lp = filter('lowpass', 1400 + v * 6000, 0.5);
+  g.gain.setValueAtTime(v * v * 1.1, t);
+  // let go of the key: a gentle damper
+  g.gain.setTargetAtTime(0, t + len, 0.25);
+  s.connect(lp).connect(g).connect(out);
+  s.start(t); s.stop(t + Math.min(len + 1.5, s.buffer.duration));
+}
+
+/* the strings: a warm section, bowed in slowly, with a little vibrato */
+function bowed(notes, t, dur, out, v = 0.5) {
+  const stop = t + dur + 2;
+  const lp = filter('lowpass', 1500, 0.4);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.022 * v, t + Math.min(1.2, dur * 0.4));
+  g.gain.setTargetAtTime(0, t + dur, 0.5);
+  const vib = osc('sine', 4.6 + rnd(-0.3, 0.3), t, stop); const vg = ctx.createGain(); vg.gain.value = 5; vib.connect(vg);
+  for (const n of notes) {
+    for (const det of [-7, 0, 7]) {
+      const o = osc('sawtooth', midi(n), t, stop); o.detune.value = det + rnd(-2, 2); vg.connect(o.detune); o.connect(lp);
+    }
+  }
+  lp.connect(g).connect(out);
+}
+
+// chord voicings: the first note is the bass, the rest are on top
+const V = {
+  Gmaj7: 'G2 B3 D4 F#4', Dmaj7: 'D2 A3 C#4 F#4',
+  D: 'D2 A3 D4 F#4', A: 'A1 A3 C#4 E4', A7: 'A1 G3 C#4 E4', Bm: 'B1 B3 D4 F#4', Fsm: 'F#2 A3 C#4 F#4', G: 'G2 B3 D4 G4',
+  Gm: 'G2 B3 D4', Cm: 'C3 C4 E4 G4', Dm7: 'D3 C4 D4 F#4', Gw: 'G2 B3 D4 G4',
+};
+const bars = (list) => list.map((b) => (Array.isArray(b) ? b : [b]).map((c) => chord(V[c] || c)));
+
 const TRACKS = {
-  // calm and warm: home, menus, the intro
   menu: {
-    bpm: 92, key: 60, swing: 0.14,
-    chords: [[0, 4, 7, 11], [-3, 0, 4, 7], [-7, -3, 0, 4], [-5, -1, 2, 5]],
-    kick: '................', snare: '................', hat: '................', shake: '', clap: false,
-    bass: [0, N, N, N, N, N, N, N, 7, N, N, N, N, N, N, N],
-    comp: 'epiano', compPat: 'x.......x.......',
-    lead: 'epiano',
-    leadA: [N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N],
-    leadB: [19, N, N, N, 16, N, N, N, 14, N, N, N, 12, N, N, N],
+    bpm: 74, beats: 3, style: 'gymno', strings: 0.5,
+    bars: bars(Array.from({ length: 20 }, (_, i) => (i % 2 ? 'Dmaj7' : 'Gmaj7'))),
+    melody: tune(`r:12
+      r:1 F#5:1 A5:1 G5:1 F#5:1 C#5:1 B4:1 C#5:1 D5:1 A4:3 F#4:12
+      r:1 F#5:1 A5:1 G5:1 F#5:1 C#5:1 B4:1 C#5:1 D5:1 A4:3 F#4:12`),
   },
-  // the lobby: funky, waiting for friends
   lobby: {
-    bpm: 104, key: 62, swing: 0.18,
-    chords: [[0, 3, 7, 10], [5, 9, 12, 15], [-2, 2, 5, 9], [3, 7, 10, 14]],
-    kick: 'x..x....x.x.....', snare: '....x.......x..o', hat: 'xoxox.xoxoxox.xo', shake: '', clap: true,
-    bass: [0, N, 0, 12, N, 0, 10, N, 0, N, 0, 12, N, 7, 10, N],
-    comp: 'epiano', compPat: '.x..x.x..x..x.x.',
-    lead: 'pluck',
-    leadA: [12, N, 15, N, 17, 15, N, 12, N, N, 10, N, 12, N, N, N],
-    leadB: [19, N, 17, N, 15, N, 17, 19, 22, N, 19, N, 17, 15, 12, N],
+    bpm: 62, beats: 4, style: 'prelude', strings: 0.35,
+    bars: bars(['C4 E4 G4 C5 E5', 'C4 D4 A4 D5 F5', 'B3 D4 G4 D5 F5', 'C4 E4 G4 C5 E5', 'C4 E4 A4 E5 A5', 'C4 D4 F#4 A4 D5', 'B3 D4 G4 D5 G5',
+      'B3 C4 E4 G4 C5', 'A3 C4 E4 G4 C5', 'D3 A3 D4 F#4 C5', 'G3 B3 D4 G4 B4', 'G3 Bb3 E4 G4 C#5', 'F3 A3 D4 A4 D5', 'F3 Ab3 D4 F4 B4',
+      'E3 G3 C4 G4 C5', 'E3 F3 A3 C4 F4', 'D3 F3 A3 C4 F4', 'G2 D3 G3 B3 F4', 'C3 E3 G3 C4 E4']),
   },
-  // playing: bright and driving
   game: {
-    bpm: 124, key: 64, swing: 0.06,
-    chords: [[0, 4, 7], [-3, 0, 4], [-7, -3, 0], [-5, -1, 2]],
-    kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'o.x.o.x.o.x.o.xo', shake: '', clap: true,
-    bass: [0, N, 12, 0, N, 12, 0, N, -3, N, 9, -3, N, -5, 7, N],
-    comp: 'pluck', compPat: 'x.x.x.x.x.x.x.x.',
-    lead: 'marimba',
-    leadA: [12, N, 12, 14, 16, N, 12, N, 9, N, 9, 12, 14, N, N, N],
-    leadB: [19, N, 16, N, 19, 21, 19, 16, 14, N, 12, N, 14, 16, 12, N],
+    bpm: 70, beats: 4, style: 'canon', strings: 0.6,
+    bars: bars(Array.from({ length: 3 }, () => [['D', 'A'], ['Bm', 'Fsm'], ['G', 'D'], ['G', 'A']]).flat()),
+    melody: tune(`F#5:2 E5:2 D5:2 C#5:2 B4:2 A4:2 B4:2 C#5:2
+      D5 F#5 A5 G5 F#5 D5 F#5 E5 D5 B4 D5 A5 G5 B5 A5 G5
+      F#5:1 D5:.5 E5:.5 F#5:1 D5:.5 E5:.5 F#5:.5 A4:.5 B4:.5 C#5:.5 D5:.5 E5:.5 F#5:.5 G5:.5
+      D5:1 B4:.5 C#5:.5 D5:1 D4:.5 E4:.5 F#4:.5 G4:.5 F#4:.5 E4:.5 F#4:.5 D5:.5 C#5:.5 D5:.5`),
   },
-  // the arcade games: adventurous
   arcade: {
-    bpm: 118, key: 57, swing: 0.08,
-    chords: [[0, 3, 7], [-4, 0, 3], [-2, 2, 5], [-5, -1, 2]],
-    kick: 'x.....x...x.....', snare: '....x.......x...', hat: 'xox.xox.xox.xoxo', shake: '', clap: false,
-    bass: [0, N, 0, N, 12, N, 0, 3, -4, N, -4, N, 8, N, -4, -2],
-    comp: 'pluck', compPat: 'x..x..x.x..x..x.',
-    lead: 'flute',
-    leadA: [12, N, N, 15, N, N, 19, N, 15, N, 12, N, 10, N, N, N],
-    leadB: [24, N, 22, N, 19, N, 15, N, 17, N, 19, N, 15, N, N, N],
+    bpm: 92, beats: 4, style: 'alberti', strings: 0.45,
+    bars: bars(['D', 'A', 'D', 'A', 'D', 'A', 'D', ['A', 'D'], 'A', 'D', 'A', ['D', 'A7'], 'D', 'A', 'D', ['A', 'D']]),
+    melody: tune(`F#5 F#5 G5 A5 A5 G5 F#5 E5 D5 D5 E5 F#5 F#5:1.5 E5:.5 E5:2
+      F#5 F#5 G5 A5 A5 G5 F#5 E5 D5 D5 E5 F#5 E5:1.5 D5:.5 D5:2
+      E5 E5 F#5 D5 E5 F#5:.5 G5:.5 F#5 D5 E5 F#5:.5 G5:.5 F#5 E5 D5 E5 A4:2
+      F#5 F#5 G5 A5 A5 G5 F#5 E5 D5 D5 E5 F#5 E5:1.5 D5:.5 D5:2`),
   },
-  // the last 30 seconds
   tense: {
-    bpm: 140, key: 57, swing: 0,
-    chords: [[0, 3, 7], [0, 3, 7], [-4, 0, 3], [-2, 1, 5]],
-    kick: 'x...x...x...x...', snare: '....x.......x.oo', hat: 'xoxoxoxoxoxoxoxo', shake: '', clap: false,
-    bass: [0, 0, 12, 0, 0, 12, 0, 0, -4, -4, 8, -4, -2, -2, 10, -2],
-    comp: 'pluck', compPat: 'x.xxx.xxx.xxx.xx',
-    lead: 'marimba',
-    leadA: [12, N, 11, N, 12, N, 15, N, 14, N, 12, N, 11, N, 7, N],
-    leadB: [15, 14, 12, 11, 12, N, 15, N, 19, N, 17, 15, 14, N, 11, N],
-  },
-  // the podium
-  victory: {
-    bpm: 112, key: 60, swing: 0.05,
-    chords: [[0, 4, 7], [5, 9, 12], [7, 11, 14], [0, 4, 7]],
-    kick: 'x.......x.x.....', snare: '....x.......x...', hat: 'o.o.o.o.o.o.o.o.', shake: 'xoxoxoxoxoxoxoxo', clap: true,
-    bass: [0, N, 7, N, 0, N, 7, N, 5, N, 12, N, 7, N, 14, N],
-    comp: 'pluck', compPat: 'x.x.x.x.x.x.x.x.',
-    lead: 'bell',
-    leadA: [12, N, 12, N, 12, 16, 19, N, 17, N, 17, 21, 24, N, N, N],
-    leadB: [24, N, 23, N, 21, N, 19, N, 17, 19, 21, 19, 24, N, N, N],
+    bpm: 120, beats: 3, style: 'waltz', strings: 0.3,
+    bars: bars(['Gw', 'Gw', 'Cm', 'Gw', 'Cm', 'Gw', 'Dm7', 'Dm7', 'Gw', 'Gw', 'Cm', 'Gw', 'Cm', 'Gw', 'Dm7', 'Gw']),
+    melody: tune(`D5 G4:.5 A4:.5 B4:.5 C5:.5 D5 G4 G4 E5 C5:.5 D5:.5 E5:.5 F#5:.5 G5 G4 G4
+      C5 D5:.5 C5:.5 B4:.5 A4:.5 B4 C5:.5 B4:.5 A4:.5 G4:.5 F#4 G4:.5 A4:.5 B4:.5 G4:.5 A4:3
+      D5 G4:.5 A4:.5 B4:.5 C5:.5 D5 G4 G4 E5 C5:.5 D5:.5 E5:.5 F#5:.5 G5 G4 G4
+      C5 D5:.5 C5:.5 B4:.5 A4:.5 B4 C5:.5 B4:.5 A4:.5 G4:.5 A4 B4:.5 A4:.5 G4:.5 F#4:.5 G4:3`),
   },
 };
+// the podium: Ode to Joy, a fourth higher and brighter, strings singing too
+TRACKS.victory = { ...TRACKS.arcade, bpm: 108, up: 5, strings: 1, sing: true };
 // old scene names still work
 TRACKS.space = TRACKS.arcade;
+
+/** Everything one loop of a piece plays, in beats from its start. */
+function score(s) {
+  if (s.events) return s;
+  const ev = [];
+  const up = s.up || 0;
+  s.bars.forEach((chords, b) => {
+    const t0 = b * s.beats;
+    const span = s.beats / chords.length;
+    chords.forEach((c, k) => {
+      const t = t0 + k * span;
+      const [bass, ...top] = c.map((n) => n + up);
+      if (s.strings) ev.push({ t, kind: 'strings', notes: top, dur: span, v: s.strings });
+      if (s.style === 'gymno') {
+        ev.push({ t, kind: 'piano', n: bass, v: 0.55, len: 1 });
+        ev.push(...top.map((n, i) => ({ t: t + 1 + i * 0.01, kind: 'piano', n, v: 0.42, len: 2 })));
+      } else if (s.style === 'prelude') {
+        const all = [bass, ...top];
+        const pat = [0, 1, 2, 3, 4, 2, 3, 4];
+        for (let i = 0; i < 16; i++) ev.push({ t: t + i * 0.25, kind: 'piano', n: all[pat[i % 8]], v: i % 8 === 0 ? 0.6 : 0.46, len: i % 8 < 2 ? 2 : 0.5 });
+      } else if (s.style === 'canon') {
+        ev.push({ t, kind: 'piano', n: bass, v: 0.6, len: span });
+        const arp = [top[0], top[1], top[2], top[1]];
+        for (let i = 0; i < span * 2; i++) ev.push({ t: t + i * 0.5, kind: 'piano', n: arp[i % 4], v: 0.36, len: 0.6 });
+      } else if (s.style === 'alberti') {
+        ev.push({ t, kind: 'piano', n: bass, v: 0.55, len: span });
+        const arp = [top[0], top[2], top[1], top[2]];
+        for (let i = 0; i < span * 2; i++) ev.push({ t: t + i * 0.5, kind: 'piano', n: arp[i % 4], v: 0.32, len: 0.5 });
+      } else if (s.style === 'waltz') {
+        ev.push({ t, kind: 'piano', n: bass, v: 0.55, len: 1 });
+        for (const beat of [1, 2]) ev.push(...top.map((n, i) => ({ t: t + beat + i * 0.008, kind: 'piano', n, v: 0.3, len: 0.6 })));
+      }
+    });
+  });
+  let t = 0;
+  for (const [n, d] of s.melody || []) {
+    if (n !== null) {
+      ev.push({ t, kind: 'piano', n: n + up, v: 0.72, len: d * 1.05, lead: true });
+      if (s.sing) ev.push({ t, kind: 'strings', notes: [n + up], dur: d, v: 1.6 });
+    }
+    t += d;
+  }
+  ev.sort((a, b) => a.t - b.t);
+  s.events = ev;
+  s.length = s.bars.length * s.beats;
+  if (s.melody && Math.abs(t - s.length) > 0.01) console.warn(`music: the tune is ${t} beats but the chords are ${s.length}`);
+  s.notes = [...new Set(ev.filter((e) => e.kind === 'piano').map((e) => e.n))];
+  return s;
+}
 
 let music = null;
 
@@ -507,52 +628,45 @@ export function playMusic(scene = 'lobby') {
   stopMusic();
   const c = audio();
   if (!c) return;
-  const s = TRACKS[scene] || TRACKS.lobby;
+  const s = score(TRACKS[scene] || TRACKS.lobby);
   const bus = c.createGain();
   bus.gain.value = 0.0001;
-  bus.gain.exponentialRampToValueAtTime(scene === 'menu' ? 0.22 : 0.28, c.currentTime + 1.5);
+  bus.gain.exponentialRampToValueAtTime(0.46, c.currentTime + 2);
   bus.connect(master);
-  const busWet = c.createGain(); busWet.gain.value = 0.3; bus.connect(busWet).connect(room);
-  const drums = c.createGain(); drums.gain.value = 0.7; drums.connect(bus);
-  // a soft echo on the melody makes it feel bigger
-  const echo = c.createDelay(); echo.delayTime.value = (60 / s.bpm) * 0.75;
-  const fb = c.createGain(); fb.gain.value = 0.25; const eLp = filter('lowpass', 2500);
-  const wet = c.createGain(); wet.gain.value = 0.25;
-  echo.connect(eLp).connect(fb).connect(echo); eLp.connect(wet).connect(bus);
-  const lead = c.createGain(); lead.gain.value = 0.85; lead.connect(bus); lead.connect(echo);
-  const six = 60 / s.bpm / 4;
-  let step = 0;
-  let next = c.currentTime + 0.15;
-  const vel = (ch) => (ch === 'x' ? rnd(0.9, 1) : rnd(0.4, 0.55));
-  const timer = setInterval(() => {
-    if (!prefs().music) { stopMusic(); return; }
-    while (next < c.currentTime + 0.5) {
-      const i = step % 16;
-      const t = next + (i % 2 ? six * s.swing : 0);
-      const loose = t + rnd(-0.004, 0.006);  // played by hand, not a grid
-      const bar = Math.floor(step / 16);
-      const chord = s.chords[bar % s.chords.length];
-      const part = Math.floor(bar / 4) % 2 ? s.leadB : s.leadA;
-      const fill = bar % 8 === 7 && i >= 12; // a drum fill every eighth bar
-      if (s.kick[i] && s.kick[i] !== '.') drum('kick', t, drums, vel(s.kick[i]));
-      if (fill) drum('snare', loose, drums, 0.4 + (i - 12) * 0.15);
-      else if (s.snare[i] && s.snare[i] !== '.') { drum('snare', loose, drums, vel(s.snare[i])); if (s.clap && s.snare[i] === 'x') drum('clap', loose + 0.004, drums, 0.5); }
-      if (s.hat[i] && s.hat[i] !== '.') drum(i === 14 && bar % 2 === 1 ? 'openhat' : 'hat', loose, drums, vel(s.hat[i]) * 0.8);
-      if (s.shake && s.shake[i] !== '.') drum('shaker', loose, drums, vel(s.shake[i]));
-      if (i === 0 && bar % 8 === 0 && bar > 0) drum('crash', t, drums, 0.5);
-      if (s.bass[i] !== null) note('bass', s.key - 24 + s.bass[i] + chord[0], t, bus, rnd(0.85, 1));
-      if (i === 0) pad(chord.map((n) => s.key + n - 12), t, six * 15, { out: bus });
-      if (s.compPat[i] === 'x') {
-        const notes = chord.slice(0, 3).map((n) => s.key + n);
-        notes.forEach((n, k) => note(s.comp, n, loose + k * 0.006, bus, 0.35 * rnd(0.8, 1)));
+  // a big, soft hall around everything
+  const hall = c.createGain(); hall.gain.value = 0.55; bus.connect(hall).connect(room);
+  const beat = 60 / s.bpm;
+  const me = { scene, bus, timer: 0 };
+  music = me;
+  // work out the piano notes first, a few at a time, so nothing stutters
+  const todo = s.notes.filter((n) => !pianoNotes.has(n));
+  const warm = () => {
+    if (music !== me) return;
+    const t0 = performance.now();
+    while (todo.length && performance.now() - t0 < 12) pianoBuf(todo.shift());
+    if (todo.length) { setTimeout(warm, 0); return; }
+    begin();
+  };
+  function begin() {
+    let i = 0;
+    let loopAt = c.currentTime + 0.2;
+    me.timer = setInterval(() => {
+      if (!prefs().music) { stopMusic(); return; }
+      const until = c.currentTime + 0.6;
+      for (;;) {
+        if (i >= s.events.length) { i = 0; loopAt += s.length * beat; }
+        const e = s.events[i];
+        const t = loopAt + e.t * beat;
+        if (t > until) break;
+        // played by a person: a little looser, a little softer or louder
+        const when = t + (e.lead ? rnd(0, 0.012) : rnd(-0.004, 0.008));
+        if (e.kind === 'piano') piano(e.n, when, bus, e.v * rnd(0.9, 1.05), e.len * beat);
+        else bowed(e.notes, t, e.dur * beat, bus, e.v);
+        i += 1;
       }
-      // the melody rests in the first bar of each part, so the song breathes
-      if (part[i] !== null && bar % 8 !== 0) note(s.lead, s.key + part[i], loose, lead, rnd(0.8, 1));
-      step += 1;
-      next += six;
-    }
-  }, 100);
-  music = { scene, timer, bus };
+    }, 120);
+  }
+  warm();
 }
 
 export function stopMusic() {
