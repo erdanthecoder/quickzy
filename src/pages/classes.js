@@ -61,7 +61,10 @@ export function newClassDialog() {
     drawColors();
     const go = h('button', { class: 'btn btn-main' }, icon('plus', { size: 16 }), 'Make class');
     go.addEventListener('click', busy(go, async () => {
-      try { const cid = await cls.createClass({ name: name.value, school: school.value, code: code.value, color }); close(cid); } catch (e) { toast(e.message, 'bad'); }
+      try { const cid = await cls.createClass({ name: name.value, school: school.value, code: code.value, color }); close(cid); } catch (e) {
+        toast(e.message, 'bad');
+        if (e.pro) { close(); navigate('/pro'); }
+      }
     }));
     return [h('h2', {}, 'New class'),
       h('label', { class: 'field' }, h('span', {}, 'Class name'), name),
@@ -81,7 +84,7 @@ export default async function Classes({ query }) {
       blook('owl', 80), h('h2', {}, 'Classes arrive with Quickzy 1.4'), h('p', { class: 'muted' }, 'Today at 12:00 PM. See you there!')));
   }
   const teach = cls.canTeach();
-  const list = await cls.myClasses();
+  const [list, pro] = await Promise.all([cls.myClasses(), import('../services/plan.js').then((m) => m.isPro(session.me().uid)).catch(() => false)]);
   const mine = list.filter(cls.teaches);
   const joined = list.filter((c) => !cls.teaches(c));
   if (teach && query.new) setTimeout(() => newClassDialog(), 200);
@@ -92,7 +95,7 @@ export default async function Classes({ query }) {
         h('span', { class: 'pill' }, icon(teach ? 'book' : 'users', { size: 14 }), teach ? `Teacher${p.school ? ` · ${p.school}` : ''}` : 'Classes'),
         h('h1', {}, teach ? 'Your classroom' : 'Your classes'),
         h('p', {}, teach
-          ? 'Make a class, give students its code, then post announcements, game PINs, homework and quick questions.'
+          ? `Make a class, give students its code, then post announcements, game PINs, homework and quick questions. ${pro ? 'Pro: up to 50 classes of 300 students.' : 'Free: 2 classes of up to 100 students. Quickzy Pro: up to 50 classes of 300.'}`
           : 'Join your class with the code your teacher gives you. Announcements, games and homework show up here.')),
       teach ? h('button', { class: 'btn btn-main btn-lg', onclick: () => newClassDialog() }, icon('plus', { size: 18 }), 'New class') : null),
     joinClassBox(),

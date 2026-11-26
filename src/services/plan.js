@@ -43,6 +43,7 @@ export const PRO_PERKS = [
   ['star', 'Custom blooks and flags', 'All three custom blook slots and every part unlocked, plus the country flag blooks.'],
   ['play', 'Video quizzes', 'A YouTube clip plays, stops, and then the question is asked.'],
   ['edit', 'Make quizzes together', 'Invite anyone, even free accounts, to edit a quiz with you.'],
+  ['book', 'More classes', 'Teachers: up to 50 classes of 300 students. Free teachers get 2 classes of 100.'],
   ['mail', 'A thank-you letter', 'A personal letter from Quickzy, just for members.'],
 ];
 export const PRO_SOON = [];

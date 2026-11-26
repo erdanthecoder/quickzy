@@ -18,7 +18,9 @@ import { me, myProfile, signedIn } from './session.js';
 import { OWNER_UID, released14 } from '../config.js';
 import { isClean } from './names.js';
 
-export const MEMBERS_MAX = 200;
+/** Free teachers: 2 classes of up to 100 students. Quickzy Pro: 50 classes of up to 300. */
+export const LIMITS = { free: { classes: 2, students: 100 }, pro: { classes: 50, students: 300 } };
+const planOf = async (uid) => ((await import('./plan.js')).isPro(uid).catch(() => false)).then((p) => (p ? LIMITS.pro : LIMITS.free));
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /** The account type: 'kid', 'personal' or 'teacher' ('' = not asked yet). */
@@ -84,8 +86,19 @@ export async function createClass({ name, school, code, color = 0 }) {
   if (!isClean(n)) throw new Error('Pick a different class name.');
   const wanted = cleanCode(code);
   if (wanted && codeProblem(wanted)) throw new Error(codeProblem(wanted));
+  const uid = me().uid;
+  const pro = await (await import('./plan.js')).isPro(uid).catch(() => false);
+  const own = await net.store.query('classes', { where: [['owner', '==', uid]], limit: 60 }).catch(() => []);
+  let cid;
+  if (pro) {
+    if (own.length >= LIMITS.pro.classes) throw new Error(`You can have up to ${LIMITS.pro.classes} classes.`);
+    cid = `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  } else {
+    // free teachers: 2 classes (the database only lets these two ids through)
+    cid = [`${uid}_1`, `${uid}_2`].find((id) => !own.some((k) => k.id === id));
+    if (!cid || own.length >= LIMITS.free.classes) { const e = new Error('Free teachers can have 2 classes. Get Quickzy Pro for more.'); e.pro = true; throw e; }
+  }
   const c = await freeCode(wanted);
-  const cid = `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
   await net.store.batch([
     { op: 'set', col: 'classes', id: cid, data: {
       owner: me().uid, ownerName: myName(), name: n,
@@ -144,7 +157,7 @@ export async function join(code) {
   const c = await findByCode(code);
   if (!c) throw new Error('No class has that code. Check it with your teacher.');
   if (inClass(c)) return c.id;
-  if ((c.members || []).length >= MEMBERS_MAX) throw new Error('That class is full.');
+  if ((c.members || []).length >= (await planOf(c.owner)).students) throw new Error('That class is full. Ask your teacher.');
   const uid = me().uid;
   await net.store.batch([
     { op: 'set', col: `classes/${c.id}/people`, id: uid, data: person(myProfile() || {}, 'student', { code: c.code }) },
@@ -177,7 +190,8 @@ export async function addPerson(c, username, role = 'student') {
   const members = (c.members || []).filter((m) => m !== uid);
   const teachers = (c.teachers || []).filter((m) => m !== uid);
   if (role === 'teacher') teachers.push(uid); else members.push(uid);
-  if (members.length > MEMBERS_MAX) throw new Error('That class is full.');
+  const max = (await planOf(c.owner)).students;
+  if (members.length > max) throw new Error(max === LIMITS.free.students ? 'Free classes hold 100 students. Get Quickzy Pro for up to 300.' : 'That class is full.');
   const patch = role === 'teacher' || (c.teachers || []).includes(uid) ? { members, teachers } : { members };
   await net.store.batch([
     { op: 'set', col: `classes/${c.id}/people`, id: uid, data: person(p, role) },
