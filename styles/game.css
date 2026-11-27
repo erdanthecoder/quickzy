@@ -582,3 +582,19 @@ body.in-game { background: var(--night); color: #fff; overscroll-behavior: none;
 .gp-choose-x { justify-self: center; padding: 6px 14px; border-radius: 99px; border: 0; background: #ffffff1a; color: #fff; font: 800 13px Figtree, system-ui; cursor: pointer; }
 @media (pointer: coarse) { .gp-tyre kbd { display: none; } }
 .game-logo { width: 1.15em; height: 1.15em; vertical-align: -0.2em; margin-right: 0.3em; filter: drop-shadow(0 2px 0 #0003); }
+/* Grand Prix solo */
+.gp-solo { position: fixed; inset: 0; z-index: 400; display: flex; flex-direction: column; background: #0b0d14; }
+.gp-solo .hud { color: #fff; }
+.gp-solo .hud-cell { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 12px; background: rgba(255,255,255,.1); font-weight: 900; white-space: nowrap; }
+.gp-solo .meter span { color: #fff; }
+.gp-solo-body { position: relative; flex: 1; min-height: 0; }
+.gp-solo-stage { position: absolute; inset: 0; }
+.gp-podium { display: grid; gap: 14px; justify-items: center; width: 100%; }
+.gp-podium h1 { margin: 0; text-align: center; }
+.gp-results { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 6px; }
+.gp-results li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--bg-2, #f3f1ff); font-weight: 800; }
+.gp-results li:first-child b { color: #e0a800; }
+.gp-results li.is-me { outline: 3px solid var(--violet, #6b4cff); }
+.gp-results small { color: var(--muted, #6b6790); }
+.solo-mode { position: relative; }
+.solo-pro { position: absolute; top: 8px; right: 8px; }
