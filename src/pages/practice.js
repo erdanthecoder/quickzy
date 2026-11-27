@@ -10,7 +10,8 @@ import { picture } from '../ui/picture.js';
 import { videoClip, ytPlayer } from '../ui/video.js';
 import { h, fill } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { signedIn } from '../services/session.js';
+import { signedIn, myProfile } from '../services/session.js';
+import { myPlan, proNow } from '../services/plan.js';
 import { getQuiz, getKey } from '../services/quizzes.js';
 import { check, points } from '../game/questions.js';
 import { answerPad, verdict } from '../game/answer-ui.js';
@@ -33,6 +34,7 @@ export const SOLO_MODES = [
   ['survival', '❤️', 'Survival', 'Three lives. Questions get quicker. How far can you go?', '#ff4772'],
   ['bubble', '🫧', 'Bubble Pop', 'Answers float up as bubbles. Pop the right one!', '#2f9bff'],
   ['flash', '🃏', 'Flashcards', 'Study mode: flip cards and learn the answers.', '#12c9a6'],
+  ['grandprix', '🏎️', 'Grand Prix', 'Race five computer drivers for three laps. Answer for fuel and boost!', '#e10600'],
 ];
 
 function shuffled(n) {
@@ -99,7 +101,8 @@ export default async function Practice({ params }) {
             const ok = id !== 'bubble' || qs.some((q) => q.type === 'mc' || q.type === 'tf');
             const mb = bests()[id === 'classic' ? quiz.id : `${quiz.id}:${id}`];
             return h('button', { class: `solo-mode${ok ? '' : ' is-off'}`, style: { '--c': col }, disabled: !ok,
-              onclick: () => (id === 'flash' ? flashcards() : id === 'bubble' ? bubbles() : run(id)) },
+              onclick: () => (id === 'flash' ? flashcards() : id === 'bubble' ? bubbles() : id === 'grandprix' ? grandPrix() : run(id)) },
+            id === 'grandprix' ? h('span', { class: 'pro-tag solo-pro' }, icon('star', { size: 12 }), 'PRO') : null,
             h('span', { class: 'solo-mode-ic' }, emoji), h('b', {}, name), h('small', {}, ok ? text : 'Needs multiple-choice questions'),
             mb ? h('span', { class: 'solo-mode-best' }, icon('trophy', { size: 12 }), fmt(mb)) : null);
           })),
@@ -348,6 +351,26 @@ export default async function Practice({ params }) {
     show();
   }
 
+  // Grand Prix: a three-lap race against computer drivers (Quickzy Pro)
+  async function grandPrix() {
+    const pro = offline ? proNow() : await myPlan().then((p) => p.pro).catch(() => proNow());
+    if (!pro) {
+      fill(root, h('div', { class: 'page narrow' }, h('div', { class: 'card center stack', style: { justifyItems: 'center' } },
+        h('span', { class: 'solo-mode-ic', style: { fontSize: '48px' } }, '🏎️'),
+        h('h2', {}, 'Grand Prix is a Quickzy Pro game'),
+        h('p', { class: 'muted' }, 'Race computer drivers in 3D with your quiz. Get Quickzy Pro to play it, solo and live.'),
+        h('div', { class: 'row', style: { justifyContent: 'center' } },
+          offline ? null : h('a', { class: 'btn btn-main', href: '/pro' }, icon('star', { size: 16 }), 'See Quickzy Pro'),
+          h('button', { class: 'btn', onclick: () => intro() }, 'Back')))));
+      return;
+    }
+    const me = myProfile() || {};
+    const { soloGrandPrix } = await import('../game/solo-gp.js');
+    const res = await soloGrandPrix({ root, qs, key, name: me.displayName || 'You', blookId: me.blook || 'dog' });
+    if (!res || stopped) { if (!stopped) intro(); return; }
+    finish(res.log, res.score, res.streak, 'grandprix');
+  }
+
   /* --------------------------------------------------------------- end */
 
   async function finish(log, score, bestStreak, mode = 'classic') {
@@ -397,7 +420,7 @@ export default async function Practice({ params }) {
         handIn,
         reward,
         h('div', { class: 'row', style: { justifyContent: 'center' } },
-          h('button', { class: 'btn btn-main', onclick: () => run() }, icon('shuffle', { size: 18 }), 'Play again'),
+          h('button', { class: 'btn btn-main', onclick: () => (mode === 'grandprix' ? grandPrix() : run()) }, icon('shuffle', { size: 18 }), mode === 'grandprix' ? 'Race again' : 'Play again'),
           h('button', { class: 'btn', onclick: () => intro() }, icon('list', { size: 18 }), 'Other modes'),
           h('a', { class: 'btn', href: offline ? '/app' : '/discover' }, icon('compass', { size: 18 }), 'More quizzes'))),
       h('h2', {}, 'Review'),

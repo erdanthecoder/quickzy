@@ -736,6 +736,35 @@ if (which === 'account' || which === 'all') {
   await host.waitForTimeout(2500);
   await host.screenshot({ path: `${SHOTS}/solo-bubbles.png` });
   await host.click('.bp button:has-text("Quit")');
+  // Grand Prix alone: race the computer drivers (a Pro game)
+  await host.click('.solo-mode:has-text("Grand Prix")');
+  await host.waitForSelector('text=Grand Prix is a Quickzy Pro game', { timeout: 15000 }).catch(() => fail('solo grand prix should need Pro'));
+  await host.click('button:has-text("Back")');
+  const setPro = (on) => host.evaluate(async (yes) => {
+    const { net, session } = window.__quickzy;
+    if (yes) await net.store.set('members', session.me().uid, { plan: 'pro', since: Date.now(), until: Date.now() + 864e8 });
+    else await net.store.del('members', session.me().uid);
+    (await import('/src/services/plan.js')).forget(session.me().uid);
+  }, on);
+  await setPro(true);
+  await host.click('.solo-mode:has-text("Grand Prix")');
+  await host.waitForSelector('.gp-solo .gp-hud', { timeout: 15000 }).catch(() => fail('solo grand prix: the race did not open'));
+  await host.waitForFunction(() => window.__quickzyGP && window.__quickzyGP.state().v > 20, null, { timeout: 15000 })
+    .catch(() => fail('solo grand prix: the car should be racing'));
+  await host.click('.gp-fuel');
+  await host.waitForSelector('.gp-solo .q-overlay:not([hidden]) .pad', { timeout: 5000 });
+  await answer(host, true);
+  await host.waitForSelector('.gp-solo .q-overlay[hidden]', { state: 'attached', timeout: 8000 });
+  await host.waitForTimeout(1500);
+  await host.screenshot({ path: `${SHOTS}/solo-grandprix.png` });
+  await host.evaluate(() => window.__quickzyGPSolo.finish());
+  await host.waitForSelector('.gp-results li', { timeout: 8000 }).catch(() => fail('solo grand prix: no podium at the end'));
+  await host.screenshot({ path: `${SHOTS}/solo-grandprix-end.png` });
+  await host.click('button:has-text("See my results")');
+  await host.waitForSelector('.big-score');
+  await host.click('button:has-text("Other modes")');
+  await setPro(false);
+  await host.waitForSelector('.solo-modes');
   await host.click('.solo-mode:has-text("Classic")');
   for (let i = 0; i < 12; i++) {
     const next = await Promise.race([
