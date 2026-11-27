@@ -453,6 +453,7 @@ if (which === 'arcade' || which === 'all') {
       await dev.screenshot({ path: `${SHOTS}/grandprix-wide.png` });
       await cara.waitForSelector('.gp-pit:not([disabled])', { timeout: 15000 }).catch(() => fail('grandprix: worn tyres should allow a pit stop'));
       await cara.click('.gp-pit');
+      await cara.click('.gp-tyre[data-c="s"]');
       await cara.waitForFunction(() => window.__quickzyGP.state().pit > 0, null, { timeout: 8000 }).catch(() => fail('grandprix: the pit stop did not start'));
     }
     await host.screenshot({ path: `${SHOTS}/${mode}-host.png` });

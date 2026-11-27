@@ -3,6 +3,7 @@
 // wheels and real smoke. Used from the cab (players) and by the camera car
 // on the big screen.
 
+import { autoQuality } from '../arcade/quality.js';
 export const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 export const M_PER_UNIT = 4;                // metres in one world unit
 export const LANE = 7;                      // units between tracks
@@ -360,6 +361,7 @@ export function createWorld(T, canvas, { tv = false } = {}) {
   }
   resize();
   const ro = new ResizeObserver(resize); ro.observe(canvas.parentElement);
+  const quality = autoQuality(renderer, { sun: sun, scene, onResize: resize });
 
   return {
     T, scene, cam, trainFor, placeTrain, removeTrain, trains,
@@ -376,6 +378,7 @@ export function createWorld(T, canvas, { tv = false } = {}) {
         const k = 1 - u.life / u.max; const size = 2.4 + k * 11;
         s.scale.set(size, size, 1); s.material.opacity = 0.62 * (1 - k) ** 1.4;
       }
+      quality.frame();
       renderer.render(scene, cam);
     },
     destroy() {

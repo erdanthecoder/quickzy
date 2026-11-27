@@ -4,6 +4,7 @@
 // trees, and open-wheel race cars with turning wheels. One unit = one metre.
 
 import { TRACK, LAP, TRACK_WIDTH, trackAt } from './grandprix.js';
+import { autoQuality } from '../arcade/quality.js';
 
 const HALF = TRACK_WIDTH / 2;
 
@@ -155,19 +156,25 @@ function buildCar(T, mats, colour) {
   add(new T.BoxGeometry(1.9, 0.03, 0.22), body, 0, 0.2, 2.88, -0.25);
   for (const s of [-1, 1]) add(new T.BoxGeometry(0.03, 0.26, 0.55), body, s * 0.95, 0.2, 2.92);
   add(new T.BoxGeometry(1.15, 0.05, 0.42), mats.carbon, 0, 1.0, -2.35);
-  add(new T.BoxGeometry(1.15, 0.04, 0.24), body, 0, 1.12, -2.3, -0.3);
+  // the top flap opens on the straights with the boost (like DRS)
+  const flap = new T.Group(); flap.position.set(0, 1.08, -2.22); g.add(flap);
+  const flapM = new T.Mesh(new T.BoxGeometry(1.15, 0.04, 0.24), body); flapM.position.set(0, 0.04, -0.08); flapM.rotation.x = -0.3; flapM.castShadow = true; flap.add(flapM);
   for (const s of [-1, 1]) add(new T.BoxGeometry(0.04, 0.55, 0.7), body, s * 0.6, 0.85, -2.3);
   add(new T.BoxGeometry(0.06, 0.45, 0.08), mats.carbon, 0, 0.7, -2.15);
   // the rain light, red
-  const rain = add(new T.BoxGeometry(0.16, 0.08, 0.04), mats.redLight, 0, 0.38, -2.5);
-  void rain;
+  const rainMat = new T.MeshBasicMaterial({ color: 0x5a0a0a });
+  add(new T.BoxGeometry(0.16, 0.08, 0.04), rainMat, 0, 0.38, -2.5);
   // wheels: rubber, rims, a turning spoke pattern
   const wheels = [];
   const tyre = new T.CylinderGeometry(0.36, 0.36, 0.38, 24); tyre.rotateZ(Math.PI / 2);
   const tyreR = new T.CylinderGeometry(0.36, 0.36, 0.42, 24); tyreR.rotateZ(Math.PI / 2);
   const rim = new T.CylinderGeometry(0.22, 0.22, 0.4, 10); rim.rotateZ(Math.PI / 2);
+  // the coloured band on the tyre wall shows the kind of tyre
+  const bandMat = new T.MeshStandardMaterial({ color: 0xffd400, roughness: 0.6 });
+  const band = new T.TorusGeometry(0.3, 0.025, 6, 28); band.rotateY(Math.PI / 2);
   for (const [x, z, geo] of [[-0.85, 1.75, tyre], [0.85, 1.75, tyre], [-0.86, -1.55, tyreR], [0.86, -1.55, tyreR]]) {
     const w = new T.Group(); w.position.set(x, 0.36, z);
+    const b = new T.Mesh(band, bandMat); b.position.x = Math.sign(x) * 0.21; w.add(b);
     const t = new T.Mesh(geo, mats.tyre); t.castShadow = true; w.add(t);
     const r = new T.Mesh(rim, mats.rim); w.add(r);
     const sp = new T.Mesh(new T.BoxGeometry(0.42, 0.06, 0.34), mats.rimDark); w.add(sp);
@@ -178,7 +185,7 @@ function buildCar(T, mats, colour) {
   // the exhaust glow when boosting
   const flame = new T.Sprite(new T.SpriteMaterial({ map: mats.glow, color: 0x6fd6ff, transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
   flame.position.set(0, 0.55, -2.55); flame.scale.set(1.4, 1.4, 1); flame.visible = false; g.add(flame);
-  return { g, wheels, flame };
+  return { g, wheels, flame, flap: flapM, rainMat, bandMat };
 }
 
 /* ------------------------------------------------------------- the world */
@@ -391,8 +398,11 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
     if (c.label) { c.label.material.map.dispose(); c.label.material.dispose(); }
     cars.delete(id);
   }
-  function placeCar(c, m, lateral, v, dt, { boost = false } = {}) {
-    const p = trackAt(m, lateral);
+  const BAND = { s: 0xe10600, m: 0xffd400, h: 0xf2f2f2 };
+  function placeCar(c, m, lateral, v, dt, { boost = false, cmp = 'm' } = {}) {
+    // drift smoothly across the track (racing line, into the pit lane)
+    c.lat = c.lat === undefined ? lateral : c.lat + (lateral - c.lat) * Math.min(1, dt * 1.6);
+    const p = trackAt(m, c.lat);
     c.g.position.set(p.x, 0, p.z);
     c.g.rotation.set(0, Math.atan2(p.hx, p.hz), 0);
     // leaning on the springs in the corners, nose dipping under braking
@@ -401,6 +411,10 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
     for (const w of c.wheels) w.rotation.x = c.spin;
     for (const w of c.wheels.slice(0, 2)) w.rotation.y = Math.max(-0.3, Math.min(0.3, p.k * 18));
     c.flame.visible = boost;
+    c.flap.rotation.x = boost ? 0.35 : -0.3;
+    c.blink = (c.blink || 0) + dt;
+    c.rainMat.color.setHex(boost && Math.floor(c.blink * 6) % 2 ? 0xff2a2a : 0x5a0a0a);
+    if (c.cmp !== cmp) { c.cmp = cmp; c.bandMat.color.setHex(BAND[cmp] || BAND.m); }
     if (boost) { const s = 1.1 + Math.random() * 0.6; c.flame.scale.set(s, s, 1); }
     c.pos = p; c.m = m;
   }
@@ -468,6 +482,7 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
   };
   resize();
   const ro = new ResizeObserver(resize); ro.observe(canvas);
+  const quality = autoQuality(renderer, { sun, scene, onResize: resize });
   function render(dt, focus) {
     t0 += dt;
     // the start lights: on one by one, then out
@@ -476,6 +491,7 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
     sun.position.set(focus.x + sunDir.x * 200, sunDir.y * 200, focus.z + sunDir.z * 200);
     sun.target.position.set(focus.x, 0, focus.z);
     sky.position.set(focus.x, 0, focus.z);
+    quality.frame();
     renderer.render(scene, cam);
   }
   function cut() { first = true; tvSpot = null; }
