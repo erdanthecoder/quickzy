@@ -343,7 +343,7 @@ if (which === 'teams' || which === 'classic' || which === 'all') {
 }
 
 if (which === 'arcade' || which === 'all') {
-  for (const [mode, name] of (process.env.ONLY ? process.env.ONLY.split(',').map((m, i) => [m, process.env.ONLY_NAME.split(',')[i]]) : null) || [['lasertag', 'Laser Tag'], ['robotrun', 'Robot Run'], ['obby', 'Sky Climb'], ['train', 'Train Travel'], ['skyrace', 'Sky Race'], ['treasure', 'Treasure Hunt'], ['candy', 'Candy Factory'], ['pizza', 'Pizza Party']]) {
+  for (const [mode, name] of (process.env.ONLY ? process.env.ONLY.split(',').map((m, i) => [m, process.env.ONLY_NAME.split(',')[i]]) : null) || [['lasertag', 'Laser Tag'], ['robotrun', 'Robot Run'], ['obby', 'Sky Climb'], ['train', 'Train Travel'], ['skyrace', 'Sky Race'], ['treasure', 'Treasure Hunt'], ['candy', 'Candy Factory'], ['pizza', 'Pizza Party'], ['grandprix', 'Grand Prix']]) {
     say(`${mode}: open the lobby`);
     if (mode === 'skyrace') await host.evaluate(() => localStorage.setItem('quickzy.test.early', '1'));
     const pin = await openLobby(name, () => (mode === 'skyrace' ? host.waitForSelector('.set-row:has-text("Game length") .pill:has-text("3 min")') : host.click('.set-row:has-text("Game length") button:has-text("3 min")')));
@@ -441,6 +441,19 @@ if (which === 'arcade' || which === 'all') {
       await cara.waitForTimeout(400);
       await cara.screenshot({ path: `${SHOTS}/pizza.png` });
       await dev.screenshot({ path: `${SHOTS}/pizza-wide.png` });
+    }
+    if (mode === 'grandprix') {
+      say('grandprix: race, boost and pit');
+      await cara.waitForFunction(() => window.__quickzyGP && window.__quickzyGP.state().v > 20, null, { timeout: 15000 })
+        .catch(() => fail('grandprix: the car should be racing'));
+      await cara.waitForSelector('.gp-boost:not([disabled])', { timeout: 8000 }).catch(() => fail('grandprix: a right answer should charge a boost'));
+      await cara.click('.gp-boost');
+      await cara.waitForFunction(() => window.__quickzyGP.state().boost > 0, null, { timeout: 8000 }).catch(() => fail('grandprix: boost did not start'));
+      await cara.screenshot({ path: `${SHOTS}/grandprix.png` });
+      await dev.screenshot({ path: `${SHOTS}/grandprix-wide.png` });
+      await cara.waitForSelector('.gp-pit:not([disabled])', { timeout: 15000 }).catch(() => fail('grandprix: worn tyres should allow a pit stop'));
+      await cara.click('.gp-pit');
+      await cara.waitForFunction(() => window.__quickzyGP.state().pit > 0, null, { timeout: 8000 }).catch(() => fail('grandprix: the pit stop did not start'));
     }
     await host.screenshot({ path: `${SHOTS}/${mode}-host.png` });
     say(`${mode}: end`);
