@@ -4,7 +4,7 @@
 // Coins open boxes; a box gives one blook, rarer ones less often. Levels
 // unlock custom blook slots, three at most, and more parts to build them from.
 
-import { myProfile, signedIn, patchProfile, reloadProfile, me as who } from './session.js';
+import { myProfile, signedIn, patchProfile, reloadProfile, ownerSetCoins, me as who } from './session.js';
 import { OWNER_UID } from '../config.js';
 import { currentEvent, eventBoosts } from './site.js';
 import { proNow } from './plan.js';
@@ -181,7 +181,13 @@ async function openMany(boxId, n, onEach, rand) {
     out.push(res);
     onEach(res, i);
   }
-  if (credit > 0) await patchProfile({ coins: me().coins + credit });
+  if (credit > 0 && who()?.uid === OWNER_UID) await ownerSetCoins(me().coins + credit);
+  // coins can only go up by 150 at a time, so a big pile comes back in parts
+  else while (credit > 0) {
+    const part = Math.min(150, credit);
+    await patchProfile({ coins: me().coins + part });
+    credit -= part;
+  }
   return out;
 }
 

@@ -91,7 +91,7 @@ service cloud.firestore {
           // XP only comes with a game's coins (so it shares their 15-second gap)
           && (xp1 == xp0 || after.get('coins', 0) > before.get('coins', 0))
           && blooksOk(before.get('owned', {}), after.get('owned', {}), before.get('coins', 0), after.get('coins', 0))
-          && after.get('owned', {}).size() <= 40
+          && after.get('owned', {}).size() <= 60
           && after.get('customs', []).size() <= 3
           && str(after.get('lastGame', ''), 40);
       }
@@ -130,7 +130,7 @@ service cloud.firestore {
       allow update: if siteOwner()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coins', 'owned'])
         && request.resource.data.get('coins', 0) is int && request.resource.data.get('coins', 0) >= 0
-        && request.resource.data.get('owned', {}).size() <= 40;
+        && request.resource.data.get('owned', {}).size() <= 60;
     }
 
     // A username belongs to whoever claimed it first.

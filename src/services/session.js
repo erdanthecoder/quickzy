@@ -182,6 +182,14 @@ export async function patchProfile(fields) {
   }
 }
 
+/** The creator's own coins, with the owner power (no 150-coin limit or wait). */
+export async function ownerSetCoins(coins) {
+  if (!signedIn()) throw new Error('not signed in');
+  await net.store.update('users', user.uid, { coins });
+  profile = { ...profile, coins };
+  emit();
+}
+
 export async function changeUsername(next) {
   const name = String(next || '').toLowerCase();
   const problem = validUsername(name);
