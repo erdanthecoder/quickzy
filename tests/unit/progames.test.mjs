@@ -76,8 +76,12 @@ test('grand prix: fuel, boost, pits and laps', async () => {
   assert.equal(host.grant(a, true), gp.FUEL_PER_ANSWER);
   assert.equal(a.extra.ers, 1);
   assert.equal(a.extra.fuel, gp.START_FUEL + gp.FUEL_PER_ANSWER);
-  // race for a while: the cars move, the fuel burns, the score is the distance
+  // the red lights: nobody moves before they go out
   let now = 1000;
+  host.tick(now);
+  for (let i = 0; i < 3; i++) { now += 1000; host.tick(now); }
+  assert.ok(a.extra.m <= 0 && a.extra.v === 0);
+  // race for a while: the cars move, the fuel burns, the score is the distance
   for (let i = 0; i < 20; i++) { now += 1000; host.tick(now); }
   assert.ok(a.extra.m > 500 && a.score === Math.floor(a.extra.m));
   assert.ok(a.extra.fuel < gp.START_FUEL + gp.FUEL_PER_ANSWER);
@@ -86,12 +90,14 @@ test('grand prix: fuel, boost, pits and laps', async () => {
   for (let i = 0; i < 40; i++) { now += 1000; host.tick(now); }
   assert.equal(b.extra.fuel, 0);
   assert.equal(b.extra.v, 0);
-  // a pit stop: stopped for a while, then new tyres
+  // a pit stop: stopped for a while, then new tyres of the kind chosen
   a.extra.fuel = 30;
-  host.act(a, { k: 'p' });
+  assert.equal(a.extra.cmp, 'm');
+  host.act(a, { k: 'p', c: 's' });
   assert.equal(a.extra.pit, gp.PIT_SECONDS);
   for (let i = 0; i < 6; i++) { now += 1000; host.tick(now); }
   assert.equal(a.extra.pit, 0);
+  assert.equal(a.extra.cmp, 's');
   assert.ok(a.extra.tyre > 99);
 });
 
@@ -102,4 +108,12 @@ test('grand prix: the circuit is one lap long and corners are slower', async () 
   assert.ok(gp.kmh(fast) > 300 && gp.kmh(slow) < 200);
   const a = gp.trackAt(0); const b = gp.trackAt(gp.LAP);
   assert.ok(Math.hypot(a.x - b.x, a.z - b.z) < 0.01);
+});
+
+test('grand prix: soft tyres are faster but wear out sooner', async () => {
+  const gp = await import('../../src/game/modes/grandprix.js');
+  const run = (cmp) => { const e = { m: 0, v: 0, fuel: 999, tyre: 100, cmp, ers: 0, boost: 0, pit: 0 }; for (let t = 0; t < 30; t += 0.05) gp.step(e, 0.05); return e; };
+  const soft = run('s'); const hard = run('h');
+  assert.ok(soft.m > hard.m);
+  assert.ok(soft.tyre < hard.tyre);
 });

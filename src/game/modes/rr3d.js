@@ -3,6 +3,7 @@
 // beside you. The running and jumping happen in robotrun.js; this draws it.
 
 import { drawBlook } from '../arcade/engine.js';
+import { autoQuality } from '../arcade/quality.js';
 import { preloadBlooks } from '../../ui/blooks.js';
 
 const U = 2;                       // world units per metre
@@ -190,6 +191,7 @@ export function createRun(T, canvas, { tv = false } = {}) {
   }
   resize();
   const ro = new ResizeObserver(resize); ro.observe(canvas.parentElement);
+  const quality = autoQuality(renderer, { sun: sun, scene, onResize: resize });
   let t = 0;
   const camPos = new T.Vector3(); let camInit = false;
 
@@ -236,6 +238,7 @@ export function createRun(T, canvas, { tv = false } = {}) {
         const fov = boost ? 70 : 58; cam.fov += (fov - cam.fov) * 0.08; cam.updateProjectionMatrix();
       }
       sky.position.copy(cam.position);
+      quality.frame();
       renderer.render(scene, cam);
     },
     destroy() { ro.disconnect(); renderer.dispose(); },

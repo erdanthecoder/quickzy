@@ -4,6 +4,7 @@
 // lives in lasertag.js; this only draws it.
 
 import { drawBlook } from '../arcade/engine.js';
+import { autoQuality } from '../arcade/quality.js';
 import { preloadBlooks } from '../../ui/blooks.js';
 
 const S = 1 / 20;                    // world units per arena pixel
@@ -184,6 +185,7 @@ export function createArena(T, canvas, { W, H, walls, spawns, pickups, tv = fals
   }
   resize();
   const ro = new ResizeObserver(resize); ro.observe(canvas.parentElement);
+  const quality = autoQuality(renderer, { sun: null, scene, onResize: resize });
   const ray = new T.Raycaster(); const ndc = new T.Vector2(); const hit = new T.Vector3();
   const camPos = new T.Vector3(); let camInit = false; let t = 0;
 
@@ -219,6 +221,7 @@ export function createArena(T, canvas, { W, H, walls, spawns, pickups, tv = fals
         if (!camInit) { cam.position.copy(camPos); camInit = true; } else cam.position.lerp(camPos, Math.min(1, dt * 6));
         cam.lookAt(cam.position.x, 0, cam.position.z - 10);
       }
+      quality.frame();
       renderer.render(scene, cam);
     },
     destroy() { ro.disconnect(); renderer.dispose(); },

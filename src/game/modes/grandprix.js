@@ -8,7 +8,11 @@
 //     Overtake for 5 seconds of extra power. It wears the tyres faster.
 //   - Tyres wear out lap by lap and the car gets slower. Box for fresh tyres
 //     (5 seconds in the pits) at the right moment.
-//   - Slipstream: right behind a rival you go a little faster.
+//   - Tyres come in three kinds: Soft (fastest, wears out quickest), Medium
+//     and Hard (slowest, lasts longest). Choose at every pit stop.
+//   - Slipstream: right behind a rival you go a little faster. A full fuel
+//     tank is heavier, so a little slower.
+//   - The race starts on the five red lights going out.
 // The farthest car wins (the score is metres driven).
 //
 // The host runs every car (nothing can be faked from a phone); players and
@@ -32,6 +36,15 @@ const BRAKE = 42;                    // m/s²
 const STEP = 4;                      // metres between track samples
 const WEAR = 100 / 11000;            // tyre % per metre: a set lasts about 2.5 laps
 export const TRACK_WIDTH = 14;
+export const START_HOLD = 3500;      // ms of red lights before the race starts
+
+// the three tyres: grip (speed) against wear
+export const TYRES = {
+  s: { name: 'Soft', grip: 1, wear: 1.7, colour: '#e10600' },
+  m: { name: 'Medium', grip: 0.975, wear: 1, colour: '#ffd400' },
+  h: { name: 'Hard', grip: 0.95, wear: 0.6, colour: '#f2f2f2' },
+};
+const tyreOf = (c) => TYRES[c] || TYRES.m;
 
 /* ============================================================ the circuit */
 
@@ -88,7 +101,14 @@ function buildTrack() {
     for (let k = N - 1; k >= 0; k--) { const nx = V[(k + 1) % N]; V[k] = Math.min(V[k], Math.sqrt(nx * nx + 2 * BRAKE * STEP)); }
     for (let k = 0; k < N; k++) { const pv = V[(k - 1 + N) % N]; V[k] = Math.min(V[k], Math.sqrt(pv * pv + 2 * accelAt(pv) * STEP)); }
   }
-  return { N, X, Z, DX, DZ, K, V };
+  // the racing line: wide on the way in, tight at the apex
+  const RL = new Float64Array(N);
+  for (let k = 0; k < N; k++) {
+    let sum = 0;
+    for (let j = -12; j <= 12; j++) sum += K[(k + j + N) % N];
+    RL[k] = Math.max(-4.2, Math.min(4.2, (sum / 25) * 420));
+  }
+  return { N, X, Z, DX, DZ, K, V, RL };
 }
 function accelAt(v) { return Math.max(4, 15 - v * 0.11); }
 
@@ -104,6 +124,15 @@ export function trackAt(m, lateral = 0) {
   const hx = dx / l; const hz = dz / l;
   return { x: lerp(X[i], X[j], t) - hz * lateral, z: lerp(Z[i], Z[j], t) + hx * lateral, hx, hz, k: lerp(K[i], K[j], t) };
 }
+/** How far the racing line is from the middle of the track here (m). */
+export function lineAt(m) {
+  const { N, RL } = TRACK;
+  const f = wrap(m) / STEP; const i = Math.floor(f) % N; const t = f - Math.floor(f);
+  return lerp(RL[i], RL[(i + 1) % N], t);
+}
+/** Where a car drives across the track: the racing line, plus its own spot so cars don't sit on each other. */
+export const lateralOf = (m, uid, pit = false) => (pit ? -TRACK_WIDTH / 2 - 4.5 : lineAt(m) * 0.85 + laneOf(uid) * 0.45);
+
 /** The racing speed at this point of the lap (m/s). */
 export function profileAt(m) {
   const { N, V } = TRACK;
@@ -116,21 +145,24 @@ export function step(e, dt, slip = false) {
   if (e.pit > 0) {
     e.pit = Math.max(0, e.pit - dt);
     e.v = Math.max(0, e.v - 30 * dt);
-    if (e.pit === 0) e.tyre = 100;
+    if (e.pit === 0) { e.tyre = 100; if (e.next) e.cmp = e.next; }
     return;
   }
+  const ty = tyreOf(e.cmp);
   const boosting = e.boost > 0;
   if (boosting) e.boost = Math.max(0, e.boost - dt);
   let target = 0;
   if (e.fuel > 0) {
-    target = profileAt(e.m + e.v * 0.15) * (0.82 + 0.18 * e.tyre / 100) * (boosting ? 1.12 : 1) * (slip ? 1.04 : 1);
+    // grip from the tyres (their kind and how worn), a heavy tank is a bit slower
+    target = profileAt(e.m + e.v * 0.15) * ty.grip * (0.82 + 0.18 * e.tyre / 100) * (1 - (e.fuel / MAX_FUEL) * 0.025)
+      * (boosting ? 1.12 : 1) * (slip ? 1.04 : 1);
     e.fuel = Math.max(0, e.fuel - dt);
   }
   if (e.v < target) e.v = Math.min(target, e.v + accelAt(e.v) * (boosting ? 1.4 : 1) * dt);
   else e.v = Math.max(target, e.v - (target === 0 ? 7 : BRAKE) * dt);
   const ds = e.v * dt;
   e.m += ds;
-  e.tyre = Math.max(0, e.tyre - ds * WEAR * (boosting ? 1.8 : 1));
+  e.tyre = Math.max(0, e.tyre - ds * WEAR * ty.wear * (boosting ? 1.8 : 1));
 }
 
 /** Is there a car 4–45 m ahead (to draft behind)? */
@@ -152,11 +184,14 @@ export const laneOf = (uid) => [-4, -1.5, 1, 3.5, -2.8, 2.3][hashString(`${uid}l
 export function createHost({ live, P, players, dirty }) {
   let slot = 0;
   let last = 0;
+  // the start: red lights, then go
+  let go = 0;
   const send = (p, ev) => {
     const e = p.extra;
     const r = (x, n = 10) => Math.round(x * n) / n;
     p.meExtra = { ...(p.meExtra || {}), gp: {
       f: r(e.fuel), t: r(e.tyre), e: e.ers, b: r(e.boost), p: r(e.pit), v: r(e.v), m: r(e.m), l: e.laps, bt: e.best || 0,
+      c: e.cmp, nx: e.next || e.cmp, g: go || 0,
       ...(ev ? { ev: { ...ev, n: ++e.seq } } : { ev: e.lastEv || null }) } };
     if (ev) e.lastEv = p.meExtra.gp.ev;
     dirty.add(p.uid);
@@ -169,7 +204,7 @@ export function createHost({ live, P, players, dirty }) {
       // a starting grid: two by two, eight metres apart
       const m = -8 * Math.floor(slot / 2) - 4 * (slot % 2);
       slot += 1;
-      Object.assign(p.extra, { m, v: 0, fuel: START_FUEL, tyre: 100, ers: 1, boost: 0, pit: 0, laps: 0, lapAt: 0, best: 0, seq: 0, lastEv: null, summary: 'On the grid' });
+      Object.assign(p.extra, { m, v: 0, fuel: START_FUEL, tyre: 100, cmp: 'm', next: 'm', ers: 1, boost: 0, pit: 0, laps: 0, lapAt: 0, best: 0, seq: 0, lastEv: null, summary: 'On the grid' });
       send(p);
     },
     grant(p, ok) {
@@ -189,18 +224,22 @@ export function createHost({ live, P, players, dirty }) {
       // (phones ask at under 95%; a little leeway for the second between updates)
       if (a.k === 'p' && e.pit === 0 && e.tyre < 98) {
         e.pit = PIT_SECONDS;
-        send(p, { k: 'pit' });
+        e.next = TYRES[a.c] ? a.c : e.cmp;
+        send(p, { k: 'pit', c: e.next });
       }
     },
     tick(now) {
-      const secs = last ? Math.min(3, (now - last) / 1000) : 0;
+      if (!go) go = now + START_HOLD;
+      // nobody moves until the lights go out
+      const from = Math.max(last || now, go);
+      const secs = now > go ? Math.min(3, (now - from) / 1000) : 0;
       last = now;
       const all = [...players.values()].filter((p) => p.extra.m !== undefined);
       const spots = all.map((p) => p.extra.m);
       const race = {};
       for (const p of all) {
         const e = p.extra;
-        if (!e.lapAt) e.lapAt = now;
+        if (!e.lapAt && now > go) e.lapAt = go;
         const slip = slipFor(e.m, spots);
         // small steps, so the corners are taken properly
         for (let left = secs; left > 1e-6; left -= 0.05) step(e, Math.min(0.05, left), slip);
@@ -217,7 +256,7 @@ export function createHost({ live, P, players, dirty }) {
         p.score = score;
         e.summary = e.laps ? `${e.laps} lap${e.laps === 1 ? '' : 's'}${e.best ? ` · best ${fmtLap(e.best)}` : ''}` : metres(e.m);
         send(p, ev);
-        race[p.uid] = [Math.round(e.m), Math.round(e.v * 10) / 10, e.pit > 0 ? 1 : 0];
+        race[p.uid] = [Math.round(e.m), Math.round(e.v * 10) / 10, e.pit > 0 ? 1 : 0, e.cmp];
       }
       live.set(P('race'), race).catch(() => {});
     },
@@ -230,7 +269,7 @@ function cockpit(game) {
   const pos = h('b', {}, '–'); const lapEl = h('b', {}, '1'); const bestEl = h('small', {});
   const speed = h('b', { class: 'gp-speed' }, '0'); const gearEl = h('i', { class: 'gp-gear' }, 'N');
   const fuelBar = h('i'); const fuelTxt = h('small', {});
-  const tyreBar = h('i'); const tyreTxt = h('small', {});
+  const tyreBar = h('i'); const tyreTxt = h('small', {}); const cmpEl = h('i', { class: 'gp-cmp' }, 'M');
   const ersEl = h('div', { class: 'gp-ers' });
   const answer = h('button', { class: 'gp-btn gp-fuel', type: 'button' }, h('span', {}, '⛽'), h('b', {}, 'Answer for fuel'), h('small', {}, `+${FUEL_PER_ANSWER}s fuel · +1 ⚡`));
   const boost = h('button', { class: 'gp-btn gp-boost', type: 'button', disabled: true }, h('span', {}, '⚡'), h('b', {}, 'Overtake'));
@@ -238,18 +277,24 @@ function cockpit(game) {
   const radio = h('div', { class: 'gp-radio', hidden: true });
   const ahead = h('div', { class: 'gp-gap is-ahead', hidden: true }); const behind = h('div', { class: 'gp-gap is-behind', hidden: true });
   const lights = h('div', { class: 'gp-lights', 'aria-hidden': 'true' }, ...Array.from({ length: 5 }, () => h('i')));
+  // choosing tyres for the pit stop
+  const chooser = h('div', { class: 'gp-choose', hidden: true, role: 'dialog', 'aria-label': 'Choose your tyres' },
+    h('b', {}, 'Which tyres?'),
+    h('div', { class: 'gp-choose-row' }, ...Object.entries(TYRES).map(([c, ty], i) => h('button', { type: 'button', class: 'gp-tyre', 'data-c': c, style: { '--tc': ty.colour } },
+      h('i', {}, ty.name[0]), h('b', {}, ty.name), h('small', {}, c === 's' ? 'Fastest · wears quick' : c === 'm' ? 'All-rounder' : 'Slower · lasts long'), h('kbd', {}, String(i + 1))))),
+    h('button', { type: 'button', class: 'gp-choose-x' }, 'Stay out'));
   const el = h('div', { class: 'gp-hud' },
     h('div', { class: 'gp-tower' }, h('div', {}, h('small', {}, 'POS'), pos), h('div', {}, h('small', {}, 'LAP'), lapEl), bestEl),
     h('div', { class: 'gp-gaps' }, ahead, behind),
-    radio, lights,
+    radio, lights, chooser,
     h('div', { class: 'gp-dash' },
       h('div', { class: 'gp-speedo' }, speed, h('small', {}, 'KM/H'), gearEl),
       h('div', { class: 'gp-gauges' },
         h('div', { class: 'gp-bar is-fuel' }, h('small', {}, 'FUEL'), h('div', {}, fuelBar), fuelTxt),
-        h('div', { class: 'gp-bar is-tyre' }, h('small', {}, 'TYRES'), h('div', {}, tyreBar), tyreTxt),
+        h('div', { class: 'gp-bar is-tyre' }, h('small', {}, cmpEl, 'TYRES'), h('div', {}, tyreBar), tyreTxt),
         ersEl)),
     h('div', { class: 'gp-btns' }, answer, boost, pit));
-  return { el, pos, lapEl, bestEl, speed, gearEl, fuelBar, fuelTxt, tyreBar, tyreTxt, ersEl, answer, boost, pit, radio, ahead, behind, lights };
+  return { el, pos, lapEl, bestEl, speed, gearEl, fuelBar, fuelTxt, tyreBar, tyreTxt, cmpEl, ersEl, answer, boost, pit, radio, ahead, behind, lights, chooser };
 }
 
 /**
@@ -264,7 +309,8 @@ function mountDriver(game, holder, draw) {
   game.grantText = (g) => `+${g}s fuel · +1 ⚡ boost`;
   const names = new Map();
   let race = {};
-  const car = { m: 0, v: 0, fuel: START_FUEL, tyre: 100, ers: 1, boost: 0, pit: 0, laps: 0, best: 0 };
+  const car = { m: 0, v: 0, fuel: START_FUEL, tyre: 100, cmp: 'm', ers: 1, boost: 0, pit: 0, laps: 0, best: 0, go: 0 };
+  let started = false;
   let serverM = null;
   let lastEv = 0;
   let t = 0;
@@ -280,7 +326,7 @@ function mountDriver(game, holder, draw) {
   unsubs.push(live.on(P(`me/${uid}`), (m) => {
     const g = m && m.gp;
     if (!g) return;
-    Object.assign(car, { fuel: g.f, tyre: g.t, ers: g.e, boost: g.b, pit: g.p, laps: g.l, best: g.bt });
+    Object.assign(car, { fuel: g.f, tyre: g.t, ers: g.e, boost: g.b, pit: g.p, laps: g.l, best: g.bt, cmp: g.c || 'm', go: g.g || 0 });
     if (serverM === null) { car.m = g.m; car.v = g.v; }
     serverM = g.m;
     if (Math.abs(g.m - car.m) > 150) { car.m = g.m; car.v = g.v; }
@@ -291,7 +337,7 @@ function mountDriver(game, holder, draw) {
       if (!first) {
         if (ev.k === 'lap') { sfx(ev.best ? 'checkpoint' : 'coin'); say(ev.best ? `Lap ${ev.l}: ${fmtLap(ev.t)}. Fastest lap, mega!` : `Lap ${ev.l}: ${fmtLap(ev.t)}`, ev.best ? 'is-purple' : ''); }
         if (ev.k === 'boost') { sfx('boost'); game.flash('⚡ Overtake mode!', 'is-ok'); }
-        if (ev.k === 'pit') { sfx('pick'); say('Box, box! New tyres coming…'); }
+        if (ev.k === 'pit') { sfx('pick'); say(`Box, box! ${(TYRES[ev.c] || TYRES.m).name} tyres going on…`); }
       }
     }
   }));
@@ -308,7 +354,22 @@ function mountDriver(game, holder, draw) {
 
   const getFuel = async () => { if (!game.asking) await game.ask({ title: `Answer right for ${FUEL_PER_ANSWER}s of fuel and a boost` }); };
   const doBoost = () => { if (car.ers > 0 && car.boost === 0 && car.pit === 0 && car.fuel > 0 && !game.asking) { game.sendAct({ k: 'b' }); hud.boost.disabled = true; } };
-  const doPit = () => { if (car.pit === 0 && car.tyre < 95 && !game.asking) { game.sendAct({ k: 'p' }); hud.pit.disabled = true; } };
+  const canPit = () => car.pit === 0 && car.tyre < 95 && !game.asking;
+  const choose = (c) => {
+    hud.chooser.hidden = true;
+    if (!c || !canPit()) return;
+    game.sendAct({ k: 'p', c });
+    hud.pit.disabled = true;
+  };
+  let chooseTimer = 0;
+  const doPit = () => {
+    if (!canPit()) return;
+    hud.chooser.hidden = false;
+    clearTimeout(chooseTimer);
+    chooseTimer = setTimeout(() => { hud.chooser.hidden = true; }, 8000);
+  };
+  hud.chooser.querySelectorAll('.gp-tyre').forEach((b) => b.addEventListener('click', () => choose(b.dataset.c)));
+  hud.chooser.querySelector('.gp-choose-x').addEventListener('click', () => choose(null));
   hud.answer.addEventListener('click', getFuel);
   hud.boost.addEventListener('click', doBoost);
   hud.pit.addEventListener('click', doPit);
@@ -318,6 +379,8 @@ function mountDriver(game, holder, draw) {
     if (e.code === 'KeyF' || e.code === 'Enter') { e.preventDefault(); getFuel(); }
     if (e.code === 'Space' || e.code === 'KeyB') { e.preventDefault(); doBoost(); }
     if (e.code === 'KeyP') doPit();
+    if (!hud.chooser.hidden && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) choose(['s', 'm', 'h'][Number(e.code.slice(5)) - 1]);
+    if (!hud.chooser.hidden && e.code === 'Escape') choose(null);
   };
   window.addEventListener('keydown', keys);
   // for the browser tests
@@ -329,7 +392,10 @@ function mountDriver(game, holder, draw) {
   const stop = loop((dt) => {
     t += dt;
     const others = Object.entries(race).filter(([u]) => u !== uid).map(([, d]) => d[0]);
-    step(car, dt, slipFor(car.m, others));
+    // held on the grid until the lights go out
+    const racing = car.go && live.now() >= car.go;
+    if (racing) step(car, dt, slipFor(car.m, others));
+    if (racing && !started) { started = true; if (t > 1) { game.flash('Lights out and away we go!', 'is-ok'); sfx('checkpoint'); } }
     if (serverM !== null) { car.m += (serverM - car.m) * Math.min(1, dt * 0.8); serverM += car.v * dt; }
     // rivals: run them forward from their last report
     const rivals = [];
@@ -341,7 +407,7 @@ function mountDriver(game, holder, draw) {
       if (s.target !== undefined) { s.m += (s.target + s.v * 0.5 - s.m) * Math.min(1, dt * 0.9); s.target += s.v * dt; }
       shownRivals.set(u, s);
       const info = names.get(u) || {};
-      rivals.push({ uid: u, m: s.m, v: s.v, pit: d[2], name: info.name || '', blook: info.blook });
+      rivals.push({ uid: u, m: s.m, v: s.v, pit: d[2], cmp: d[3], name: info.name || '', blook: info.blook });
     }
     for (const u of [...shownRivals.keys()]) if (!race[u]) shownRivals.delete(u);
     // warnings on the radio
@@ -354,11 +420,11 @@ function mountDriver(game, holder, draw) {
     const nowMs = performance.now(); const dt = Math.min(0.1, (nowMs - lastFrame) / 1000); lastFrame = nowMs;
     const rivals = shownRivalList;
     game.setMeter('Fuel', car.fuel / MAX_FUEL, `${Math.ceil(car.fuel)}s`);
-    draw({ ...car, uid, lane: laneOf(uid) }, rivals, t, dt);
+    draw({ ...car, uid, lane: lateralOf(car.m, uid, car.pit > 0) }, rivals, t, dt);
     // the dashboard (only what changed)
     const ranked = [car.m, ...rivals.map((r) => r.m)].sort((a, b) => b - a);
     const position = ranked.indexOf(car.m) + 1;
-    const txt = [kmh(car.v), gear(car.v), Math.ceil(car.fuel), Math.round(car.tyre), car.ers, car.boost > 0, car.pit > 0, position, ranked.length, car.laps, car.best, game.asking].join('|');
+    const txt = [kmh(car.v), gear(car.v), Math.ceil(car.fuel), Math.round(car.tyre), car.cmp, car.ers, car.boost > 0, car.pit > 0, position, ranked.length, car.laps, car.best, game.asking].join('|');
     if (txt !== shown) {
       shown = txt;
       hud.speed.textContent = String(kmh(car.v));
@@ -372,6 +438,8 @@ function mountDriver(game, holder, draw) {
       hud.tyreBar.style.width = `${car.tyre}%`;
       hud.tyreBar.style.background = car.tyre > 60 ? '#19c37d' : car.tyre > 30 ? '#ffcd1f' : '#ff4772';
       hud.tyreTxt.textContent = `${Math.round(car.tyre)}%`;
+      const ty = TYRES[car.cmp] || TYRES.m;
+      hud.cmpEl.textContent = ty.name[0]; hud.cmpEl.style.setProperty('--tc', ty.colour); hud.cmpEl.title = `${ty.name} tyres`;
       fill(hud.ersEl, h('small', {}, 'ERS'), ...Array.from({ length: MAX_ERS }, (_, i) => h('i', { class: i < car.ers ? 'is-on' : '' }, '⚡')));
       hud.boost.disabled = !(car.ers > 0 && car.boost === 0 && car.pit === 0 && car.fuel > 0) || game.asking;
       hud.boost.classList.toggle('is-on', car.boost > 0);
@@ -391,10 +459,13 @@ function mountDriver(game, holder, draw) {
     hud.ahead.hidden = !a; hud.behind.hidden = !b;
     if (a) hud.ahead.textContent = `▲ ${a.name} +${gap(a.m - car.m, car.v)}`;
     if (b) hud.behind.textContent = `▼ ${b.name} -${gap(car.m - b.m, b.v)}`;
-    hud.lights.classList.toggle('is-out', t > 2.6);
-    hud.lights.style.setProperty('--on', String(Math.min(5, Math.floor(t * 2.2))));
+    // the five red lights fill up one by one, then all go out together
+    const now = live.now();
+    const lit = car.go ? Math.max(0, Math.min(5, Math.floor((now - (car.go - START_HOLD)) / (START_HOLD / 5.6)))) : 0;
+    hud.lights.classList.toggle('is-out', Boolean(car.go) && now >= car.go);
+    hud.lights.style.setProperty('--on', String(lit));
   });
-  return () => { stop(); unsubs.forEach((u) => u()); window.removeEventListener('keydown', keys); delete window.__quickzyGP; hud.el.remove(); };
+  return () => { stop(); clearTimeout(chooseTimer); unsubs.forEach((u) => u()); window.removeEventListener('keydown', keys); delete window.__quickzyGP; hud.el.remove(); };
 }
 
 /* =============================================== 2D views (no 3D, or tests) */
@@ -448,7 +519,9 @@ function mountPlayer2D(game) {
     ctx.strokeStyle = '#4b4d52'; ctx.lineWidth = TRACK_WIDTH; ctx.stroke();
     ctx.setLineDash([1.5, 6]); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 0.35; ctx.stroke(); ctx.setLineDash([]);
     // kerbs in the corners
-    for (let i = 0; i < TRACK.N; i++) {
+    const here = Math.floor(wrap(car.m) / STEP);
+    for (let o = -70; o <= 90; o++) {
+      const i = (here + o + TRACK.N) % TRACK.N;
       if (!kerb(TRACK.K[i])) continue;
       const side = Math.sign(TRACK.K[i]);
       for (const s of [side, -side]) {
@@ -467,14 +540,14 @@ function mountPlayer2D(game) {
     // the cars
     const near = rivals.filter((r) => Math.abs(r.m - car.m) < 260 || Math.abs(r.m - car.m - LAP) < 260 || Math.abs(r.m - car.m + LAP) < 260);
     for (const r of near) {
-      const p = trackAt(r.m, laneOf(r.uid));
+      const p = trackAt(r.m, lateralOf(r.m, r.uid, r.pit));
       drawCar2D(ctx, p.x, p.z, Math.atan2(p.hz, p.hx) + Math.PI / 2, liveryOf(r.uid), 0.14);
     }
     drawCar2D(ctx, me.x, me.z, heading + Math.PI / 2, liveryOf(car.uid), 0.14);
     ctx.restore();
     // names over the rivals (upright)
     for (const r of near) {
-      const p = trackAt(r.m, laneOf(r.uid));
+      const p = trackAt(r.m, lateralOf(r.m, r.uid, r.pit));
       const dx = p.x - me.x; const dz = p.z - me.z; const a = -Math.PI / 2 - heading;
       const sx = w / 2 + (dx * Math.cos(a) - dz * Math.sin(a)) * sc; const sy = hh * 0.68 + (dx * Math.sin(a) + dz * Math.cos(a)) * sc;
       nameTag(ctx, r.name, sx, sy - 26, { bg: 'rgba(23,19,63,.8)', size: 12 });
@@ -541,7 +614,7 @@ function mountScreen2D(el, { ref }) {
     list.forEach((p, i) => {
       const m = p.extra.m ?? p.score;
       const sm = lerp(shown.get(p.uid) ?? m, m + (p.extra.v || 0) * 0.5, Math.min(1, dt * 1.5)); shown.set(p.uid, sm);
-      const q = trackAt(sm, laneOf(p.uid));
+      const q = trackAt(sm, lateralOf(sm, p.uid, p.extra.pit > 0));
       const x = tx(q.x); const y = tz(q.x, q.z);
       ctx.fillStyle = liveryOf(p.uid); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(x, y, i < 3 ? 11 : 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -599,12 +672,12 @@ function mountPlayer3D(game, holder, W, T) {
     const ids = new Set(rivals.map((r) => r.uid));
     for (const id of [...world.cars.keys()]) if (id !== car.uid && !ids.has(id)) world.removeCar(id);
     const mine = world.carFor(car.uid, liveryOf(car.uid), '');
-    world.placeCar(mine, car.m, car.lane, car.v, dt, { boost: car.boost > 0 });
+    world.placeCar(mine, car.m, car.lane, car.v, dt, { boost: car.boost > 0, cmp: car.cmp });
     for (const r of rivals) {
       const c = world.carFor(r.uid, liveryOf(r.uid), r.name);
       const near = Math.abs(((r.m - car.m) % LAP + LAP + LAP / 2) % LAP - LAP / 2) < 600;
       c.g.visible = near;
-      if (near) world.placeCar(c, r.m, laneOf(r.uid), r.v, dt, {});
+      if (near) world.placeCar(c, r.m, lateralOf(r.m, r.uid, r.pit), r.v, dt, { cmp: r.cmp });
     }
     world.camera(views[view], mine, car.v, t, dt);
     world.render(dt, mine.g.position);
@@ -635,7 +708,7 @@ function mountScreen3D(holder, { ref }, W, T) {
       const sm = prev + v * dt + (m + v * 0.5 - prev) * Math.min(1, dt * 0.8);
       shown.set(p.uid, sm);
       const c = world.carFor(p.uid, liveryOf(p.uid), `${i + 1}. ${p.name}`);
-      world.placeCar(c, sm, laneOf(p.uid), v, dt, { boost: (p.extra.boost || 0) > 0 });
+      world.placeCar(c, sm, lateralOf(sm, p.uid, p.extra.pit > 0), v, dt, { boost: (p.extra.boost || 0) > 0, cmp: p.extra.cmp });
     });
     const leader = list[0] && world.cars.get(list[0].uid);
     if (leader) world.camera(SHOTS[shot][0], leader, list[0].extra.v || 0, t, dt);

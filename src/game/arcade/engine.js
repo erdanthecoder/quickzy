@@ -8,6 +8,10 @@ import { blookImage } from '../../ui/blooks.js';
 
 /* ----------------------------------------------------------------- canvas */
 
+// shared by every 2D game: when frames come slowly, draw fewer pixels
+const perf = { slow: false, views: new Set() };
+const coarse = () => { try { return matchMedia('(pointer: coarse)').matches; } catch { return false; } };
+
 export function makeCanvas(parent) {
   const canvas = document.createElement('canvas');
   canvas.className = 'game-canvas';
@@ -16,7 +20,7 @@ export function makeCanvas(parent) {
   const view = { canvas, ctx, w: 0, h: 0, dpr: 1 };
   const resize = () => {
     const r = parent.getBoundingClientRect();
-    view.dpr = Math.min(2, window.devicePixelRatio || 1);
+    view.dpr = Math.min(perf.slow ? 1 : coarse() ? 1.5 : 2, window.devicePixelRatio || 1);
     view.w = Math.max(1, Math.round(r.width));
     view.h = Math.max(1, Math.round(r.height));
     canvas.width = Math.round(view.w * view.dpr);
@@ -28,7 +32,8 @@ export function makeCanvas(parent) {
   const ro = new ResizeObserver(resize);
   ro.observe(parent);
   view.begin = () => { ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0); ctx.imageSmoothingEnabled = true; };
-  view.destroy = () => { ro.disconnect(); canvas.remove(); };
+  perf.views.add(resize);
+  view.destroy = () => { ro.disconnect(); perf.views.delete(resize); canvas.remove(); };
   return view;
 }
 
@@ -44,8 +49,19 @@ export function loop(update, draw) {
   let last = performance.now();
   let raf = 0;
   let running = true;
+  let slowT = 0; let slowN = 0; let warm = 0;
   const frame = (now) => {
     if (!running) return;
+    const real = (now - last) / 1000;
+    // watch the frame rate: a struggling device switches to lighter drawing
+    if (warm < 2) warm += Math.max(0, Math.min(0.5, real));
+    else if (!perf.slow && real > 0 && real < 0.5) {
+      slowT += real; slowN += 1;
+      if (slowT > 3) {
+        if (slowT / slowN > 1 / 40 && document.visibilityState === 'visible') { perf.slow = true; for (const r of perf.views) r(); }
+        slowT = 0; slowN = 0;
+      }
+    }
     acc += Math.min(0.1, (now - last) / 1000);
     last = now;
     let steps = 0;
