@@ -268,9 +268,10 @@ function packShow(box, n) {
           await wait(500);
         }
       }
-      // let every save finish before the summary
-      await job;
+      // every pack saved (coins back may still be on their way)
+      await ready(n - 1);
       if (failed) toast(failed.message, 'bad');
+      else job.then(() => { if (failed) toast(failed.message, 'bad'); });
       summary();
     })().catch((err) => { console.error(err); close(0); });
 
