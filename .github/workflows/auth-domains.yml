@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      DOMAINS: quickzy.work.gd,quickzy.foo.ng,quickzy.is-my.app
+      DOMAINS: quickzy.work.gd,quickzy.foo.ng,quickzy.is-my.app,quickzy.vexr.dev
     steps:
       - uses: actions/setup-node@v4
         with:
