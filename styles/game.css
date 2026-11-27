@@ -581,3 +581,4 @@ body.in-game { background: var(--night); color: #fff; overscroll-behavior: none;
 .gp-tyre kbd { position: absolute; top: 4px; right: 6px; font-size: 10px; opacity: .5; }
 .gp-choose-x { justify-self: center; padding: 6px 14px; border-radius: 99px; border: 0; background: #ffffff1a; color: #fff; font: 800 13px Figtree, system-ui; cursor: pointer; }
 @media (pointer: coarse) { .gp-tyre kbd { display: none; } }
+.game-logo { width: 1.15em; height: 1.15em; vertical-align: -0.2em; margin-right: 0.3em; filter: drop-shadow(0 2px 0 #0003); }

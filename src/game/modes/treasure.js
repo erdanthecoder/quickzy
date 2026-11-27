@@ -99,7 +99,7 @@ export function mountPlayer(game) {
   const scene = h('div', { class: 'th-scene', 'aria-hidden': 'true' },
     h('span', { class: 'th-sun' }), h('span', { class: 'th-sea' }), h('span', { class: 'th-sand' }),
     h('span', { class: 'th-palm is-l' }, '🌴'), h('span', { class: 'th-palm is-r' }, '🌴'), h('span', { class: 'th-ship' }, '⛵'));
-  stage.append(h('div', { class: 'th-root' }, scene, h('h2', { class: 'th-title' }, 'Treasure Hunt'), status, row, pick, answer));
+  stage.append(h('div', { class: 'th-root' }, scene, h('h2', { class: 'th-title' }, h('img', { class: 'game-logo', src: '/assets/icon.svg', alt: '' }), 'Treasure Hunt'), status, row, pick, answer));
 
   const drawChests = (open = -1, ev = null) => fill(row, ...[0, 1, 2].map((i) => {
     const isOpen = i === open;
@@ -178,7 +178,7 @@ export function mountPlayer(game) {
 export function mountScreen(el, { ref, live, P }) {
   const list = h('div', { class: 'th-board' });
   const feedEl = h('div', { class: 'th-feed' });
-  el.append(h('div', { class: 'th-screen' }, h('h2', {}, '🏴‍☠️ Treasure Hunt 💰'), list, feedEl));
+  el.append(h('div', { class: 'th-screen' }, h('h2', {}, h('img', { class: 'game-logo', src: '/assets/icon.svg', alt: '' }), '🏴‍☠️ Treasure Hunt 💰'), list, feedEl));
   const off = live && P ? live.on(P('snap'), (s) => fill(feedEl, ...((s && s.feed) || []).map((t) => h('p', {}, t)))) : () => {};
   const timer = setInterval(() => {
     const top = ref.ranked().slice(0, 8);

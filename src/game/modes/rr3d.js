@@ -4,6 +4,7 @@
 
 import { drawBlook } from '../arcade/engine.js';
 import { autoQuality } from '../arcade/quality.js';
+import { logoTexture, crowd as makeCrowd } from '../arcade/brand.js';
 import { preloadBlooks } from '../../ui/blooks.js';
 
 const U = 2;                       // world units per metre
@@ -104,6 +105,28 @@ export function createRun(T, canvas, { tv = false } = {}) {
     const head = new T.Mesh(new T.SphereGeometry(0.35, 10, 8), new T.MeshBasicMaterial({ color: 0xffe9b0 })); head.position.set(-side * 0.6, 6, 0); g.add(head);
     const halo = new T.Sprite(new T.SpriteMaterial({ map: glow, color: 0xffd27a, transparent: true, blending: T.AdditiveBlending, depthWrite: false })); halo.scale.set(3.5, 3.5, 1); halo.position.copy(head.position); g.add(halo);
     g.userData = { side, slot: Math.floor(i / 2) }; scene.add(g); lamps.push(g);
+  }
+
+  // giant Quickzy screens on the towers, and fans cheering along the pavement
+  const screenMat = new T.MeshBasicMaterial({ map: logoTexture(T, { w: 1024, h: 256, bg: '#17133f', border: '#59f0ff' }), side: T.DoubleSide });
+  const screens = [];
+  for (let i = 0; i < 6; i++) {
+    const side = i % 2 ? 1 : -1;
+    // a billboard on a tall pole, turned towards the runners
+    const m = new T.Group();
+    const face = new T.Mesh(new T.PlaneGeometry(12, 3), screenMat); face.position.y = 9; face.rotation.y = side * -Math.PI / 2 + side * 0.35; m.add(face);
+    const pole = new T.Mesh(new T.CylinderGeometry(0.25, 0.3, 9, 8), lampMat); pole.position.y = 4.5; m.add(pole);
+    m.userData = { side, slot: i };
+    scene.add(m); screens.push(m);
+  }
+  const fanGroups = [];
+  for (let i = 0; i < 6; i++) {
+    const side = i % 2 ? 1 : -1;
+    const spots = [];
+    for (let k = 0; k < 26; k++) spots.push([side * (LANE * 1.5 + 3 + Math.random() * 3), 0, -k * 0.9 + Math.random() * 0.3, side > 0 ? -Math.PI / 2 : Math.PI / 2]);
+    const fans = makeCrowd(T, spots, { size: 1.1 });
+    fans.group.userData = { side, slot: i };
+    scene.add(fans.group); fanGroups.push(fans);
   }
 
   /* runners: a little robot cart with the blook riding it */
@@ -213,6 +236,17 @@ export function createRun(T, canvas, { tv = false } = {}) {
         const u = g.userData; const base = Math.floor(-z / 26);
         const slot = base + ((u.slot - base) % 8 + 8) % 8 - 1;
         g.position.set(u.side * (LANE * 1.5 + 1.6), 0, -slot * 26);
+      }
+      for (const m of screens) {
+        const u = m.userData; const base = Math.floor(-z / 70);
+        const slot = base + ((u.slot - base) % 6 + 6) % 6 - 1;
+        m.position.set(u.side * (LANE * 1.5 + 7), 0, -slot * 70 - 20);
+      }
+      for (const f of fanGroups) {
+        const u = f.group.userData; const base = Math.floor(-z / 48);
+        const slot = base + ((u.slot - base) % 6 + 6) % 6 - 1;
+        f.group.position.z = -slot * 48;
+        f.update(t, boost ? 0.9 : 0.35);
       }
       // course items near the camera
       const keep = new Set();

@@ -120,7 +120,7 @@ export function mountPlayer(game) {
   const oven = h('div', { class: 'pz-oven', 'aria-hidden': 'true' });
   stage.append(h('div', { class: 'pz-root' },
     h('div', { class: 'pz-top' },
-      h('div', { class: 'pz-sign' }, h('span', {}, '\u{1F355}'), 'Pizza Party'),
+      h('div', { class: 'pz-sign' }, h('img', { class: 'game-logo', src: '/assets/icon.svg', alt: '' }), h('span', {}, '\u{1F355}'), 'Pizza Party'),
       h('div', { class: 'pz-stat' }, h('small', {}, 'Pizzas served'), servedEl, comboEl)),
     counter, answer,
     h('div', { class: 'pz-pantry-wrap' }, h('small', {}, 'Your kitchen'), pantry),
@@ -208,7 +208,7 @@ export function mountPlayer(game) {
 
 export function mountScreen(el, { ref }) {
   const list = h('div', { class: 'th-board' });
-  el.append(h('div', { class: 'th-screen pz-screen' }, h('h2', {}, '\u{1F355} Pizza Party \u{1F355}'), list));
+  el.append(h('div', { class: 'th-screen pz-screen' }, h('h2', {}, h('img', { class: 'game-logo', src: '/assets/icon.svg', alt: '' }), '\u{1F355} Pizza Party \u{1F355}'), list));
   const timer = setInterval(() => {
     const top = ref.ranked().slice(0, 8);
     const max = Math.max(1, ...top.map((p) => p.score));

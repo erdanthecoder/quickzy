@@ -15,6 +15,7 @@ import { preloadBlooks } from '../../ui/blooks.js';
 import { sfx } from '../sound.js';
 import { h } from '../../ui/dom.js';
 import { loadThree, want3D } from '../arcade/three.js';
+import { drawLogoBoard } from '../arcade/brand.js';
 
 const PX = 40;                    // pixels per metre
 const BASE = 8;                   // m/s
@@ -95,6 +96,11 @@ function drawSky(ctx, w, h, off) {
       const k = Math.abs(Math.floor((x + off * speed) / step)) % 5;
       const bh = h * (0.08 + k * 0.035);
       ctx.fillRect(x, h * base - bh, step * 0.82, bh + h);
+    }
+    // Quickzy billboards on the rooftops
+    if (speed === 0.4) {
+      const bw = Math.min(190, w * 0.36); const span = Math.max(w * 0.9, 620);
+      for (let x = -((off * speed) % span); x < w + span; x += span) drawLogoBoard(ctx, x + span * 0.3, h * 0.42, bw, bw * 0.26, { alpha: 0.92 });
     }
   }
 }

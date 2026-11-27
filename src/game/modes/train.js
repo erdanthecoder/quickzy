@@ -13,6 +13,7 @@ import { curveX } from './train3d.js';
 import { preloadBlooks, blook } from '../../ui/blooks.js';
 import { h, fill } from '../../ui/dom.js';
 import { sfx } from '../sound.js';
+import { drawBlimp } from '../arcade/brand.js';
 
 export const COAL_PER_ANSWER = 2;
 export const BURN_SECONDS = 3;
@@ -108,6 +109,9 @@ export function drawSkyAndHills(ctx, w, hor, shift, t, warm = 1) {
       ctx.fillStyle = cg; ctx.fillRect(x + k * cw * 0.18 - rx, y - rx, rx * 2, rx * 2);
     }
   }
+  // the Quickzy blimp, far off over the hills
+  const bs = Math.min(200, w * 0.3);
+  drawBlimp(ctx, w - (((t * 6 + shift * 0.08) % (w + bs * 2)) + w + bs * 2) % (w + bs * 2) + bs, hor * 0.3, bs, t);
   // three ranges of mountains, hazier the farther they are
   const ranges = [['#8ea6c4', 0.42, 0.02, 380], ['#6f8aa8', 0.3, 0.05, 260], ['#4f6a5c', 0.16, 0.1, 170]];
   for (const [col, hgt, par, wl] of ranges) {

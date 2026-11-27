@@ -4,6 +4,7 @@
 // on the big screen.
 
 import { autoQuality } from '../arcade/quality.js';
+import { logoTexture, crowd as makeCrowd } from '../arcade/brand.js';
 export const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 export const M_PER_UNIT = 4;                // metres in one world unit
 export const LANE = 7;                      // units between tracks
@@ -217,6 +218,13 @@ export function createWorld(T, canvas, { tv = false } = {}) {
   const trunkGeo = new T.CylinderGeometry(0.25, 0.4, 3, 6);
   const leafGeo = new T.ConeGeometry(2.2, 6.5, 7);
   const poleGeo = new T.CylinderGeometry(0.14, 0.18, 8, 6);
+  // Quickzy billboards and stations with fans along the line
+  const boardMat = new T.MeshBasicMaterial({ map: logoTexture(T, { w: 1024, h: 256, bg: '#17133f', border: '#ffcd1f' }), side: T.DoubleSide });
+  const stationSignMat = new T.MeshBasicMaterial({ map: logoTexture(T, { w: 1024, h: 192, bg: '#6b4cff', border: '#ffffff' }), side: T.DoubleSide });
+  const platformMat = new T.MeshStandardMaterial({ color: 0xc9b79c, roughness: 0.95 });
+  const canopyMat = new T.MeshStandardMaterial({ color: 0x8a1f1f, roughness: 0.6 });
+  const crowds = new Set();
+  let fanT = 0;
   const ribbon = (z0, z1, xoff, half, y, steps = 20) => {
     const pos = []; const uv = []; const idx = [];
     for (let i = 0; i <= steps; i++) {
@@ -288,6 +296,26 @@ export function createWorld(T, canvas, { tv = false } = {}) {
       pole.position.set(curveX(z) - 2.8 * LANE - 4, 4, z); pole.castShadow = true; g.add(pole);
       const arm = new T.Mesh(new T.BoxGeometry(2.4, 0.15, 0.15), mats.pole); arm.position.set(pole.position.x, 7.6, z); g.add(arm);
     }
+    // a Quickzy billboard every few hundred metres
+    if (k % 4 === 2) {
+      const z = z0 - 50; const x = curveX(z) - 2 * LANE - 22; const y = groundY(x, z);
+      const face = new T.Mesh(new T.PlaneGeometry(24, 6), boardMat); face.position.set(x, y + 9, z); face.rotation.y = Math.PI / 2 - 0.35; g.add(face);
+      for (const dz of [-8, 8]) { const leg = new T.Mesh(new T.BoxGeometry(0.5, 9, 0.5), mats.dark); leg.position.set(x - 0.4, y + 4.5, z + dz * 0.95); g.add(leg); }
+    }
+    // a little station full of waving fans
+    if (k % 12 === 1) {
+      const zc = z0 - 50; const x = curveX(zc) + 2 * LANE + 7;
+      const plat = new T.Mesh(new T.BoxGeometry(8, 1.1, 70), platformMat); plat.position.set(x, 0.55, zc); plat.receiveShadow = true; g.add(plat);
+      const roof = new T.Mesh(new T.BoxGeometry(9, 0.3, 50), canopyMat); roof.position.set(x + 0.5, 5.4, zc); roof.castShadow = true; g.add(roof);
+      for (let i = -2; i <= 2; i++) { const post = new T.Mesh(poleGeo, mats.pole); post.scale.set(1, 0.6, 1); post.position.set(x + 3, 3.2, zc + i * 11); g.add(post); }
+      const sign = new T.Mesh(new T.PlaneGeometry(14, 2.6), stationSignMat); sign.position.set(x - 0.4, 7.2, zc); sign.rotation.y = -Math.PI / 2; g.add(sign);
+      const spots = [];
+      for (let i = 0; i < 70; i++) spots.push([x - 3 + hash2(i, k) * 5, 1.1, zc - 30 + hash2(k, i) * 60, -Math.PI / 2 + (hash2(i, 3) - 0.5) * 0.6]);
+      const fans = makeCrowd(T, spots);
+      g.add(fans.group);
+      fans.z = zc;
+      crowds.add(fans); g.userData.fans = fans;
+    }
     scene.add(g);
     return g;
   }
@@ -298,6 +326,7 @@ export function createWorld(T, canvas, { tv = false } = {}) {
     for (const [k, g] of chunks) {
       if (want.has(k)) continue;
       g.traverse((o) => { if (o.geometry && o.geometry !== sleeperGeo && o.geometry !== trunkGeo && o.geometry !== leafGeo && o.geometry !== poleGeo) o.geometry.dispose(); if (o.isInstancedMesh) o.dispose(); });
+      if (g.userData.fans) crowds.delete(g.userData.fans);
       scene.remove(g); chunks.delete(k);
     }
   }
@@ -367,6 +396,9 @@ export function createWorld(T, canvas, { tv = false } = {}) {
     T, scene, cam, trainFor, placeTrain, removeTrain, trains,
     render(dt, focus) {
       updateChunks(focus.z);
+      // fans at a station cheer as the trains come through
+      fanT += dt;
+      for (const f of crowds) { const d = Math.abs(f.z - focus.z); if (d < 250) f.update(fanT, Math.max(0, 1 - d / 120)); }
       sun.position.set(focus.x - sunDir.x * 120, sunDir.y * 120 + 40, focus.z - sunDir.z * 120);
       sun.target.position.set(focus.x, 0, focus.z);
       sky.position.copy(cam.position);
