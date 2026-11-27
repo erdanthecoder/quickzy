@@ -71,7 +71,7 @@ export function mountPlayer(game) {
   const answer = h('button', { class: 'cf-answer' }, h('span', {}, '💵'), 'Answer for cash');
   const factory = h('div', { class: 'cf-factory' },
     h('div', { class: 'cf-roof' }, h('i'), h('i'), h('i')),
-    h('div', { class: 'cf-sign' }, h('span', {}, '🍬'), 'Candy Factory'),
+    h('div', { class: 'cf-sign' }, h('img', { class: 'game-logo', src: '/assets/icon.svg', alt: '' }), h('span', {}, '🍬'), 'Candy Factory'),
     h('div', { class: 'cf-stats' },
       h('div', {}, h('small', {}, 'Cash'), cashEl),
       h('div', {}, h('small', {}, 'Candy a second'), rateEl)),
@@ -121,7 +121,7 @@ export function mountPlayer(game) {
 
 export function mountScreen(el, { ref }) {
   const list = h('div', { class: 'th-board' });
-  el.append(h('div', { class: 'th-screen cf-screen' }, h('h2', {}, '🍭 Candy Factory 🍫'), list));
+  el.append(h('div', { class: 'th-screen cf-screen' }, h('h2', {}, h('img', { class: 'game-logo', src: '/assets/icon.svg', alt: '' }), '🍭 Candy Factory 🍫'), list));
   const timer = setInterval(() => {
     const top = ref.ranked().slice(0, 8);
     const max = Math.max(1, ...top.map((p) => p.score));

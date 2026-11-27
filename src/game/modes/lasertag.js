@@ -14,6 +14,7 @@ import { makeCanvas, loop, controls, particles, shaker, drawBlook, nameTag, hash
 import { preloadBlooks } from '../../ui/blooks.js';
 import { sfx } from '../sound.js';
 import { loadThree, want3D } from '../arcade/three.js';
+import { drawLogo, drawWordmark } from '../arcade/brand.js';
 
 /* ------------------------------------------------------------------ world */
 
@@ -123,6 +124,9 @@ function drawArena(ctx, t) {
   for (let x = 0; x <= W; x += 80) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
   for (let y = 0; y <= H; y += 80) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
   ctx.stroke();
+  // the Quickzy logo painted on the arena floor
+  drawLogo(ctx, W / 2, H / 2 - 20, 170, 0.32);
+  ctx.save(); ctx.globalAlpha = 0.25; drawWordmark(ctx, W / 2, H / 2 + 92, 54, { align: 'center' }); ctx.restore();
   // pads at the spawn points
   for (const [x, y] of SPAWNS) {
     ctx.fillStyle = 'rgba(107,76,255,0.18)';

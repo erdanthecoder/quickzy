@@ -5,6 +5,7 @@
 
 import { drawBlook } from '../arcade/engine.js';
 import { autoQuality } from '../arcade/quality.js';
+import { drawLogo, drawWordmark, logoTexture, onLogo, crowd as makeCrowd } from '../arcade/brand.js';
 import { preloadBlooks } from '../../ui/blooks.js';
 
 const S = 1 / 20;                    // world units per arena pixel
@@ -40,7 +41,7 @@ export function createArena(T, canvas, { W, H, walls, spawns, pickups, tv = fals
   }
 
   // the floor: dark panels with a glowing grid
-  const floorTex = canvasTex(T, 2048, 1280, (g, w, hh) => {
+  const paintFloor = (g, w, hh) => {
     g.fillStyle = '#0b0a26'; g.fillRect(0, 0, w, hh);
     const sx = w / W; const sy = hh / H;
     for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(107,76,255,${Math.random() * 0.05})`; g.fillRect(Math.random() * w, Math.random() * hh, 80 * sx, 80 * sy); }
@@ -51,7 +52,12 @@ export function createArena(T, canvas, { W, H, walls, spawns, pickups, tv = fals
     g.stroke();
     g.strokeStyle = 'rgba(255,71,114,.5)'; g.lineWidth = 6;
     g.beginPath(); g.arc(w / 2, hh / 2, 120 * sx, 0, Math.PI * 2); g.stroke();
-  });
+    // the Quickzy logo in the middle of the arena
+    g.save(); g.globalAlpha = 0.85; drawLogo(g, w / 2, hh / 2, 190 * sx); g.restore();
+    g.save(); g.globalAlpha = 0.5; drawWordmark(g, w / 2, hh / 2 + 150 * sx, 70 * sx, { align: 'center' }); g.restore();
+  };
+  const floorTex = canvasTex(T, 2048, 1280, paintFloor);
+  onLogo(() => { paintFloor(floorTex.image.getContext('2d'), 2048, 1280); floorTex.needsUpdate = true; });
   const floor = new T.Mesh(new T.PlaneGeometry(AW, AH), new T.MeshStandardMaterial({ map: floorTex, emissive: 0xffffff, emissiveMap: floorTex, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.4 }));
   floor.rotation.x = -Math.PI / 2; floor.position.set(AW / 2, 0, AH / 2); scene.add(floor);
   const plane = new T.Plane(new T.Vector3(0, 1, 0), 0);
@@ -79,6 +85,24 @@ export function createArena(T, canvas, { W, H, walls, spawns, pickups, tv = fals
   const borderMat = new T.MeshStandardMaterial({ color: 0x3a0f2a, emissive: 0x2a0518, roughness: 0.4 });
   const pink = new T.LineBasicMaterial({ color: 0xff4772 }); const pinkStrip = new T.MeshBasicMaterial({ color: 0xff4772 });
   for (const [x, y, w, hh] of [[-20, -20, W + 40, 20], [-20, H, W + 40, 20], [-20, 0, 20, H], [W, 0, 20, H]]) wall(x, y, w, hh, 3.4, borderMat, pink, pinkStrip);
+
+  // stands full of fans on two sides of the arena, Quickzy banners on top
+  const stepMat = new T.MeshStandardMaterial({ color: 0x1b1a3a, roughness: 0.8 });
+  const bannerMat = new T.MeshBasicMaterial({ map: logoTexture(T, { w: 1024, h: 128, bg: '#17133f', border: '#59f0ff' }), side: T.DoubleSide });
+  bannerMat.map.wrapS = T.RepeatWrapping; bannerMat.map.repeat.set(3, 1);
+  const fanSpots = [];
+  for (const side of [-1, 1]) {
+    const z0 = side < 0 ? -1.4 : AH + 1.4;
+    for (let r = 0; r < 5; r++) {
+      const z = z0 + side * r * 1.3; const y = 0.5 + r * 0.7;
+      const step = new T.Mesh(new T.BoxGeometry(AW + 4, y * 2, 1.3), stepMat); step.position.set(AW / 2, y / 2 - 0.25, z); scene.add(step);
+      for (let x = 0.6; x < AW - 0.4; x += 1.05) if (Math.random() > 0.1) fanSpots.push([x + (Math.random() - 0.5) * 0.2, 1.5 * y - 0.25, z, side < 0 ? 0 : Math.PI]);
+    }
+    const banner = new T.Mesh(new T.PlaneGeometry(AW + 4, 1.6), bannerMat);
+    banner.position.set(AW / 2, 5.4, z0 + side * 6.4); if (side > 0) banner.rotation.y = Math.PI; scene.add(banner);
+  }
+  const fans = makeCrowd(T, fanSpots, { size: 0.9 });
+  scene.add(fans.group);
 
   // spawn pads
   for (const [x, y] of spawns) {
@@ -201,6 +225,7 @@ export function createArena(T, canvas, { W, H, walls, spawns, pickups, tv = fals
     },
     render(dt, focus) {
       t += dt;
+      fans.update(t, 0.35 + Math.max(0, Math.sin(t * 0.7)) * 0.4);
       for (const g of gems) { g.rotation.y += dt * 2; g.position.y = 1.2 + Math.sin(t * 3 + g.position.x) * 0.2; }
       for (let i = beams.length - 1; i >= 0; i--) {
         const b = beams[i]; b.life -= dt;

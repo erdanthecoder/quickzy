@@ -3,8 +3,9 @@
 // boards, grandstands full of fans, the pit building, the start gantry,
 // trees, and open-wheel race cars with turning wheels. One unit = one metre.
 
-import { TRACK, LAP, TRACK_WIDTH, trackAt } from './grandprix.js';
+import { TRACK, LAP, TRACK_WIDTH, trackAt, LOGO_SPOTS } from './grandprix.js';
 import { autoQuality } from '../arcade/quality.js';
+import { drawLogo, drawLogoBoard, drawWordmark, logoTexture, onLogo, crowd as makeCrowd } from '../arcade/brand.js';
 
 const HALF = TRACK_WIDTH / 2;
 
@@ -38,25 +39,21 @@ const grassTex = (T) => canvasTex(T, 256, 256, (g, w, hh) => {
   for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#4f9a3f' : '#468e38'; g.fillRect(0, (i * hh) / 8, w, hh / 8); }
   for (let i = 0; i < 6000; i++) { g.fillStyle = `rgba(${30 + Math.random() * 40},${90 + Math.random() * 60},${30 + Math.random() * 30},.35)`; g.fillRect(Math.random() * w, Math.random() * hh, 1, 2); }
 }, { repeat: [60, 60] });
-const boardTex = (T) => canvasTex(T, 1024, 64, (g, w, hh) => {
-  const ads = [['#6b4cff', '#fff', 'QUICKZY'], ['#17133f', '#ffcd1f', 'QUICKZY PRO'], ['#ffcd1f', '#17133f', 'ANSWER FAST'], ['#ff4772', '#fff', 'QUICKZY GP']];
-  ads.forEach(([bg, fg, text], i) => {
-    g.fillStyle = bg; g.fillRect((i * w) / 4, 0, w / 4, hh);
-    g.fillStyle = fg; g.font = '900 38px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(text, (i * w) / 4 + w / 8, hh / 2 + 2);
-  });
-}, { repeat: [1, 1] });
-const crowdTex = (T) => canvasTex(T, 512, 256, (g, w, hh) => {
-  g.fillStyle = '#2b2f3a'; g.fillRect(0, 0, w, hh);
-  const cols = ['#e10600', '#ffd400', '#1e41ff', '#ffffff', '#ff8000', '#00a19c', '#ff4fa3', '#6b4cff', '#f0c9a0', '#8a5a3c'];
-  for (let row = 0; row < 16; row++) {
-    for (let k = 0; k < 64; k++) {
-      const x = k * 8 + (row % 2) * 4 + Math.random() * 2; const y = row * 16 + 6;
-      g.fillStyle = cols[Math.floor(Math.random() * cols.length)]; g.fillRect(x, y + 4, 6, 7);
-      g.fillStyle = '#f0c9a0'; g.beginPath(); g.arc(x + 3, y + 1, 2.6, 0, Math.PI * 2); g.fill();
-    }
-  }
-}, { repeat: [6, 1] });
+// the trackside boards: the Quickzy logo and words, over and over
+const boardTex = (T) => {
+  const paint = (g, w, hh) => {
+    const q = w / 4;
+    g.fillStyle = '#17133f'; g.fillRect(0, 0, q, hh); drawLogoBoard(g, 6, 4, q - 12, hh - 8, { bg: '#17133f', border: null });
+    g.fillStyle = '#ffcd1f'; g.fillRect(q, 0, q, hh);
+    g.fillStyle = '#17133f'; g.font = '900 34px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('ANSWER FAST', q * 1.5, hh / 2 + 2);
+    g.fillStyle = '#6b4cff'; g.fillRect(q * 2, 0, q, hh); drawLogo(g, q * 2 + 36, hh / 2, hh - 10); drawWordmark(g, q * 2 + 70, hh / 2 + 1, 34);
+    g.fillStyle = '#ff4772'; g.fillRect(q * 3, 0, q, hh);
+    g.fillStyle = '#fff'; g.font = '900 34px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('QUICKZY GP', q * 3.5, hh / 2 + 2);
+  };
+  const t = canvasTex(T, 1024, 64, paint, { repeat: [1, 1] });
+  onLogo(() => { paint(t.image.getContext('2d'), 1024, 64); t.needsUpdate = true; });
+  return t;
+};
 const glowTex = (T) => canvasTex(T, 64, 64, (g, w) => {
   const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,200,160,.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = gr; g.fillRect(0, 0, w, w);
@@ -291,9 +288,15 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
   for (const s of [-1, 1]) { const post = new T.Mesh(new T.BoxGeometry(0.6, 8, 0.6), mats.steel); post.position.set(s * (HALF + 3), 4, 0); post.castShadow = true; gantry.add(post); }
   const beam = new T.Mesh(new T.BoxGeometry(TRACK_WIDTH + 7, 1.6, 0.7), keep(new T.MeshStandardMaterial({ color: 0x17133f, roughness: 0.5 })));
   beam.position.set(0, 7.4, 0); beam.castShadow = true; gantry.add(beam);
-  const banner = new T.Mesh(new T.PlaneGeometry(TRACK_WIDTH + 6, 1.3), keep(new T.MeshBasicMaterial({ map: canvasTex(T, 1024, 96, (g, w, hh) => {
-    g.fillStyle = '#17133f'; g.fillRect(0, 0, w, hh); g.fillStyle = '#ffcd1f'; g.font = '900 64px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('QUICKZY GRAND PRIX', w / 2, hh / 2 + 3);
-  }) })));
+  const paintBanner = (g, w, hh) => {
+    g.fillStyle = '#17133f'; g.fillRect(0, 0, w, hh);
+    drawLogo(g, 60, hh / 2, hh - 12); drawLogo(g, w - 60, hh / 2, hh - 12);
+    const ww = drawWordmark(g, w / 2 - 130, hh / 2 + 3, 62);
+    g.fillStyle = '#fff'; g.font = '900 52px Figtree, system-ui, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'left'; g.fillText('GRAND PRIX', w / 2 - 130 + ww + 18, hh / 2 + 3);
+  };
+  const bannerTex = canvasTex(T, 1024, 96, paintBanner);
+  onLogo(() => { paintBanner(bannerTex.image.getContext('2d'), 1024, 96); bannerTex.needsUpdate = true; });
+  const banner = new T.Mesh(new T.PlaneGeometry(TRACK_WIDTH + 6, 1.3), keep(new T.MeshBasicMaterial({ map: bannerTex })));
   banner.position.set(0, 7.4, -0.37); banner.rotation.y = Math.PI; gantry.add(banner);
   const lights = [];
   for (let i = 0; i < 5; i++) {
@@ -302,22 +305,60 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
   }
   place(gantry, 2, 0);
 
-  // grandstands along the main straight and at turn one
-  const crowd = keep(new T.MeshStandardMaterial({ map: crowdTex(T), roughness: 0.9 }));
-  const stand = (len) => {
+  // grandstands along the main straight and at the corners, with real fans
+  // sitting on every step, jumping and waving as the cars go by
+  const concrete = keep(new T.MeshStandardMaterial({ color: 0xb9bcc4, roughness: 0.9 }));
+  const seatCols = [0x1e41ff, 0xe10600, 0x6b4cff];
+  const seats = seatCols.map((c) => keep(new T.MeshStandardMaterial({ color: c, roughness: 0.7 })));
+  const fasciaTex = logoTexture(T, { w: 1024, h: 128, bg: '#17133f', border: '#ffcd1f' });
+  fasciaTex.wrapS = T.RepeatWrapping; fasciaTex.repeat.set(7, 1);
+  const fascia = keep(new T.MeshBasicMaterial({ map: fasciaTex }));
+  const stands = [];
+  const stand = (len, k) => {
     const g = new T.Group();
-    for (let r = 0; r < 8; r++) {
-      const step = new T.Mesh(new T.BoxGeometry(len, 0.9, 1.6), r % 2 ? crowd : crowd);
-      step.position.set(0, 0.45 + r * 0.9, r * 1.6); step.castShadow = true; step.receiveShadow = true; g.add(step);
+    const rows = 8;
+    const spots = [];
+    for (let r = 0; r < rows; r++) {
+      const step = new T.Mesh(new T.BoxGeometry(len, 0.9, 1.6), concrete);
+      step.position.set(0, 0.45 + r * 0.9, r * 1.6); step.receiveShadow = true; g.add(step);
+      const seat = new T.Mesh(new T.BoxGeometry(len, 0.12, 0.5), seats[(r + k) % seats.length]);
+      seat.position.set(0, 0.96 + r * 0.9, r * 1.6 + 0.45); g.add(seat);
+      // a fan on (almost) every seat, a few empty ones
+      for (let x = -len / 2 + 0.7; x < len / 2 - 0.5; x += 1.05) {
+        if (Math.random() < 0.12) continue;
+        spots.push([x + (Math.random() - 0.5) * 0.2, 0.9 + r * 0.9, r * 1.6 + 0.2, Math.PI + (Math.random() - 0.5) * 0.5]);
+      }
     }
+    const fans = makeCrowd(T, spots);
+    g.add(fans.group);
     const roof = new T.Mesh(new T.BoxGeometry(len + 2, 0.3, 15), keep(new T.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.5 })));
     roof.position.set(0, 12, 6); roof.rotation.x = -0.08; roof.castShadow = true; g.add(roof);
+    // the Quickzy logo along the front of the roof
+    const front = new T.Mesh(new T.PlaneGeometry(len + 2, 1.8), fascia);
+    front.position.set(0, 11.7, -1.45); front.rotation.y = Math.PI; g.add(front);
     for (const x of [-len / 2, 0, len / 2]) { const p = new T.Mesh(new T.BoxGeometry(0.4, 12, 0.4), mats.steel); p.position.set(x, 6, 13); g.add(p); }
+    stands.push({ g, fans });
     return g;
   };
-  for (const m of [160, 320, 480]) place(stand(140), m, HALF + 16, 0).rotateY(-Math.PI / 2);
-  place(stand(90), 830, -HALF - 16, 0).rotateY(Math.PI / 2);
-  place(stand(110), 2350, HALF + 16, 0).rotateY(-Math.PI / 2);
+  [160, 320, 480].forEach((m, k) => place(stand(140, k), m, HALF + 16, 0).rotateY(-Math.PI / 2));
+  place(stand(90, 1), 830, -HALF - 16, 0).rotateY(Math.PI / 2);
+  place(stand(110, 2), 2350, HALF + 16, 0).rotateY(-Math.PI / 2);
+  place(stand(80, 0), 1500, -HALF - 16, 0).rotateY(Math.PI / 2);
+  place(stand(80, 1), 3300, HALF + 16, 0).rotateY(-Math.PI / 2);
+
+  // a giant Quickzy sign on a tower at turn one, and the logo painted on the grass
+  const signTex = logoTexture(T, { w: 1024, h: 256, bg: '#17133f', border: '#ffcd1f' });
+  const sign = new T.Group();
+  const signFace = new T.Mesh(new T.PlaneGeometry(36, 9), keep(new T.MeshBasicMaterial({ map: signTex, side: T.DoubleSide })));
+  signFace.position.y = 16; sign.add(signFace);
+  for (const x of [-12, 12]) { const leg = new T.Mesh(new T.BoxGeometry(0.8, 12, 0.8), mats.steel); leg.position.set(x, 6, 0.6); sign.add(leg); }
+  place(sign, 700, HALF + 40, 0).rotateY(Math.PI);
+  const markTex = logoTexture(T, { w: 512, h: 512, kind: 'mark' });
+  for (const [m, lat] of LOGO_SPOTS) {
+    const pos = trackAt(m, lat);
+    const decal = new T.Mesh(new T.PlaneGeometry(40, 40), keep(new T.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false })));
+    decal.rotation.x = -Math.PI / 2; decal.position.set(pos.x, 0.03, pos.z); scene.add(decal);
+  }
 
   // the pit building and garages on the other side of the straight
   const pits = new T.Group();
@@ -329,6 +370,8 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
     const door = new T.Mesh(new T.BoxGeometry(12, 4.4, 0.2), keep(new T.MeshStandardMaterial({ color: garageCols[i % garageCols.length], roughness: 0.5 })));
     door.position.set(-150 + i * 15.8, 2.3, -0.12); pits.add(door);
   }
+  const roofSign = new T.Mesh(new T.PlaneGeometry(60, 7.5), keep(new T.MeshBasicMaterial({ map: logoTexture(T, { w: 1024, h: 128, bg: '#6b4cff', border: '#ffffff' }) })));
+  roofSign.position.set(0, 12.8, 2); roofSign.rotation.y = Math.PI; pits.add(roofSign);
   place(pits, 300, -HALF - 26, 0).rotateY(Math.PI / 2);
   const pitWall = new T.Mesh(new T.BoxGeometry(330, 1.2, 0.6), boards);
   place(pitWall, 300, -HALF - 13.5, 0.6).rotateY(Math.PI / 2);
@@ -474,6 +517,7 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
 
   /* -------------------------------------------------------------- render */
   let t0 = 0;
+  const standAt = new T.Vector3();
   const resize = () => {
     const r = canvas.getBoundingClientRect();
     const w = Math.max(1, Math.round(r.width)); const hh = Math.max(1, Math.round(r.height));
@@ -491,6 +535,12 @@ export function createCircuit(T, canvas, { tv = false } = {}) {
     sun.position.set(focus.x + sunDir.x * 200, sunDir.y * 200, focus.z + sunDir.z * 200);
     sun.target.position.set(focus.x, 0, focus.z);
     sky.position.set(focus.x, 0, focus.z);
+    // the fans near the action jump and wave; far ones are left alone (saves time)
+    for (const s of stands) {
+      s.g.getWorldPosition(standAt);
+      const d = Math.hypot(standAt.x - focus.x, standAt.z - focus.z);
+      if (d < 260) s.fans.update(t0, Math.max(0, 1 - d / 160));
+    }
     quality.frame();
     renderer.render(scene, cam);
   }

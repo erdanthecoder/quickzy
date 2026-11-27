@@ -20,6 +20,7 @@
 import { makeCanvas, loop, controls, particles, shaker, drawBlook, nameTag, rng, hashString, rr, lerp } from '../arcade/engine.js';
 import { preloadBlooks } from '../../ui/blooks.js';
 import { sfx } from '../sound.js';
+import { drawBlimp } from '../arcade/brand.js';
 
 const TW = 520;                   // climb width in world units
 const GAP = 118;                  // height between ledges
@@ -238,6 +239,9 @@ function drawSky(ctx, w, h, camY, t, flash = 0) {
     ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.ellipse(w * 0.82, h * 0.25, 62, 14, -0.3, 0, Math.PI * 2); ctx.stroke();
   }
+  // the Quickzy blimp drifts by in every world
+  const bs = Math.min(230, w * 0.42);
+  drawBlimp(ctx, ((t * 18) % (w + bs * 2)) - bs, h * 0.16, bs, t);
   ctx.restore();
 }
 

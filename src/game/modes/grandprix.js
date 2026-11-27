@@ -22,6 +22,7 @@ import { makeCanvas, loop, drawBlook, nameTag, rr, lerp, hashString } from '../a
 import { preloadBlooks, blook } from '../../ui/blooks.js';
 import { h, fill } from '../../ui/dom.js';
 import { sfx } from '../sound.js';
+import { drawLogo } from '../arcade/brand.js';
 
 export const LAP = 4000;             // metres in one lap
 export const FUEL_PER_ANSWER = 10;   // seconds of racing
@@ -490,6 +491,9 @@ function drawCar2D(ctx, x, y, ang, colour, scale) {
   ctx.restore();
 }
 
+// where the big logos lie on the grass (the 3D circuit has them too)
+export const LOGO_SPOTS = [[120, -TRACK_WIDTH / 2 - 40], [1900, TRACK_WIDTH / 2 + 45], [2900, -TRACK_WIDTH / 2 - 45], [700, TRACK_WIDTH / 2 + 32]];
+
 function mountPlayer2D(game) {
   const holder = h('div', { class: 'gp-root is-2d' });
   game.stage.append(holder);
@@ -530,6 +534,8 @@ function mountPlayer2D(game) {
         ctx.beginPath(); ctx.moveTo(TRACK.X[i] + ox, TRACK.Z[i] + oz); ctx.lineTo(TRACK.X[(i + 1) % TRACK.N] + ox, TRACK.Z[(i + 1) % TRACK.N] + oz); ctx.stroke();
       }
     }
+    // Quickzy logos painted on the grass
+    for (const [lm, lat] of LOGO_SPOTS) { const q = trackAt(lm, lat); drawLogo(ctx, q.x, q.z, 40, 0.9); }
     // the start line, chequered
     const s0 = trackAt(0);
     for (let a = 0; a < 7; a++) for (let b = 0; b < 2; b++) {
