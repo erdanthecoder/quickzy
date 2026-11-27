@@ -60,3 +60,46 @@ test('train: a right answer is 2 coal, a coal burns 3 s and carries 500 m', () =
   burn(e, 100);                                // one coal, then the fire goes out
   assert.equal(e.m, 500); assert.equal(e.coal, 0);
 });
+
+test('grand prix: fuel, boost, pits and laps', async () => {
+  const gp = await import('../../src/game/modes/grandprix.js');
+  const { host, add } = setup(gp.createHost);
+  const a = add('a'); const b = add('b');
+  // the grid: nobody starts past the line
+  assert.ok(a.extra.m <= 0 && b.extra.m <= 0);
+  // a boost needs a charge; a right answer gives fuel and a charge
+  host.act(a, { k: 'b' });
+  assert.equal(a.extra.boost, gp.BOOST_SECONDS);
+  host.act(a, { k: 'b' });
+  assert.equal(a.extra.ers, 0);
+  assert.equal(host.grant(a, false), 0);
+  assert.equal(host.grant(a, true), gp.FUEL_PER_ANSWER);
+  assert.equal(a.extra.ers, 1);
+  assert.equal(a.extra.fuel, gp.START_FUEL + gp.FUEL_PER_ANSWER);
+  // race for a while: the cars move, the fuel burns, the score is the distance
+  let now = 1000;
+  for (let i = 0; i < 20; i++) { now += 1000; host.tick(now); }
+  assert.ok(a.extra.m > 500 && a.score === Math.floor(a.extra.m));
+  assert.ok(a.extra.fuel < gp.START_FUEL + gp.FUEL_PER_ANSWER);
+  assert.ok(a.extra.tyre < 100);
+  // out of fuel: the car rolls to a stop
+  for (let i = 0; i < 40; i++) { now += 1000; host.tick(now); }
+  assert.equal(b.extra.fuel, 0);
+  assert.equal(b.extra.v, 0);
+  // a pit stop: stopped for a while, then new tyres
+  a.extra.fuel = 30;
+  host.act(a, { k: 'p' });
+  assert.equal(a.extra.pit, gp.PIT_SECONDS);
+  for (let i = 0; i < 6; i++) { now += 1000; host.tick(now); }
+  assert.equal(a.extra.pit, 0);
+  assert.ok(a.extra.tyre > 99);
+});
+
+test('grand prix: the circuit is one lap long and corners are slower', async () => {
+  const gp = await import('../../src/game/modes/grandprix.js');
+  let slow = Infinity; let fast = 0;
+  for (let m = 0; m < gp.LAP; m += 10) { const v = gp.profileAt(m); slow = Math.min(slow, v); fast = Math.max(fast, v); }
+  assert.ok(gp.kmh(fast) > 300 && gp.kmh(slow) < 200);
+  const a = gp.trackAt(0); const b = gp.trackAt(gp.LAP);
+  assert.ok(Math.hypot(a.x - b.x, a.z - b.z) < 0.01);
+});

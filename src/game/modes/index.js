@@ -52,6 +52,12 @@ export const MODES = [
     durations: [3, 5, 7, 10],
   },
   {
+    id: 'grandprix', name: 'Grand Prix', kind: 'arcade', proOnly: true, isNew: true,
+    tagline: 'A real motor race in 3D. Answer for fuel and boost, save your tyres, pit at the right time and win!',
+    bg: 'linear-gradient(150deg, #0b0d14, #1d2433 45%, #e10600)',
+    durations: [3, 5, 7, 10],
+  },
+  {
     id: 'treasure', name: 'Treasure Hunt', kind: 'arcade', proOnly: true,
     tagline: 'Answer to open chests. Gold, double, triple… or steal from a rival!',
     bg: 'linear-gradient(140deg, #8a5a2b, #ffb21f)',
@@ -150,6 +156,17 @@ export function modeArt(id) {
     for (const [x, y] of [[40, 44], [60, 46], [46, 64], [64, 62], [34, 58]]) add('circle', { cx: x, cy: y, r: 5, fill: '#c0392b' });
     for (const [x, y] of [[54, 36], [30, 48], [70, 54]]) add('circle', { cx: x, cy: y, r: 3, fill: '#2d7a3a' });
     add('path', { d: 'M50 54 L86 40 A38 38 0 0 1 88 62 Z', fill: '#17133f', opacity: 0.18 });
+  }
+  if (id === 'grandprix') {
+    // a race car from above, on a chequered flag
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) if ((i + j) % 2) add('rect', { x: 8 + i * 9, y: 8 + j * 9, width: 9, height: 9, fill: '#ffffff', opacity: 0.35 });
+    add('path', { d: 'M8 80 Q40 60 92 66', stroke: '#fff', 'stroke-width': 3, fill: 'none', 'stroke-dasharray': '6 5', opacity: 0.6 });
+    add('rect', { x: 20, y: 43, width: 66, height: 14, rx: 7, fill: '#e10600' });
+    add('rect', { x: 80, y: 38, width: 8, height: 24, rx: 2, fill: '#17133f' });
+    add('rect', { x: 14, y: 40, width: 6, height: 20, rx: 2, fill: '#17133f' });
+    for (const [x, y] of [[30, 36], [30, 64], [66, 36], [66, 64]]) add('rect', { x: x - 6, y: y - 4, width: 12, height: 8, rx: 3, fill: '#17133f' });
+    add('circle', { cx: 50, cy: 50, r: 5, fill: '#ffd400' });
+    add('path', { d: 'M86 50 h8', stroke: '#ffd400', 'stroke-width': 4, 'stroke-linecap': 'round' });
   }
   if (id === 'candy') {
     add('rect', { x: 10, y: 66, width: 80, height: 10, rx: 5, fill: '#17133f' });

@@ -28,7 +28,7 @@ export const PLANS = {
     minutes: [3, 5, 7, 10], reviewDays: 3,
   },
   pro: {
-    quizzes: 300, players: 100, modes: ['classic', 'lasertag', 'robotrun', 'obby', 'train', 'skyrace', 'treasure', 'candy', 'pizza'],
+    quizzes: 300, players: 100, modes: ['classic', 'lasertag', 'robotrun', 'obby', 'train', 'skyrace', 'treasure', 'candy', 'pizza', 'grandprix'],
     minutes: [3, 5, 7, 10, 15, 20, 30], reviewDays: 0,
   },
 };
