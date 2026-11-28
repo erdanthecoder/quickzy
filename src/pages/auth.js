@@ -104,6 +104,11 @@ function Login(query) {
     fill(errorBox);
     try { await net.auth.passkeys.signIn(); await afterSignIn(query.next, false); } catch (err) {
       if (err && err.name === 'NotAllowedError') return;   // they closed the passkey window
+      // an older browser that cannot share passkeys between Quickzy's addresses
+      if (err && err.name === 'SecurityError' && location.hostname !== 'quickzy.web.app') {
+        fill(errorBox, 'This browser can only use your passkey on ', h('a', { href: `https://quickzy.web.app/login${location.search}` }, 'quickzy.web.app'), '. Sign in there, or use your password here.');
+        return;
+      }
       fill(errorBox, err && err.code === 'auth/passkey-unknown' ? 'That passkey is not linked to a Quickzy account. Sign in with your password, then add it in Settings → Security.' : explain(err));
     }
   }));
