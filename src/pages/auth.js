@@ -9,6 +9,7 @@ import { signedIn, whenProfile } from '../services/session.js';
 import { pageTitle } from './parts.js';
 import { withTwoStep } from '../ui/twostep.js';
 import { leakProblem } from '../services/password.js';
+import { TEST_HOST } from '../config.js';
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
@@ -49,6 +50,42 @@ async function afterSignIn(next, isNew) {
   await whenProfile();
   if (isNew) navigate('/settings?welcome=1', { replace: true });
   else navigate(safeNext(next) || '/library', { replace: true });
+}
+
+/**
+ * The test site's one-tap login: a test account for this device, made the
+ * first time (a random address and password, kept on this device) and
+ * signed straight back into after that. It skips the welcome questions.
+ * Only on the test address, or a computer running Quickzy for testing.
+ */
+const testSite = () => location.hostname === TEST_HOST || (/^(localhost|127\.)/.test(location.hostname) && localStorage.getItem('quickzy.test.testLogin') === '1');
+function testButton(next, errorBox) {
+  if (!testSite()) return null;
+  const b = h('button', { class: 'btn btn-block btn-lg test-login-btn', type: 'button' }, h('span', { 'aria-hidden': 'true' }, '\u{1F9EA}'), 'Sign in as a test player');
+  b.addEventListener('click', busy(b, async () => {
+    fill(errorBox);
+    const KEY = 'quickzy.testLogin';
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { saved = null; }
+    try {
+      if (saved && saved.email && saved.pw) {
+        try { await net.auth.signIn(saved.email, saved.pw); await afterSignIn(next, false); return; } catch { /* gone: make a new one */ }
+      }
+      const rand = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (x) => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join('');
+      const tag = rand(6);
+      const creds = { email: `test-${tag}@test.quickzy.app`, pw: `${rand(12)}-${rand(12)}` };
+      await net.auth.signUp(creds.email, creds.pw);
+      try { localStorage.setItem(KEY, JSON.stringify(creds)); } catch { /* private mode: a new test player next time */ }
+      await whenProfile();
+      const { updateProfile } = await import('../services/session.js');
+      const { saveAbout } = await import('../services/classes.js');
+      await updateProfile({ displayName: `Test Player ${tag.slice(0, 4).toUpperCase()}` }).catch(() => {});
+      await saveAbout({ heard: 'other', age: 18, use: 'personal' }).catch(() => {});
+      toast('Signed in as a test player. This account is only for testing.', 'ok');
+      await afterSignIn(next, false);
+    } catch (err) { fill(errorBox, explain(err)); }
+  }));
+  return h('div', { class: 'stack', style: { gap: '4px' } }, b, h('small', { class: 'center muted' }, 'Test site: one tap, no email or password.'));
 }
 
 function googleButton(next, errorBox) {
@@ -113,6 +150,7 @@ function Login(query) {
     }
   }));
   return shell('Welcome back', null,
+    testButton(query.next, errorBox),
     googleButton(query.next, errorBox),
     passkey,
     h('div', { class: 'divider' }, 'or with email'),
@@ -153,6 +191,7 @@ function Signup(query) {
     } catch (err) { fill(errorBox, explain(err)); }
   });
   return shell('Create your account', 'Make quizzes, publish them and host live games.',
+    testButton(query.next, errorBox),
     googleButton(query.next, errorBox),
     h('div', { class: 'divider' }, 'or with email'),
     form,

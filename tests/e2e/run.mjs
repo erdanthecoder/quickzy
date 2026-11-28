@@ -797,6 +797,26 @@ if (which === 'account' || which === 'all') {
   await host.waitForSelector('.review li');
   await host.screenshot({ path: `${SHOTS}/solo-end.png`, fullPage: true });
 
+  say('test site: one-tap test login, and the same test player the next time');
+  {
+    const ctx = await browser.newContext({ viewport: { width: 900, height: 800 }, bypassCSP: true });
+    const tp = await ctx.newPage();
+    await ctx.addInitScript(() => localStorage.setItem('quickzy.test.testLogin', '1'));
+    await tp.goto(`${BASE}/login`);
+    await tp.click('button:has-text("Sign in as a test player")');
+    await tp.waitForURL(/\/library/, { timeout: 20000 }).catch(() => fail('test login: should land on My quizzes'));
+    const first = await tp.evaluate(() => window.__quickzy.session.me().uid);
+    const name = await tp.evaluate(() => (window.__quickzy.session.myProfile() || {}).displayName);
+    if (!/^Test Player /.test(name || '')) fail(`test login: the name should be Test Player, not ${name}`);
+    await tp.evaluate(() => window.__quickzy.net.auth.signOut());
+    await tp.goto(`${BASE}/login`);
+    await tp.click('button:has-text("Sign in as a test player")');
+    await tp.waitForURL(/\/library/, { timeout: 20000 });
+    const again = await tp.evaluate(() => window.__quickzy.session.me().uid);
+    if (again !== first) fail('test login: the second tap should sign back into the same test player');
+    await ctx.close();
+  }
+
   say('quickzy app: the quiz just played is saved, and plays with no servers');
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, bypassCSP: true });
