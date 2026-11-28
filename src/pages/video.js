@@ -13,7 +13,7 @@ import { navigate } from '../router.js';
 import { explain } from '../net/index.js';
 import { youTubeId, fmtTime, parseTime, problem, cleanVideo } from '../game/questions.js';
 import { ytPlayer } from '../ui/video.js';
-import { myPlan } from '../services/plan.js';
+import { myPlan, proOpen, PRO_COMING } from '../services/plan.js';
 import { saveQuiz, loadForEditing, publishProblems, COVERS } from '../services/quizzes.js';
 import { pageTitle } from './parts.js';
 
@@ -72,7 +72,7 @@ export default async function VideoMaker({ params = {} }) {
     return h('div', { class: 'page narrow' }, h('div', { class: 'card center stack' },
       h('h2', {}, 'Video quizzes are part of Quickzy Pro'),
       h('p', { class: 'muted' }, 'Pick a YouTube video and add questions and facts anywhere in it.'),
-      h('a', { class: 'btn btn-main', href: '/pro' }, 'See Quickzy Pro')));
+      proOpen() ? h('a', { class: 'btn btn-main', href: '/pro' }, 'See Quickzy Pro') : h('p', { class: 'pill' }, PRO_COMING)));
   }
   let quiz = { id: null, title: '', description: '', cover: Math.floor(Math.random() * COVERS), public: false };
   let videoId = '';

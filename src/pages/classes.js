@@ -7,6 +7,7 @@ import { icon } from '../ui/icons.js';
 import { blook } from '../ui/blooks.js';
 import { modal, toast, busy, empty, confirm, copy } from '../ui/kit.js';
 import { navigate } from '../router.js';
+import { proOpen } from '../services/plan.js';
 import * as session from '../services/session.js';
 import * as cls from '../services/classes.js';
 import * as hw from '../services/homework.js';
@@ -68,7 +69,7 @@ export function newClassDialog() {
     go.addEventListener('click', busy(go, async () => {
       try { const cid = await cls.createClass({ name: name.value, school: school.value, code: code.value, color }); close(cid); } catch (e) {
         toast(e.message, 'bad');
-        if (e.pro) { close(); navigate('/pro'); }
+        if (e.pro && proOpen()) { close(); navigate('/pro'); }
       }
     }));
     return [h('h2', {}, 'New class'),

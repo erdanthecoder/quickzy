@@ -4,7 +4,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { me } from '../services/session.js';
-import { isPro } from '../services/plan.js';
+import { isPro, proOpen, PRO_COMING } from '../services/plan.js';
 import { pageTitle } from './parts.js';
 
 const KINDS = [
@@ -20,9 +20,9 @@ export default async function Create() {
     h('h1', {}, 'What do you want to make?'),
     h('div', { class: 'create-kinds' }, ...KINDS.map(([href, name, text, ic, col, needsPro]) => {
       const locked = needsPro && !pro;
-      return h('a', { class: `create-kind${locked ? ' is-locked' : ''}`, href: locked ? '/pro' : href, style: { '--c': col } },
+      return h('a', { class: `create-kind${locked ? ' is-locked' : ''}`, href: locked ? (proOpen() ? '/pro' : null) : href, style: { '--c': col } },
         h('span', { class: 'create-kind-ic' }, icon(ic, { size: 28 })),
         h('b', {}, name, needsPro ? h('span', { class: 'side-tag' }, 'PRO') : null),
-        h('small', {}, locked ? 'Get Quickzy Pro to unlock this.' : text));
+        h('small', {}, locked ? (proOpen() ? 'Get Quickzy Pro to unlock this.' : PRO_COMING) : text));
     })));
 }

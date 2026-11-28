@@ -8,7 +8,7 @@ import { toast, busy, empty, confirm } from '../ui/kit.js';
 import { navigate } from '../router.js';
 import { net, explain } from '../net/index.js';
 import { me, signedIn } from '../services/session.js';
-import { isPro } from '../services/plan.js';
+import { isPro, proOpen, PRO_COMING } from '../services/plan.js';
 import * as D from '../services/decks.js';
 import { celebrate } from '../ui/confetti.js';
 import { sfx } from '../game/sound.js';
@@ -24,7 +24,7 @@ async function proGate() {
     h('div', { class: 'pres-badge' }, 'Presentation+'),
     h('h1', {}, 'Present like a pro'),
     h('p', { class: 'muted' }, 'Slides with live polls, quiz questions and guess-the-number graphs that your audience answers on their phones. Presentation+ is for Quickzy Pro members.'),
-    h('a', { class: 'btn btn-main btn-lg', href: '/pro' }, 'Start my free week of Pro')));
+    proOpen() ? h('a', { class: 'btn btn-main btn-lg', href: '/pro' }, 'Start my free week of Pro') : h('p', { class: 'pill' }, PRO_COMING)));
 }
 
 export { slideView };

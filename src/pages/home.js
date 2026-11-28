@@ -5,6 +5,7 @@ import { icon } from '../ui/icons.js';
 import { blook } from '../ui/blooks.js';
 import { scanForPin } from '../ui/qr.js';
 import { navigate } from '../router.js';
+import { proOpen } from '../services/plan.js';
 import { MODES, modeArt } from '../game/modes/index.js';
 import { signedIn } from '../services/session.js';
 import { popularQuizzes, quizzesBy, badgeOf } from '../services/quizzes.js';
@@ -132,7 +133,7 @@ export default async function Home() {
       h('a', { class: 'hm-tile hm-tile-app', href: '/app' },
         h('small', {}, 'Quickzy app'), h('h3', {}, 'Plays offline.'), h('p', {}, 'Solo quizzes on the bus, on a plane, anywhere. For phones and Windows.'),
         h('div', { class: 'hm-tile-phone' }, h('i'), h('i'), h('i'), h('i'))),
-      h('a', { class: 'hm-tile hm-tile-present', href: signedIn() ? '/present' : '/pro' },
+      h('a', { class: 'hm-tile hm-tile-present', href: signedIn() || !proOpen() ? '/present' : '/pro' },
         h('small', {}, 'Presentation+'), h('h3', {}, 'Slides that ask back.'), h('p', {}, 'Teach with slides, then drop a live question in the middle.'),
         h('div', { class: 'hm-slide' }, h('b'), h('i'), h('i'), h('span'))),
       h('a', { class: 'hm-tile hm-tile-blooks', href: '/blooks' },
@@ -155,7 +156,7 @@ export default async function Home() {
       ornamentBand({ count: 9, height: 22 }),
       h('div', { class: 'site-foot-row' },
         h('b', {}, 'Quickzy'),
-        h('nav', {}, h('a', { href: '/discover' }, 'Discover'), h('a', { href: '/app' }, 'App'), h('a', { href: '/teachers' }, 'For teachers'), h('a', { href: '/pro' }, 'Pro'),
+        h('nav', {}, h('a', { href: '/discover' }, 'Discover'), h('a', { href: '/app' }, 'App'), h('a', { href: '/teachers' }, 'For teachers'), proOpen() ? h('a', { href: '/pro' }, 'Pro') : null,
           h('a', { href: '/terms' }, 'Terms'), h('a', { href: '/privacy' }, 'Privacy'))),
       h('small', {}, `© ${new Date().getFullYear()} Quickzy. All rights reserved.`)),
   );

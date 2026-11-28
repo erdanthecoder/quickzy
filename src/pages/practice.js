@@ -11,7 +11,7 @@ import { videoClip, ytPlayer } from '../ui/video.js';
 import { h, fill } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { signedIn, myProfile } from '../services/session.js';
-import { myPlan, proNow } from '../services/plan.js';
+import { myPlan, proNow, proOpen, PRO_COMING } from '../services/plan.js';
 import { getQuiz, getKey } from '../services/quizzes.js';
 import { check, points } from '../game/questions.js';
 import { answerPad, verdict } from '../game/answer-ui.js';
@@ -358,9 +358,9 @@ export default async function Practice({ params }) {
       fill(root, h('div', { class: 'page narrow' }, h('div', { class: 'card center stack', style: { justifyItems: 'center' } },
         h('span', { class: 'solo-mode-ic', style: { fontSize: '48px' } }, '🏎️'),
         h('h2', {}, 'Grand Prix is a Quickzy Pro game'),
-        h('p', { class: 'muted' }, 'Race computer drivers in 3D with your quiz. Get Quickzy Pro to play it, solo and live.'),
+        h('p', { class: 'muted' }, proOpen() ? 'Race computer drivers in 3D with your quiz. Get Quickzy Pro to play it, solo and live.' : `Race computer drivers in 3D with your quiz. ${PRO_COMING}`),
         h('div', { class: 'row', style: { justifyContent: 'center' } },
-          offline ? null : h('a', { class: 'btn btn-main', href: '/pro' }, icon('star', { size: 16 }), 'See Quickzy Pro'),
+          offline || !proOpen() ? null : h('a', { class: 'btn btn-main', href: '/pro' }, icon('star', { size: 16 }), 'See Quickzy Pro'),
           h('button', { class: 'btn', onclick: () => intro() }, 'Back')))));
       return;
     }

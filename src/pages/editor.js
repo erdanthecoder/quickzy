@@ -12,7 +12,7 @@ import { explain } from '../net/index.js';
 import { LIMITS } from '../config.js';
 import { TYPES, TYPE_BY_ID, TIMES, POINTS, blankQuestion, retype, problem, cleanPic, cleanVideo, youTubeId, parseTime, fmtTime } from '../game/questions.js';
 import { videoClip } from '../ui/video.js';
-import { myPlan } from '../services/plan.js';
+import { myPlan, proOpen, PRO_COMING } from '../services/plan.js';
 import { picture } from '../ui/picture.js';
 import { BLOOKS, blook } from '../ui/blooks.js';
 import { saveQuiz, loadForEditing, publishProblems, COVERS, getQuiz, isLive, inviteEditor, removeEditor } from '../services/quizzes.js';
@@ -138,7 +138,7 @@ export default async function Editor({ params, query = {} }) {
   together.addEventListener('click', async () => {
     if (!mine) { toast(`You are editing ${quiz.authorName || 'someone'}'s quiz together. They publish it.`); return; }
     const plan = await myPlan();
-    if (!plan.pro) { toast('Making quizzes together is for Pro members.', 'bad'); navigate('/pro'); return; }
+    if (!plan.pro) { toast(`Making quizzes together is for Pro members. ${proOpen() ? '' : PRO_COMING}`, 'bad'); if (proOpen()) navigate('/pro'); return; }
     if (!quiz.id) { if (!(await doSave())) return; }
     await modal((close) => {
       const list = h('div', { class: 'stack', style: { gap: '8px' } });
