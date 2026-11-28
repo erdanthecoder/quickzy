@@ -38,7 +38,7 @@ jobs:
           SHOTS=shots node tests/e2e/run.mjs all
       - name: Keep the screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: screenshots
           path: shots/
@@ -56,7 +56,7 @@ jobs:
           mkdir _site
           cp -r index.html manifest.webmanifest sw.js assets src styles vendor _site/
           (cd _site && zip -qr ../quickzy-site.zip .)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: quickzy-site
           path: |
@@ -83,7 +83,7 @@ jobs:
           npm install --no-audit --no-fund
           npx electron-builder --win nsis --x64 --publish never
           ls -la dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: quickzy-windows
           path: desktop/dist/Quickzy-Setup.exe
