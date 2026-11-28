@@ -23,7 +23,7 @@ import { TYPE_BY_ID } from '../game/questions.js';
 import { sfx, playMusic, stopMusic } from '../game/sound.js';
 import { downloadCSV } from '../game/report.js';
 import { celebrate } from '../ui/confetti.js';
-import { LIMITS } from '../config.js';
+import { LIMITS, mainHost, mainOrigin } from '../config.js';
 import { pageTitle } from './parts.js';
 
 function problemScreen(title, text) {
@@ -46,7 +46,7 @@ export default async function HostLive({ params }) {
   const live = net.live;
   const mode = modeOf(meta.mode);
   const root = h('div', { class: 'host' });
-  const joinURL = `${location.origin}/join/${pin}`;
+  const joinURL = `${mainOrigin()}/join/${pin}`;
   let view = null;                  // { key, el, update(), destroy() }
   let reportSaved = false;
   let ref;
@@ -131,7 +131,7 @@ export default async function HostLive({ params }) {
       bar(cancel),
       h('section', { class: 'lobby-top' },
         h('div', { class: 'lobby-join' },
-          h('p', {}, 'Join at ', h('b', {}, `${location.host}/join`), ' or scan the code'),
+          h('p', {}, 'Join at ', h('b', {}, `${mainHost()}/join`), ' or scan the code'),
           pinText(true),
           h('div', { class: 'row', style: { justifyContent: 'center' } },
             h('button', { class: 'btn btn-ghost btn-sm', style: { color: '#fff' }, onclick: () => copy(joinURL, 'Join link copied') }, icon('copy', { size: 16 }), 'Copy join link'),
@@ -372,7 +372,7 @@ export default async function HostLive({ params }) {
           h('div', { class: 'side-time' }, icon('clock'), time),
           teamBox,
           side,
-          h('div', { class: 'side-join' }, h('small', {}, `Join at ${location.host}`), pinText(false)))));
+          h('div', { class: 'side-join' }, h('small', {}, `Join at ${mainHost()}`), pinText(false)))));
     let screenStop = null;
     import(`../game/modes/${mode.id}.js`).then((m) => {
       if (!el.isConnected && !document.body.contains(root)) return;

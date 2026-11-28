@@ -20,7 +20,7 @@ import { ACHIEVEMENTS, statsFor, earned } from '../services/achievements.js';
 import { isPro } from '../services/plan.js';
 import { levelOf, levelInfo } from '../services/progress.js';
 import { rarityOf, blookName } from '../ui/blooks.js';
-import { OWNER_UID } from '../config.js';
+import { OWNER_UID, mainOrigin } from '../config.js';
 import { logo } from '../ui/icons.js';
 
 const fmt = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
@@ -142,7 +142,7 @@ export default async function Profile({ params }) {
   const role = owner ? 'Founder of Quickzy' : kind === 'official' ? 'Official Quickzy account' : kind === 'pro' ? 'Quickzy Pro' : null;
   const joined = user.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null;
   const share = async () => {
-    const url = `${location.origin}/u/${user.username}`;
+    const url = `${mainOrigin()}/u/${user.username}`;
     try { if (navigator.share) await navigator.share({ title: user.displayName, url }); else { await navigator.clipboard.writeText(url); toast('Profile link copied', 'ok'); } } catch { /* closed */ }
   };
   return h('div', { class: 'page stack', style: { gap: '18px' } },

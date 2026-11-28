@@ -7,6 +7,7 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
+import { mainHost } from '../config.js';
 
 export const THEME_INFO = {
   clean: { name: 'Clean', dark: false },
@@ -115,5 +116,5 @@ export function slideView(s, { votes = {}, reveal = false, pin = '', count = 0, 
   return h('div', { class: `slide sl-${t} th-${th}${edit ? ' is-editing' : ''}${live ? ' is-live' : ''}`, style: th === 'quickzy' ? { background: BGS[(s.bg || 0) % BGS.length] } : null },
     h('div', { class: 'sl-deco', 'aria-hidden': 'true' }),
     ...kids,
-    pin ? h('div', { class: 'sl-pin' }, h('small', {}, `Join at ${location.host}`), h('b', {}, `${pin.slice(0, 3)} ${pin.slice(3)}`), count ? h('small', {}, `${count} answered`) : null) : null);
+    pin ? h('div', { class: 'sl-pin' }, h('small', {}, `Join at ${mainHost()}`), h('b', {}, `${pin.slice(0, 3)} ${pin.slice(3)}`), count ? h('small', {}, `${count} answered`) : null) : null);
 }

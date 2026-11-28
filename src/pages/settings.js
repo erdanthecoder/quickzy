@@ -11,7 +11,7 @@ import * as session from '../services/session.js';
 import { myQuizzes, deleteQuiz, myReports, deleteReport, verifiedProgress, syncAuthor } from '../services/quizzes.js';
 import { strength } from './auth.js';
 import { pageTitle } from './parts.js';
-import { LIMITS, BADGES, VERSION, OWNER_UID, OFFICIAL_UID, PRO_FREE, released14, ARCHIVE_URL } from '../config.js';
+import { LIMITS, BADGES, VERSION, OWNER_UID, OFFICIAL_UID, PRO_FREE, released14, ARCHIVE_URL, mainHost } from '../config.js';
 import { sfx } from '../game/sound.js';
 import { nameBadges } from '../ui/badges.js';
 import * as siteSvc from '../services/site.js';
@@ -135,7 +135,7 @@ function profileSection() {
   const preview = h('div', { class: 'set-avatar' }, blook(chosen, 96));
   const name = input({ value: p.displayName, maxlength: 30 });
   const user = input({ value: p.username, maxlength: LIMITS.usernameMax, autocapitalize: 'off', spellcheck: 'false' });
-  const userHint = h('small', { class: 'hint' }, `quickzy.web.app/u/${p.username}`);
+  const userHint = h('small', { class: 'hint' }, `${mainHost()}/u/${p.username}`);
   const errorBox = h('p', { class: 'error-text', role: 'alert' });
   const save = h('button', { class: 'btn btn-main' }, 'Save profile');
   const undo = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Undo');
@@ -154,10 +154,10 @@ function profileSection() {
     const v = user.value.trim().toLowerCase();
     const bad = session.validUsername(v);
     if (bad) { fill(userHint, bad); userHint.className = 'error-text'; return; }
-    if (v === (session.myProfile() || {}).username) { fill(userHint, `quickzy.web.app/u/${v}`); userHint.className = 'hint'; return; }
+    if (v === (session.myProfile() || {}).username) { fill(userHint, `${mainHost()}/u/${v}`); userHint.className = 'hint'; return; }
     const taken = await net.store.get('usernames', v).catch(() => null);
     if (user.value.trim().toLowerCase() !== v) return;
-    fill(userHint, taken ? 'That username is taken.' : `Available: quickzy.web.app/u/${v}`);
+    fill(userHint, taken ? 'That username is taken.' : `Available: ${mainHost()}/u/${v}`);
     userHint.className = taken ? 'error-text' : 'hint';
   }, 350);
   user.addEventListener('input', () => { user.value = user.value.toLowerCase().replace(/[^a-z0-9_]/g, ''); checkName(); dirty(); });
@@ -166,7 +166,7 @@ function profileSection() {
     const now = session.myProfile() || p;
     name.value = now.displayName; user.value = now.username; chosen = now.blook;
     fill(preview, blook(chosen, 96)); extra.reset(now); picker.set(chosen);
-    fill(userHint, `quickzy.web.app/u/${now.username}`); userHint.className = 'hint'; fill(errorBox);
+    fill(userHint, `${mainHost()}/u/${now.username}`); userHint.className = 'hint'; fill(errorBox);
     dirty();
   });
 
@@ -186,7 +186,7 @@ function profileSection() {
       net.auth.setDisplayName(after.displayName).catch(() => {});
       toast('Profile saved', 'ok');
       sfx('coin');
-      fill(userHint, `quickzy.web.app/u/${after.username}`); userHint.className = 'hint';
+      fill(userHint, `${mainHost()}/u/${after.username}`); userHint.className = 'hint';
       dirty();
     } catch (err) {
       fill(errorBox, err.message && !err.code ? err.message : explain(err));

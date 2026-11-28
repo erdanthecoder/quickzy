@@ -11,6 +11,7 @@ import { navigate } from '../router.js';
 import { library, savedQuizzes, removeOffline } from '../services/offline.js';
 import { SOLO_MODES } from './practice.js';
 import { sfx } from '../game/sound.js';
+import { mainHost } from '../config.js';
 
 const BEST_KEY = 'quickzy.best';
 const bests = () => { try { return JSON.parse(localStorage.getItem(BEST_KEY) || '{}'); } catch { return {}; } };
@@ -83,7 +84,7 @@ export default async function QuickzyApp() {
         h('div', { class: 'grow' }),
         winBtn,
         installBtn,
-        h('a', { class: 'app-site', href: '/' }, 'quickzy.web.app', icon('up', { size: 14 }))),
+        h('a', { class: 'app-site', href: '/' }, mainHost(), icon('up', { size: 14 }))),
       h('section', { class: 'app-hero' },
         h('div', { class: 'app-hero-text' },
           h('h1', {}, 'Play a quiz anywhere.'),
