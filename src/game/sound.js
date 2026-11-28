@@ -403,12 +403,29 @@ function loadClips() {
       .then((buf) => { clips[name] = buf; }).catch(() => {});
   }
 }
+// Sounds that change note: a right answer or a coin climbs up the scale when
+// you get several in a row, a click picks one of a few friendly notes.
+const STEPS = [0, 2, 4, 5, 7, 9, 12];
+const CLIMB = { right: 1, coin: 1, checkpoint: 1, boost: 1 };
+const NOTES = { pick: [0, 2, 4, 7], tap: [0, 2, 4, 7], join: [0, 4, 7], jump: [-2, 0, 2, 4], land: [-2, 0, 2], bump: [-3, 0, 2], shoot: [-2, 0, 2], laser: [-2, 0, 3], tick: [0, 0, 2], reveal: [0, 5, 7] };
+const streak = {};
+function pitchOf(name) {
+  if (CLIMB[name]) {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const st = streak[name] || { n: -1, at: 0 };
+    st.n = now - st.at < (name === 'right' ? 9000 : 1500) ? Math.min(st.n + 1, STEPS.length - 1) : 0;
+    st.at = now; streak[name] = st;
+    return STEPS[st.n];
+  }
+  const set = NOTES[name];
+  return set ? set[Math.floor(Math.random() * set.length)] : 0;
+}
 function playClip(name) {
   const b = clips[name];
   if (!b) return false;
   const s = ctx.createBufferSource(); s.buffer = b;
   // never exactly the same twice, like a real thing being hit or clicked
-  s.playbackRate.value = 1 + rnd(-0.03, 0.03);
+  s.playbackRate.value = 2 ** (pitchOf(name) / 12) * (1 + rnd(-0.04, 0.04));
   const g = ctx.createGain(); g.gain.value = (LEVEL[name] ?? 0.9) * rnd(0.9, 1);
   s.connect(g); send(g, fx, name === 'win' || name === 'boom' ? 0.2 : 0.06);
   s.start();
@@ -438,6 +455,10 @@ export function sfx(name) {
 //   arcade   Beethoven, Ode to Joy (Sky Race and the other arcade games)
 //   tense    Bach (Petzold), Minuet in G: the last 30 seconds, lively but sweet
 //   victory  Ode to Joy again, bigger, with the strings singing along
+//
+// Each scene also has a second piece, and they take turns (see PLAYLIST):
+// Beethoven's Für Elise, Brahms' Lullaby, Mozart's Twinkle Twinkle and
+// Eine kleine Nachtmusik.
 
 const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 /** 'F#4' → 66 */
@@ -533,6 +554,7 @@ const V = {
   Gmaj7: 'G2 B3 D4 F#4', Dmaj7: 'D2 A3 C#4 F#4',
   D: 'D2 A3 D4 F#4', A: 'A1 A3 C#4 E4', A7: 'A1 G3 C#4 E4', Bm: 'B1 B3 D4 F#4', Fsm: 'F#2 A3 C#4 F#4', G: 'G2 B3 D4 G4',
   Gm: 'G2 B3 D4', Cm: 'C3 C4 E4 G4', Dm7: 'D3 C4 D4 F#4', Gw: 'G2 B3 D4 G4',
+  C: 'C3 G3 C4 E4', F: 'F2 A3 C4 F4', G7: 'G2 F3 B3 D4', Am: 'A2 A3 C4 E4', E7: 'E2 G#3 B3 D4', D7: 'D2 A3 C4 F#4',
 };
 const bars = (list) => list.map((b) => (Array.isArray(b) ? b : [b]).map((c) => chord(V[c] || c)));
 
@@ -574,11 +596,52 @@ const TRACKS = {
       D5 G4:.5 A4:.5 B4:.5 C5:.5 D5 G4 G4 E5 C5:.5 D5:.5 E5:.5 F#5:.5 G5 G4 G4
       C5 D5:.5 C5:.5 B4:.5 A4:.5 B4 C5:.5 B4:.5 A4:.5 G4:.5 A4 B4:.5 A4:.5 G4:.5 F#4:.5 G4:3`),
   },
+  // Beethoven, Für Elise
+  elise: {
+    bpm: 112, beats: 3, style: 'bass', strings: 0.25,
+    bars: bars(['Am', 'Am', 'Am', 'E7', 'Am', 'Am', 'Am', 'E7', 'Am']),
+    melody: tune(`r:2 E5:.5 D#5:.5
+      E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5  A4:1 r:.5 C4:.5 E4:.5 A4:.5  B4:1 r:.5 E4:.5 G#4:.5 B4:.5  C5:1 r:.5 E4:.5 E5:.5 D#5:.5
+      E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5  A4:1 r:.5 C4:.5 E4:.5 A4:.5  B4:1 r:.5 E4:.5 C5:.5 B4:.5  A4:3`),
+  },
+  // Brahms, Lullaby
+  lullaby: {
+    bpm: 84, beats: 3, style: 'waltz', strings: 0.5,
+    bars: bars(['C', 'C', 'C', 'F', 'C', 'G7', 'G7', 'G7', 'C']),
+    melody: tune(`r:2 E5:.5 E5:.5
+      G5:2 E5:.5 E5:.5  G5:2 E5:.5 G5:.5  C6:1 B5:1.5 A5:.5  A5:1 G5:1 D5:.5 E5:.5
+      F5:1 D5:1 D5:.5 E5:.5  F5:2 D5:.5 F5:.5  B5:.5 A5:.5 G5:1 B5:1  C6:3`),
+  },
+  // Mozart, Twinkle Twinkle (his variations)
+  twinkle: {
+    bpm: 80, beats: 4, style: 'canon', strings: 0.5,
+    bars: bars(['C', ['F', 'C'], ['F', 'C'], ['G7', 'C'], ['C', 'F'], ['C', 'G7'], ['C', 'F'], ['C', 'G7'], 'C', ['F', 'C'], ['F', 'C'], ['G7', 'C']]),
+    melody: tune(`C5 C5 G5 G5 A5 A5 G5:2 F5 F5 E5 E5 D5 D5 C5:2
+      G5 G5 F5 F5 E5 E5 D5:2 G5 G5 F5 F5 E5 E5 D5:2
+      C5 C5 G5 G5 A5 A5 G5:2 F5 F5 E5 E5 D5 D5 C5:2`),
+  },
+  // Mozart, Eine kleine Nachtmusik
+  nacht: {
+    bpm: 100, beats: 4, style: 'alberti', strings: 0.4,
+    bars: bars(['G', 'G', 'D7', 'D7', 'G', 'G', 'D7', ['D7', 'G']]),
+    melody: tune(`G5:1 r:.5 D5:.5 G5:1 r:.5 D5:.5  G5:.5 D5:.5 G5:.5 B5:.5 D6:2  C6:1 r:.5 A5:.5 C6:1 r:.5 A5:.5  C6:.5 A5:.5 F#5:.5 A5:.5 D5:2
+      G5:1 r:.5 D5:.5 G5:1 r:.5 D5:.5  G5:.5 D5:.5 G5:.5 B5:.5 D6:2  C6:1 r:.5 A5:.5 C6:1 r:.5 A5:.5  C6:.5 A5:.5 F#5:.5 A5:.5 G5:2`),
+  },
 };
 // the podium: Ode to Joy, a fourth higher and brighter, strings singing too
 TRACKS.victory = { ...TRACKS.arcade, bpm: 108, up: 5, strings: 1, sing: true };
-// old scene names still work
-TRACKS.space = TRACKS.arcade;
+TRACKS.cheer = { ...TRACKS.twinkle, bpm: 100, up: 2, strings: 1, sing: true };
+TRACKS.quick = { ...TRACKS.nacht, bpm: 126, strings: 0.3 };
+// every scene has a few pieces that take turns, so it is never the same tune
+const PLAYLIST = {
+  menu: ['menu', 'elise'],
+  lobby: ['lobby', 'lullaby'],
+  game: ['game', 'twinkle'],
+  arcade: ['arcade', 'nacht'],
+  tense: ['tense', 'quick'],
+  victory: ['victory', 'cheer'],
+};
+PLAYLIST.space = PLAYLIST.arcade;
 
 /** Everything one loop of a piece plays, in beats from its start. */
 function score(s) {
@@ -607,6 +670,8 @@ function score(s) {
         ev.push({ t, kind: 'piano', n: bass, v: 0.55, len: span });
         const arp = [top[0], top[2], top[1], top[2]];
         for (let i = 0; i < span * 2; i++) ev.push({ t: t + i * 0.5, kind: 'piano', n: arp[i % 4], v: 0.32, len: 0.5 });
+      } else if (s.style === 'bass') {
+        ev.push({ t, kind: 'piano', n: bass, v: 0.42, len: span });
       } else if (s.style === 'waltz') {
         ev.push({ t, kind: 'piano', n: bass, v: 0.55, len: 1 });
         for (const beat of [1, 2]) ev.push(...top.map((n, i) => ({ t: t + beat + i * 0.008, kind: 'piano', n, v: 0.3, len: 0.6 })));
@@ -637,18 +702,20 @@ export function playMusic(scene = 'lobby') {
   stopMusic();
   const c = audio();
   if (!c) return;
-  const s = score(TRACKS[scene] || TRACKS.lobby);
+  const list = (PLAYLIST[scene] || PLAYLIST.lobby).map((k) => score(TRACKS[k]));
+  let pick = Math.floor(Math.random() * list.length);
+  let s = list[pick];
   const bus = c.createGain();
   bus.gain.value = 0.0001;
   bus.gain.exponentialRampToValueAtTime(0.46, c.currentTime + 2);
   bus.connect(master);
   // a big, soft hall around everything
   const hall = c.createGain(); hall.gain.value = 0.55; bus.connect(hall).connect(room);
-  const beat = 60 / s.bpm;
+  let beat = 60 / s.bpm;
   const me = { scene, bus, timer: 0 };
   music = me;
   // work out the piano notes first, a few at a time, so nothing stutters
-  const todo = s.notes.filter((n) => !pianoNotes.has(n));
+  const todo = [...new Set(list.flatMap((x) => x.notes))].filter((n) => !pianoNotes.has(n));
   const warm = () => {
     if (music !== me) return;
     const t0 = performance.now();
@@ -659,11 +726,17 @@ export function playMusic(scene = 'lobby') {
   function begin() {
     let i = 0;
     let loopAt = c.currentTime + 0.2;
+    let played = 0;
     me.timer = setInterval(() => {
       if (!prefs().music) { stopMusic(); return; }
       const until = c.currentTime + 0.6;
       for (;;) {
-        if (i >= s.events.length) { i = 0; loopAt += s.length * beat; }
+        if (i >= s.events.length) {
+          // the next piece starts right where this one ends
+          loopAt += s.length * beat; i = 0; played += s.length * beat;
+          // short pieces play twice before the next one has its turn
+          if (played >= 24) { played = 0; pick = (pick + 1) % list.length; s = list[pick]; beat = 60 / s.bpm; }
+        }
         const e = s.events[i];
         const t = loopAt + e.t * beat;
         if (t > until) break;
