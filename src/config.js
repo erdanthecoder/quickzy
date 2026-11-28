@@ -81,13 +81,9 @@ export const VERSION = released14() ? '1.4' : '1.3';
 /** Pro for free, given by the owner: ugemnomads. (The rules hold the same list.) */
 export const PRO_FREE = ['f4BZrMpjQnV2B7n3iKq68J8poJ63'];
 
-/** Payments (Stripe). Not secret: a payment link and the manage-subscription page. */
-export const STRIPE = {
-  payLink: 'https://buy.stripe.com/test_3cIfZg8YL8SG0tY8zu2oE01',
-  manage: 'https://billing.stripe.com/p/login/test_14A4gy5Mz0ma3Ga2b62oE00',
-  test: true,
-};
-/** Supabase (public URL and publishable key). Paid members are listed in pro_members. */
+/** Quickzy's test address: Quickzy Pro is only shown there for now. */
+export const TEST_HOST = 'quickzy.is-my.app';
+/** Supabase (public URL and publishable key). */
 export const SUPABASE = {
   url: 'https://shzujparccfpnunfnhhk.supabase.co',
   key: 'sb_publishable_zLodYYp009iw0xnFb-6uyg_Rm-lOXgv',

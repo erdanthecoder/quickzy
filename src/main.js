@@ -10,6 +10,7 @@ import { connect, net } from './net/index.js';
 import * as session from './services/session.js';
 import { levelOf as levelOfXp } from './services/progress.js';
 import { route, onRoute, render, navigate } from './router.js';
+import { proOpen } from './services/plan.js';
 import { VERSION, RELEASE_1_4, released14 } from './config.js';
 
 const app = document.getElementById('app');
@@ -91,7 +92,7 @@ function sidebar(path) {
         released14() || (user && user.uid === OWNER_UID) ? link('/classes', 'Classes', 'users', '', h('span', { class: 'side-new' }, 'NEW')) : null) : null,
       h('div', { class: 'side-group' },
         h('small', {}, 'Quickzy'),
-        h('a', { href: '/pro', class: `side-link side-pro ${isOn(path, '/pro')}` }, verifiedBadge(null, 'pro'), h('span', {}, 'Quickzy Pro')),
+        proOpen() ? h('a', { href: '/pro', class: `side-link side-pro ${isOn(path, '/pro')}` }, verifiedBadge(null, 'pro'), h('span', {}, 'Quickzy Pro')) : null,
         link('/app', 'Quickzy app', 'download'),
         user && user.uid === OWNER_UID ? h('a', { href: '/owner', class: `side-link nav-owner ${isOn(path, '/owner')}` }, verifiedBadge(null, 'owner'), h('span', {}, 'Owner panel')) : null)),
     h('div', { class: 'side-end' },

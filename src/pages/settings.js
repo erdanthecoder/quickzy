@@ -16,7 +16,7 @@ import { sfx } from '../game/sound.js';
 import { nameBadges } from '../ui/badges.js';
 import * as siteSvc from '../services/site.js';
 import { unfollowAll } from '../services/channels.js';
-import { myPlan, membership, manageUrl, PRO_PERKS, PLANS, PRICE } from '../services/plan.js';
+import { myPlan, membership, PRO_PERKS, PLANS, PRICE, proOpen, PRO_COMING } from '../services/plan.js';
 import { BANNERS, BANNER_IDS, bannerThumb, validBanner } from '../ui/banner.js';
 import { isClean } from '../services/names.js';
 import { withTwoStep } from '../ui/twostep.js';
@@ -552,21 +552,19 @@ function proSection() {
     if (plan.pro) {
       const until = m && m.until ? Number(m.until) : 0;
       const days = until ? Math.max(0, Math.ceil((until - Date.now()) / 86400000)) : 0;
-      const status = always ? 'Included with your account' : m && m.paid ? `Paid · active until ${fmtDate(until)}` : until ? `Gift from Quickzy · until ${fmtDate(until)}` : 'Active';
+      const status = always ? 'Included with your account' : m && m.test ? `Test payment (not real) · until ${fmtDate(until)}` : m && m.paid ? `Paid · active until ${fmtDate(until)}` : until ? `Gift from Quickzy · until ${fmtDate(until)}` : 'Active';
       fill(box,
         h('div', { class: 'pro-card is-pro' },
           h('div', { class: 'pro-card-top' }, verifiedBadge(null, 'pro'), h('div', { class: 'grow' }, h('b', {}, 'You have Quickzy Pro'), h('small', {}, status)),
             !always && until ? h('div', { class: 'pro-days' }, h('b', {}, String(days)), h('small', {}, days === 1 ? 'day left' : 'days left')) : null),
           !always && until ? h('div', { class: 'pro-bar' }, h('i', { style: { width: `${Math.max(3, Math.min(100, Math.round((days / 365) * 100)))}%` } })) : null),
         limits,
-        m && m.paid ? row('Subscription', 'Change your card, see receipts, or cancel. Pro stays on until the end of the time you paid for.',
-          h('a', { class: 'btn btn-sm', href: manageUrl(), target: '_blank', rel: 'noopener' }, 'Manage subscription')) : null,
-        row('What Pro gives you', PRO_PERKS.map((x) => x[1]).join(' · '), h('a', { class: 'btn btn-sm btn-ghost', href: '/pro' }, 'See Pro page')));
+        row('What Pro gives you', PRO_PERKS.map((x) => x[1]).join(' · '), proOpen() ? h('a', { class: 'btn btn-sm btn-ghost', href: '/pro' }, 'See Pro page') : null));
     } else {
       fill(box,
         h('div', { class: 'pro-card' },
-          h('div', { class: 'pro-card-top' }, h('span', { class: 'pro-free-dot' }), h('div', { class: 'grow' }, h('b', {}, 'You are on the Free plan'), h('small', {}, `Quickzy Pro is ${PRICE} a year: more players, every game, instant publishing.`)),
-            h('a', { class: 'btn btn-main btn-sm', href: '/pro' }, 'Get Quickzy Pro'))),
+          h('div', { class: 'pro-card-top' }, h('span', { class: 'pro-free-dot' }), h('div', { class: 'grow' }, h('b', {}, 'You are on the Free plan'), h('small', {}, proOpen() ? `Quickzy Pro is ${PRICE} a year: more players, every game, instant publishing.` : PRO_COMING)),
+            proOpen() ? h('a', { class: 'btn btn-main btn-sm', href: '/pro' }, 'Get Quickzy Pro') : null)),
         limits);
     }
   }).catch(() => fill(box, h('p', { class: 'muted small', style: { margin: 0 } }, 'Your plan could not be loaded right now.')));

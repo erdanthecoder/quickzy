@@ -1,12 +1,12 @@
 // plan.js — Free and Pro.
 //
-// Pro is $13.49 a year. Who is Pro lives in members/{uid} {plan, until},
-// which only the site owner can write (later: the payment system). The owner
-// is always Pro.
+// Who is Pro lives in members/{uid} {plan, until}, which only the site owner
+// can write. The owner is always Pro. Payments are not connected for now, and
+// the Pro page only shows on the test address (proOpen).
 
 import { net } from '../net/index.js';
 import { me, signedIn, setProFlag } from './session.js';
-import { OWNER_UID, BADGES, PRO_FREE, SUPABASE, STRIPE } from '../config.js';
+import { OWNER_UID, BADGES, PRO_FREE, TEST_HOST } from '../config.js';
 
 export const PRICE = '$13.49';
 
@@ -54,49 +54,62 @@ const known = new Map();      // answers already in, for code that cannot wait
 /** Pro, for the signed-in account, if we already know (false until then). */
 export const proNow = () => Boolean(signedIn() && known.get(me().uid));
 
+/* The fake checkout on the test site: "test Pro" for this account, on this
+ * device only, and only on the test address (or a computer running Quickzy
+ * for testing). No money moves and nothing is saved on the server, so it can
+ * never give anyone real Pro on the main site. */
+const TEST_KEY = (uid) => `quickzy.testPro.${uid}`;
+const testSite = () => typeof location !== 'undefined' && (location.hostname === TEST_HOST || /^(localhost|127\.)/.test(location.hostname));
+export function testProUntil(uid) {
+  if (!uid || !testSite() || !me() || me().uid !== uid) return 0;
+  try { return Number(localStorage.getItem(TEST_KEY(uid))) || 0; } catch { return 0; }
+}
+export function startTestPro(days = 7) {
+  const uid = me().uid; const until = Date.now() + days * 86400000;
+  try { localStorage.setItem(TEST_KEY(uid), String(until)); } catch { /* private mode */ }
+  forget(uid); setProFlag(true);
+  return until;
+}
+export function stopTestPro() {
+  const uid = me().uid;
+  try { localStorage.removeItem(TEST_KEY(uid)); localStorage.removeItem(`quickzy.proLetter.${uid}`); } catch { /* ignore */ }
+  forget(uid); setProFlag(false);
+}
+
 /** Is this account Pro right now? */
 export function isPro(uid) {
   if (!uid) return Promise.resolve(false);
+  if (testProUntil(uid) > Date.now()) { known.set(uid, true); setProFlag(true); return Promise.resolve(true); }
   if (uid === OWNER_UID || BADGES[uid] === 'official' || PRO_FREE.includes(uid)) { known.set(uid, true); return Promise.resolve(true); }
   if (trialOn()) { known.set(uid, true); if (me() && me().uid === uid) setProFlag(true); return Promise.resolve(true); }
   if (!cache.has(uid)) {
-    // Firestore holds members the owner gave Pro to (and paid ones, synced every
-    // 15 minutes); Supabase knows paid members the moment Stripe tells it.
-    const fs = net.store.get('members', uid)
+    // Firestore holds the members the owner gave Pro to
+    cache.set(uid, net.store.get('members', uid)
       .then((m) => Boolean(m && m.plan === 'pro' && (m.until || 0) > Date.now()))
-      .catch(() => false);
-    cache.set(uid, Promise.all([fs, paidUntil(uid)])
-      .then(([a, until]) => a || until > Date.now())
+      .catch(() => false)
       .then((v) => { known.set(uid, v); if (me() && me().uid === uid) setProFlag(v); return v; }));
   }
   return cache.get(uid);
 }
 export const forget = (uid) => { cache.delete(uid); known.delete(uid); };
 
-/** When a paid membership ends (ms), from the Stripe webhook's table; 0 if none. */
-export async function paidUntil(uid) {
-  if (!uid || !/^[A-Za-z0-9]{10,40}$/.test(uid) || typeof fetch !== 'function') return 0;
-  // the local dev server and the browser tests have no real payments
-  if (typeof location !== 'undefined' && ['localhost', '127.0.0.1'].includes(location.hostname)) return 0;
-  try {
-    const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined;
-    const r = await fetch(`${SUPABASE.url}/rest/v1/pro_members?uid=eq.${uid}&select=until`, { headers: { apikey: SUPABASE.key }, signal });
-    if (!r.ok) return 0;
-    const rows = await r.json();
-    return Number(rows[0] && rows[0].until) || 0;
-  } catch { return 0; }
-}
-
+/** Who has Pro: members/{uid}, given by the owner. (Payments are not connected.) */
 export async function membership(uid) {
   if (!uid) return null;
-  const [m, until] = await Promise.all([net.store.get('members', uid).catch(() => null), paidUntil(uid)]);
-  if (until > Date.now() && (!m || (m.until || 0) < until)) return { plan: 'pro', until, paid: true };
-  return m;
+  const test = testProUntil(uid);
+  if (test > Date.now()) return { plan: 'pro', until: test, test: true };
+  return net.store.get('members', uid).catch(() => null);
 }
 
-/** The Stripe page to pay for Pro, tied to this account. */
-export const payUrl = (uid) => `${STRIPE.payLink}?client_reference_id=${encodeURIComponent(uid)}`;
-export const manageUrl = () => STRIPE.manage;
+/**
+ * Quickzy Pro is hidden for now: it is only shown (the Pro page, the Get Pro
+ * buttons) on the test address and on a computer running Quickzy for
+ * testing. Everywhere else the gold PRO badges stay, and Pro-only things say
+ * "coming soon". People who already have Pro keep it everywhere.
+ */
+export const proOpen = () => typeof location === 'undefined' || location.hostname === TEST_HOST
+  || /^(localhost|127\.)/.test(location.hostname) || Boolean(location.port);
+export const PRO_COMING = 'Quickzy Pro is coming soon!';
 
 /** The plan of whoever is signed in. */
 export async function myPlan() {

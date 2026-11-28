@@ -1,6 +1,6 @@
 // host-setup.js — choose how to play a quiz, then open a lobby.
 
-import { myPlan } from '../services/plan.js';
+import { myPlan, proOpen, PRO_COMING } from '../services/plan.js';
 import { h, fill, plural } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { toggle, segmented, busy, toast } from '../ui/kit.js';
@@ -52,7 +52,7 @@ export default async function HostSetup({ params }) {
       'aria-pressed': String(m.id === s.mode),
       onclick: () => {
         if (soon) { toast(`${m.name} arrives with Quickzy 1.2 on ${new Date(m.releaseAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}!`); return; }
-        if (locked) { toast(`${m.name} is for Pro members. Go Pro to host every game.`, 'bad'); navigate('/pro'); return; }
+        if (locked) { toast(proOpen() ? `${m.name} is for Pro members. Go Pro to host every game.` : `${m.name} is for Pro members. ${PRO_COMING}`, 'bad'); if (proOpen()) navigate('/pro'); return; }
         s.mode = m.id; drawModes(); drawOptions();
       },
     }, h('span', { class: 'mode-stage' }, h('span', { class: 'mode-spot' }), modeArt(m.id)), h('span', { class: 'mode-text' }, h('b', {}, m.name), h('small', {}, m.tagline)),

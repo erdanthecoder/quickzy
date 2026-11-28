@@ -6,7 +6,7 @@ import { icon, logo, verifiedBadge } from '../ui/icons.js';
 import { blook } from '../ui/blooks.js';
 import { modal } from '../ui/kit.js';
 import { signedIn, myProfile, me } from '../services/session.js';
-import { myPlan, membership, PRICE, PRO_PERKS, PRO_SOON, PLANS, trialOn, TRIAL_ENDS, payUrl, manageUrl, forget } from '../services/plan.js';
+import { myPlan, membership, PRICE, PRO_PERKS, PRO_SOON, PLANS, trialOn, TRIAL_ENDS, proOpen, startTestPro, stopTestPro } from '../services/plan.js';
 import { navigate } from '../router.js';
 import { celebrate } from '../ui/confetti.js';
 import { sfx } from '../game/sound.js';
@@ -38,15 +38,62 @@ export async function maybeShowLetter() {
   proLetter();
 }
 
+/**
+ * The pretend checkout on the test site: it looks and feels like paying, but
+ * no money moves. Card 4242 4242 4242 4242 is approved; 4000 0000 0000 0002
+ * is declined, to try what happens when a payment fails.
+ */
+function fakeCheckout() {
+  const p = myProfile() || {};
+  return modal((close) => {
+    const card = h('input', { class: 'input', inputmode: 'numeric', autocomplete: 'off', value: '4242 4242 4242 4242', 'aria-label': 'Card number' });
+    const exp = h('input', { class: 'input', value: '12 / 34', 'aria-label': 'Expiry date' });
+    const cvc = h('input', { class: 'input', value: '123', inputmode: 'numeric', 'aria-label': 'Security code' });
+    const name = h('input', { class: 'input', value: p.displayName || '', 'aria-label': 'Name on card' });
+    const msg = h('p', { class: 'fc-msg', 'aria-live': 'polite' });
+    const pay = h('button', { class: 'btn btn-main btn-lg btn-block' }, icon('lock', { size: 16 }), 'Pay $0.00 today');
+    card.addEventListener('input', () => { card.value = card.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); });
+    pay.addEventListener('click', async () => {
+      const digits = card.value.replace(/\D/g, '');
+      msg.className = 'fc-msg'; msg.textContent = '';
+      if (digits.length !== 16 || !name.value.trim()) { msg.className = 'fc-msg is-bad'; msg.textContent = 'Fill in the card and the name.'; return; }
+      pay.disabled = true;
+      for (const step of ['Talking to the bank… (pretend)', 'Checking the card… (pretend)']) { pay.textContent = step; await new Promise((r) => setTimeout(r, 700)); }
+      if (digits === '4000000000000002') {
+        sfx('wrong'); pay.disabled = false; pay.replaceChildren(icon('lock', { size: 16 }), 'Try again');
+        msg.className = 'fc-msg is-bad'; msg.textContent = 'Card declined (test card). Nothing was charged.';
+        return;
+      }
+      sfx('coin'); pay.replaceChildren(icon('check', { size: 16 }), 'Payment approved!');
+      setTimeout(() => close('paid'), 600);
+    });
+    return [h('div', { class: 'fc' },
+      h('div', { class: 'fc-top' }, h('b', {}, 'Quickzy Pay'), h('span', { class: 'fc-test' }, 'TEST · no real money')),
+      h('div', { class: 'fc-order' },
+        h('div', {}, h('b', {}, 'Quickzy Pro'), h('small', {}, `7 days free, then ${PRICE} a year`)),
+        h('div', { class: 'fc-today' }, h('small', {}, 'Today'), h('b', {}, '$0.00'))),
+      h('label', { class: 'fc-field' }, h('small', {}, 'Card number'), card),
+      h('div', { class: 'fc-row' }, h('label', { class: 'fc-field' }, h('small', {}, 'Expiry'), exp), h('label', { class: 'fc-field' }, h('small', {}, 'CVC'), cvc)),
+      h('label', { class: 'fc-field' }, h('small', {}, 'Name on card'), name),
+      msg, pay,
+      h('small', { class: 'fc-note' }, 'Test site: this is pretend. Use 4000 0000 0000 0002 to try a declined card.'))];
+  });
+}
+
 export default async function Pro() {
+  // hidden for now: only the test address shows the Pro page
+  if (!proOpen()) { queueMicrotask(() => navigate('/', { replace: true })); return h('div'); }
   pageTitle('Quickzy Pro');
-  const justPaid = new URLSearchParams(location.search).get('paid') === '1';
-  if (justPaid && signedIn()) { forget(me().uid); try { localStorage.removeItem(`quickzy.proLetter.${me().uid}`); } catch { /* ignore */ } }
   const plan = await myPlan();
-  if (justPaid && plan.pro) setTimeout(() => proLetter(), 400);
-  const getPro = () => {
+  // payments are not connected yet: the test site pays with pretend money
+  const getPro = async () => {
     if (!signedIn()) { navigate('/login?next=/pro'); return; }
-    location.href = payUrl(me().uid);
+    if (await fakeCheckout() !== 'paid') return;
+    startTestPro();
+    // the letter is shown right here, not again after the reload
+    try { localStorage.setItem(`quickzy.proLetter.${me().uid}`, '1'); } catch { /* ignore */ }
+    await proLetter();
+    location.reload();
   };
   const m = plan.pro && signedIn() ? await membership(me().uid) : null;
   const perk = ([ic, title, text], soon = false) => h('li', { class: soon ? 'is-soon' : '' },
@@ -64,14 +111,12 @@ export default async function Pro() {
         ? h('div', { class: 'row', style: { justifyContent: 'center' } },
           h('span', { class: 'pro-member' }, icon('check', { size: 18 }), m && m.until ? `You are a Pro member until ${new Date(m.until).toLocaleDateString()}` : trialOn() ? 'You have Pro in the free test' : 'You are a Pro member'),
           h('button', { class: 'btn', onclick: () => proLetter() }, icon('mail', { size: 16 }), 'Read your letter'),
-          m && m.paid ? h('a', { class: 'btn', href: manageUrl(), target: '_blank', rel: 'noopener' }, icon('gear', { size: 16 }), 'Manage subscription') : null)
+          m && m.test ? h('button', { class: 'btn', onclick: () => { stopTestPro(); location.reload(); } }, 'Stop test Pro') : null)
         : h('div', { class: 'pro-price' },
           h('div', { class: 'pro-trial' }, icon('star', { size: 18 }), 'Try it 7 days free'),
           h('b', {}, PRICE), h('span', {}, 'a year, after 7 free days. Cancel any time.'),
           h('button', { class: 'btn btn-main btn-lg', onclick: getPro }, 'Start my free week'),
-          justPaid ? h('small', { class: 'pro-wait' }, 'Thank you! Your payment went through. Pro turns on within a minute: refresh this page.') : null,
-          h('small', {}, 'Ask a parent or guardian before buying. Cancel any time. ',
-            h('a', { href: manageUrl(), target: '_blank', rel: 'noopener' }, 'Manage a subscription')))),
+          h('small', {}, 'Test site: you pay with pretend money, so you can try it.'))),
     h('div', { class: 'pro-cols' },
       h('section', { class: 'card stack' }, h('h2', {}, 'What Pro members get'), h('ul', { class: 'pro-list' }, ...PRO_PERKS.map((p) => perk(p)), ...PRO_SOON.map((p) => perk(p, true)))),
       h('section', { class: 'card stack' }, h('h2', {}, 'Free accounts'),
