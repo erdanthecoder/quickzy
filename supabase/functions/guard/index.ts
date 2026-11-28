@@ -22,7 +22,10 @@ import {
 
 const PROJECT = 'akylduukodo';
 const sql = postgres(Deno.env.get('SUPABASE_DB_URL')!, { max: 3, prepare: false });
-const ORIGINS = ['https://quickzy.web.app', 'https://quickzy.work.gd', 'https://akylduukodo.web.app', 'https://akylduukodo.firebaseapp.com'];
+// Quickzy's newer addresses share passkeys with quickzy.web.app: the browser
+// checks that they are listed at https://quickzy.web.app/.well-known/webauthn
+const SHARED = ['https://quickzy.foo.ng', 'https://quickzy.is-my.app', 'https://quickzy.vexr.dev'];
+const ORIGINS = ['https://quickzy.web.app', 'https://quickzy.work.gd', 'https://akylduukodo.web.app', 'https://akylduukodo.firebaseapp.com', ...SHARED];
 const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
 
 /* ----------------------------------------------------------- helpers */
@@ -152,7 +155,7 @@ async function route(path: string, req: Request, body: any, origin: string) {
     return { ready: true };
   }
 
-  const rpID = new URL(origin).hostname;
+  const rpID = SHARED.includes(origin) ? 'quickzy.web.app' : new URL(origin).hostname;
 
   // passkey sign-in: nobody is signed in yet
   if (path === 'passkey/login/options') {

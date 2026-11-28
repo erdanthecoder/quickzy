@@ -58,9 +58,26 @@
             "value": "default-src 'self'; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://*.firebaseio.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' blob: data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://shzujparccfpnunfnhhk.supabase.co https://api.pwnedpasswords.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://akylduukodo.firebaseapp.com https://quickzy.web.app; frame-src 'self' https://akylduukodo.firebaseapp.com https://quickzy.web.app https://accounts.google.com https://apis.google.com https://www.youtube.com https://www.youtube-nocookie.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
           }
         ]
+      },
+      {
+        "source": "/.well-known/webauthn",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
       }
     ],
     "rewrites": [
+      {
+        "source": "/.well-known/webauthn",
+        "destination": "/webauthn.json"
+      },
       {
         "source": "**",
         "destination": "/index.html"
