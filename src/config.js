@@ -22,8 +22,16 @@ export const firebaseConfig = {
 
 export const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2';
 
-/** The public address people are sent to when they scan a join code. */
-export const PUBLIC_URL = 'https://quickzy.web.app';
+/** Quickzy's main address: the one shown and shared everywhere. */
+export const MAIN_HOST = 'quickzy.foo.ng';
+export const PUBLIC_URL = `https://${MAIN_HOST}`;
+// on a computer running Quickzy for testing (localhost, a port) links keep
+// pointing at that computer; everywhere else they use the main address
+const testing = () => typeof location !== 'undefined' && (/^(localhost|127\.|\[)/.test(location.hostname) || Boolean(location.port));
+/** The address to show people ("Join at …"). */
+export const mainHost = () => (testing() ? location.host : MAIN_HOST);
+/** The start of links to share (join codes, homework, invites, profiles). */
+export const mainOrigin = () => (testing() ? location.origin : PUBLIC_URL);
 
 export const LIMITS = {
   nameMax: 16,

@@ -15,6 +15,7 @@ import { sfx } from '../game/sound.js';
 import { pageTitle } from './parts.js';
 import NotFound from './notfound.js';
 import { slideView, THEME_INFO, BGS, COLS } from './slides.js';
+import { mainHost } from '../config.js';
 
 async function proGate() {
   if (!signedIn()) { navigate('/login?next=/present'); return h('div'); }
@@ -249,7 +250,7 @@ async function editor(id) {
           big('skip', 'From this slide', () => startShow(cur)),
           h('small', {}, 'Start')),
         h('div', { class: 'pp-group' },
-          h('p', { class: 'pp-help' }, 'While presenting: ← → to move, B for a black screen, N for your notes, F for full screen. Your audience joins at ', h('b', {}, location.host), ' with the PIN on screen.'),
+          h('p', { class: 'pp-help' }, 'While presenting: ← → to move, B for a black screen, N for your notes, F for full screen. Your audience joins at ', h('b', {}, mainHost()), ' with the PIN on screen.'),
           h('small', {}, 'Tips')));
     }
     drawSide();

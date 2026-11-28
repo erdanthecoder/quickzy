@@ -1,0 +1,52 @@
+name: Custom domain
+
+# Connects our own addresses to the Quickzy site on Firebase Hosting.
+# Firebase then waits for the address to point at quickzy.web.app (a CNAME)
+# and gives it an https certificate by itself. Safe to run again.
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['.github/workflows/custom-domain.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DOMAINS: quickzy.foo.ng,quickzy.is-my.app,quickzy.vexr.dev
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Connect the domains
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AKYLDUUKODO }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npm install --no-save --no-package-lock google-auth-library@9.14.2 >/dev/null 2>&1
+          node -e "
+            const { GoogleAuth } = require('google-auth-library');
+            (async () => {
+              const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform', 'https://www.googleapis.com/auth/firebase'] });
+              const client = await auth.getClient();
+              const base = 'https://firebasehosting.googleapis.com/v1beta1/projects/akylduukodo/sites/quickzy/customDomains';
+              for (const d of process.env.DOMAINS.split(',').map((x) => x.trim()).filter(Boolean)) {
+                let cur = null;
+                try { cur = (await client.request({ url: base + '/' + d })).data; } catch (e) { if (!e.response || e.response.status !== 404) throw e; }
+                if (!cur) {
+                  await client.request({ url: base + '?customDomainId=' + encodeURIComponent(d), method: 'POST', data: {} });
+                  console.log('Connected', d);
+                  cur = (await client.request({ url: base + '/' + d })).data;
+                } else console.log('Already connected', d);
+                console.log(d, 'host:', cur.hostState, 'ownership:', cur.ownershipState, 'cert:', cur.cert && cur.cert.state);
+              }
+            })().catch((e) => { console.error('Failed:', e.response ? JSON.stringify(e.response.data) : e.message); process.exit(1); });
+          "
+      - name: Forget the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

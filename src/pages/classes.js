@@ -13,6 +13,7 @@ import * as hw from '../services/homework.js';
 import { myQuizzes } from '../services/quizzes.js';
 import { pageTitle } from './parts.js';
 import NotFound from './notfound.js';
+import { mainHost } from '../config.js';
 
 export const CLASS_COLORS = ['#6b4cff', '#ff4772', '#12c9a6', '#ff8a2a', '#2f9bff', '#a560ff', '#ffb21f', '#0fb5d6'];
 const colorOf = (c) => CLASS_COLORS[(c && c.color) | 0] || CLASS_COLORS[0];
@@ -331,7 +332,7 @@ export async function ClassPage({ params }) {
       h('div', { class: 'row' },
         h('button', { class: 'btn btn-sm', onclick: () => copy(c.code, 'Class code copied') }, icon('copy', { size: 14 }), 'Copy'),
         h('button', { class: 'btn btn-sm', onclick: () => changeCode() }, icon('edit', { size: 14 }), 'Change')),
-      h('small', { class: 'muted' }, `Students go to ${location.host}/classes and type it.`)) : null;
+      h('small', { class: 'muted' }, `Students go to ${mainHost()}/classes and type it.`)) : null;
     const add = teacher ? h('button', { class: 'btn btn-sm btn-main', onclick: () => addDialog() }, icon('plus', { size: 14 }), 'Add people') : null;
     const personRow = (p) => h('li', { class: 'cls-person' },
       blook(p.blook || 'fox', 32),

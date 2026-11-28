@@ -6,6 +6,7 @@
 
 import { net } from '../net/index.js';
 import { me, myProfile, signedIn } from './session.js';
+import { mainOrigin } from '../config.js';
 
 const COL = 'homework';
 
@@ -40,4 +41,4 @@ export async function submit(id, { score, right, total }) {
   return true;
 }
 
-export const linkFor = (id) => `${location.origin}/hw/${id}`;
+export const linkFor = (id) => `${mainOrigin()}/hw/${id}`;

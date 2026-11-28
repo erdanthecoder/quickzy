@@ -14,6 +14,7 @@ import { toast, modal } from '../ui/kit.js';
 import { h } from '../ui/dom.js';
 import { blook } from '../ui/blooks.js';
 import { sfx } from '../game/sound.js';
+import { mainOrigin } from '../config.js';
 
 const KEY = 'quickzy.ref';
 export const NEW_FRIEND_COINS = 100;
@@ -30,7 +31,7 @@ export function captureRef() {
 
 /** The link to share: the site, with you as the inviter when signed in. */
 export function inviteLink() {
-  const base = `${location.origin}/`;
+  const base = `${mainOrigin()}/`;
   return signedIn() ? `${base}?ref=${me().uid}` : base;
 }
 
