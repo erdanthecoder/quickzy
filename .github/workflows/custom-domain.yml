@@ -2,7 +2,8 @@ name: Custom domain
 
 # Connects our own addresses to the Quickzy site on Firebase Hosting.
 # Firebase then waits for the address to point at quickzy.web.app (a CNAME)
-# and gives it an https certificate by itself. Safe to run again.
+# and gives it an https certificate by itself. Addresses in REMOVE are
+# disconnected. Safe to run again.
 on:
   push:
     branches: [main, 'claude/**']
@@ -17,7 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      DOMAINS: quickzy.foo.ng,quickzy.is-my.app,quickzy.vexr.dev
+      DOMAINS: quickzy.foo.ng,quickzy.is-my.app
+      REMOVE: quickzy.vexr.dev,quickzy.work.gd
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -44,6 +46,10 @@ jobs:
                   cur = (await client.request({ url: base + '/' + d })).data;
                 } else console.log('Already connected', d);
                 console.log(d, 'host:', cur.hostState, 'ownership:', cur.ownershipState, 'cert:', cur.cert && cur.cert.state);
+              }
+              for (const d of (process.env.REMOVE || '').split(',').map((x) => x.trim()).filter(Boolean)) {
+                try { await client.request({ url: base + '/' + d, method: 'DELETE' }); console.log('Removed', d); }
+                catch (e) { if (e.response && e.response.status === 404) console.log('Not connected', d); else throw e; }
               }
             })().catch((e) => { console.error('Failed:', e.response ? JSON.stringify(e.response.data) : e.message); process.exit(1); });
           "

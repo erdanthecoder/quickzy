@@ -1,8 +1,8 @@
 name: Sign-in domains
 
 # Makes sure every address Quickzy is served from may use Firebase sign-in
-# (Authentication → Settings → Authorized domains). Adds what is missing,
-# never removes anything.
+# (Authentication → Settings → Authorized domains). Adds what is missing
+# and takes away only the addresses listed in REMOVE.
 on:
   push:
     branches: [main, 'claude/**']
@@ -17,7 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      DOMAINS: quickzy.work.gd,quickzy.foo.ng,quickzy.is-my.app,quickzy.vexr.dev
+      DOMAINS: quickzy.foo.ng,quickzy.is-my.app
+      REMOVE: quickzy.vexr.dev,quickzy.work.gd
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -38,11 +39,14 @@ jobs:
               const cur = (await client.request({ url })).data;
               const have = cur.authorizedDomains || [];
               const want = process.env.DOMAINS.split(',').map((d) => d.trim()).filter(Boolean);
+              const drop = (process.env.REMOVE || '').split(',').map((d) => d.trim()).filter(Boolean);
               const missing = want.filter((d) => !have.includes(d));
+              const gone = have.filter((d) => drop.includes(d));
               console.log('Authorized now:', have.join(', '));
-              if (!missing.length) { console.log('Nothing to add.'); return; }
-              await client.request({ url: url + '?updateMask=authorizedDomains', method: 'PATCH', data: { authorizedDomains: [...have, ...missing] } });
-              console.log('Added:', missing.join(', '));
+              if (!missing.length && !gone.length) { console.log('Nothing to change.'); return; }
+              const next = [...have.filter((d) => !drop.includes(d)), ...missing];
+              await client.request({ url: url + '?updateMask=authorizedDomains', method: 'PATCH', data: { authorizedDomains: next } });
+              console.log('Added:', missing.join(', ') || '-', '| Removed:', gone.join(', ') || '-');
             })().catch((e) => { console.error('Failed:', e.response ? JSON.stringify(e.response.data) : e.message); process.exit(1); });
           "
       - name: Forget the key

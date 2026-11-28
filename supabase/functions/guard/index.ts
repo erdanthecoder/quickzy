@@ -24,8 +24,8 @@ const PROJECT = 'akylduukodo';
 const sql = postgres(Deno.env.get('SUPABASE_DB_URL')!, { max: 3, prepare: false });
 // Quickzy's newer addresses share passkeys with quickzy.web.app: the browser
 // checks that they are listed at https://quickzy.web.app/.well-known/webauthn
-const SHARED = ['https://quickzy.foo.ng', 'https://quickzy.is-my.app', 'https://quickzy.vexr.dev'];
-const ORIGINS = ['https://quickzy.web.app', 'https://quickzy.work.gd', 'https://akylduukodo.web.app', 'https://akylduukodo.firebaseapp.com', ...SHARED];
+const SHARED = ['https://quickzy.foo.ng', 'https://quickzy.is-my.app'];
+const ORIGINS = ['https://quickzy.web.app', 'https://akylduukodo.web.app', 'https://akylduukodo.firebaseapp.com', ...SHARED];
 const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
 
 /* ----------------------------------------------------------- helpers */
