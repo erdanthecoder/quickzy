@@ -267,7 +267,7 @@ export function playStory() {
         g.fillStyle = '#17133f'; g.fillRect(0, 0, W, 70);
         if (logoImg.complete) g.drawImage(logoImg, 16, 10, 50, 50);
         g.fillStyle = '#fff'; g.font = '400 34px "Bricolage Grotesque", system-ui'; g.textAlign = 'left'; g.fillText('Quickzy', 76, 47);
-        g.fillStyle = '#9b97c4'; g.font = '700 18px Figtree, system-ui'; g.fillText('quickzy.work.gd', 820, 44);
+        g.fillStyle = '#9b97c4'; g.font = '700 18px Figtree, system-ui'; g.fillText('quickzy.foo.ng', 820, 44);
         g.textAlign = 'center';
         if (step === 0) {
           const grad = g.createLinearGradient(0, 90, W, 400); grad.addColorStop(0, '#6b4cff'); grad.addColorStop(1, '#ff4772');
