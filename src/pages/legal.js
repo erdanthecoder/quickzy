@@ -26,7 +26,7 @@ export default async function Legal({ path }) {
   const terms = path.startsWith('/terms');
   pageTitle(terms ? 'Terms' : 'Privacy');
   const items = terms ? TERMS : PRIVACY;
-  return h('div', { class: 'page narrow' },
+  return h('div', { class: 'page narrow legal' },
     h('h1', {}, terms ? 'Terms of use' : 'Privacy'),
     h('p', { class: 'muted' }, terms ? 'The rules for using Quickzy, short and clear.' : 'What Quickzy knows about you, and what it does with it.'),
     h('div', { class: 'card stack' }, ...items.map(([title, text]) => h('section', {}, h('h3', {}, title), h('p', { style: { margin: '4px 0 0' } }, text)))),

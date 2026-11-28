@@ -46,6 +46,13 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* it feels like an app: tapping and holding never highlights the screen or
+   pops up the copy menu. Typing, and reading the terms, still can. */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* no zooming in by accident when tapping fast (pinch to zoom still works) */
+html { touch-action: manipulation; }
+input, textarea, select, [contenteditable], .selectable, .legal { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+img, svg, canvas { -webkit-user-drag: none; }
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg);
