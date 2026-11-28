@@ -8,8 +8,10 @@
 //   1 Meadow           plain ledges, to learn the jump
 //   2 Whisper Woods    ledges that slide side to side
 //   3 Ice Caves        slippery ice: you keep sliding
-//   4 Sandstorm Cliffs wind pushes you, sandstone crumbles
-//   5 Thunder Clouds   storm clouds blink in and out, bouncy puffs
+//   4 Candy Kingdom    springy jelly bounces you higher, cookies crumble
+//                      (they wobble first, and come back)
+//   5 Thunder Clouds   storm clouds blink on a steady beat (they flicker
+//                      before they go), bouncy puffs
 //   6 Star Summit      low gravity, drifting and fading ledges
 // Every level starts on a wide gate ledge you can never fall below. Miss a
 // jump anywhere else and you drop, maybe a long way. Don't look down.
@@ -34,12 +36,13 @@ const RUN = 330;
 const MAX_FLOOR_RATE = 3;         // ledges per second the host will believe
 const START_ENERGY = 10;
 const REFUEL = 8;
+const CRUMBLE = 1.3;              // seconds a cookie holds you before it crumbles
 
 export const WORLDS = [
   { name: 'Meadow', sky: ['#78cbff', '#cdf6c4'], ledge: '#ffffff', edge: '#4bb35f', ink: '#17133f' },
   { name: 'Whisper Woods', sky: ['#245a49', '#8fd97f'], ledge: '#a8703c', edge: '#5b3a1a', ink: '#fff' },
   { name: 'Ice Caves', sky: ['#7fdcff', '#eafbff'], ledge: '#c9f2ff', edge: '#59b8e6', ink: '#17133f' },
-  { name: 'Sandstorm Cliffs', sky: ['#ff9f5a', '#ffe1a0'], ledge: '#e8b46a', edge: '#a8682a', ink: '#17133f' },
+  { name: 'Candy Kingdom', sky: ['#ff7ac8', '#ffe3f2'], ledge: '#fff3fa', edge: '#ff4fa3', ink: '#17133f' },
   { name: 'Thunder Clouds', sky: ['#2c3060', '#7a80b8'], ledge: '#eef0ff', edge: '#9aa2d8', ink: '#17133f' },
   { name: 'Star Summit', sky: ['#070b26', '#3a2380'], ledge: '#b9a3ff', edge: '#6b4cff', ink: '#fff' },
 ];
@@ -67,6 +70,8 @@ function floorOf(seed, n, prev) {
   // narrower as each level goes on, and a little narrower each level
   let w = 175 - level * 9 - into * 2.6 - r() * 30;
   if (level === 2) w += 20;           // ice is hard enough
+  if (level === 3) w += 16;           // so are crumbling cookies
+  if (level === 4) w += 14;           // and blinking clouds
   w = Math.max(74, w);
   const centre = (prev.kind === 'gate' || prev.kind === 'ground' || prev.kind === 'move') ? TW / 2 : prev.x + prev.w / 2;
   const reach = 140 + r() * 70;
@@ -76,8 +81,10 @@ function floorOf(seed, n, prev) {
   const roll = r();
   if (level === 1 && roll < 0.55) kind = 'move';
   if (level === 2) kind = roll < 0.8 ? 'ice' : 'solid';
-  if (level === 3) kind = roll < 0.4 ? 'crumble' : 'solid';
-  if (level === 4) kind = roll < 0.45 ? 'blink' : roll < 0.65 ? 'bounce' : 'cloud';
+  // candy: springy jelly and cookies that crumble, never two cookies in a row
+  if (level === 3) kind = roll < 0.3 ? 'jelly' : roll < 0.55 && prev.kind !== 'crumble' ? 'crumble' : 'solid';
+  // thunder: blinking clouds, never two in a row, so there is always a way up
+  if (level === 4) kind = roll < 0.35 && prev.kind !== 'blink' ? 'blink' : roll < 0.55 ? 'bounce' : 'cloud';
   if (level === 5) kind = roll < 0.4 ? 'move' : roll < 0.75 ? 'fade' : 'solid';
   const phase = r() * Math.PI * 2;
   const speed = 0.5 + r() * 0.7 + level * 0.06;
@@ -130,14 +137,25 @@ function ledgeX(f, t) {
 }
 
 /** Is a ledge solid right now? Blinking clouds and fading crystals come and go. */
+// blinking clouds keep a steady beat: 2.6 s there, 1.2 s gone, odd and even
+// ledges taking turns
+const BLINK = 3.8; const BLINK_ON = 2.6;
+const blinkAt = (f, t) => ((t + (f.n % 2) * (BLINK / 2)) % BLINK + BLINK) % BLINK;
 function solidAt(f, t) {
-  if (f.kind === 'blink') return Math.sin(t * 1.3 + f.phase) > -0.25;
+  if (f.kind === 'blink') return blinkAt(f, t) < BLINK_ON;
   if (f.kind === 'fade') return Math.sin(t * 0.9 + f.phase) > -0.45;
   return true;
 }
 /** 0..1: how visible it is (it flickers just before vanishing). */
 function visibility(f, t) {
-  if (f.kind !== 'blink' && f.kind !== 'fade') return 1;
+  if (f.kind === 'blink') {
+    const b = blinkAt(f, t);
+    if (b >= BLINK_ON) return 0.15;
+    // a clear warning: it flickers for the last 0.7 s
+    if (b > BLINK_ON - 0.7) return Math.sin(t * 30) > 0 ? 1 : 0.4;
+    return 1;
+  }
+  if (f.kind !== 'fade') return 1;
   const k = f.kind === 'blink' ? 1.3 : 0.9;
   const v = Math.sin(t * k + f.phase);
   const cut = f.kind === 'blink' ? -0.25 : -0.45;
@@ -206,15 +224,23 @@ function drawSky(ctx, w, h, camY, t, flash = 0) {
       ctx.fillRect((n * 113) % w, (n * 71 + camY * 0.2) % h, 3, 3);
     }
   } else if (world === 3) {
-    // a hot sun and blowing sand
-    ctx.fillStyle = 'rgba(255,240,180,0.8)';
-    ctx.beginPath(); ctx.arc(w * 0.78, h * 0.2, 46, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(160,100,40,0.35)';
-    const dir = Math.sin(t * 0.5) >= 0 ? 1 : -1;
-    for (let n = 0; n < 40; n++) {
-      const x = ((n * 53 + dir * t * 260) % w + w) % w;
-      const y = (n * 97 + camY * 0.3) % h;
-      ctx.fillRect(x, y, 14, 2);
+    // candy hills, giant lollipops, and sprinkles drifting down
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    for (let n = 0; n < 5; n++) {
+      const x = ((n * 233 + t * (8 + n * 3)) % (w + 240)) - 120; const y = (n * 149 + camY * 0.12) % (h * 0.6);
+      ctx.beginPath(); ctx.ellipse(x, y, 60, 18, 0, 0, Math.PI * 2); ctx.ellipse(x + 26, y - 9, 34, 16, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let n = 0; n < 4; n++) {
+      const side = n % 2; const x = side ? w - 46 - (n > 1 ? 40 : 0) : 46 + (n > 1 ? 40 : 0);
+      const y = ((n * 190 + camY * 0.35) % (h + 200)) - 60;
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(x - 3, y, 6, 130);
+      const cols = ['#ff4772', '#ffcd1f', '#12c9a6', '#a560ff'];
+      for (let r = 34; r > 4; r -= 7) { ctx.fillStyle = cols[(r / 7 + n) % 4 | 0]; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+    }
+    const sprinkle = ['#ff4772', '#ffcd1f', '#12c9a6', '#2f9bff', '#a560ff', '#ffffff'];
+    for (let n = 0; n < 36; n++) {
+      const x = (n * 113 + Math.sin(t + n) * 14) % w; const y = (n * 71 + t * (30 + (n % 5) * 8)) % h;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(n + t); ctx.fillStyle = sprinkle[n % sprinkle.length]; ctx.fillRect(-5, -1.5, 10, 3); ctx.restore();
     }
   } else if (world === 4) {
     // dark clouds, rain, and the odd lightning flash
@@ -226,7 +252,8 @@ function drawSky(ctx, w, h, camY, t, flash = 0) {
       ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 14);
     }
     ctx.stroke();
-    if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash * 0.6})`; ctx.fillRect(0, 0, w, h); }
+    // far-off lightning: a soft glow behind the clouds, never a blinding flash
+    if (flash > 0) { ctx.fillStyle = `rgba(220,225,255,${flash * 0.3})`; ctx.fillRect(0, 0, w, h * 0.5); }
   } else {
     // stars and a ringed planet
     for (let n = 0; n < 60; n++) {
@@ -246,7 +273,7 @@ function drawSky(ctx, w, h, camY, t, flash = 0) {
 }
 
 // rock colours under each world's islands: [lit side, shade]
-const ROCK = [['#8a5a2b', '#6b4120'], ['#5b3a1a', '#3e2810'], ['#7fb8d6', '#4f8fb3'], ['#c98a4a', '#a0662e'], ['#8f97c8', '#6a72a8'], ['#5a3fb8', '#3a2380']];
+const ROCK = [['#8a5a2b', '#6b4120'], ['#5b3a1a', '#3e2810'], ['#7fb8d6', '#4f8fb3'], ['#8a4b2a', '#5e2f18'], ['#8f97c8', '#6a72a8'], ['#5a3fb8', '#3a2380']];
 
 function drawLedge(ctx, f, x, y, t, alpha = 1) {
   const W = WORLDS[f.level];
@@ -267,6 +294,26 @@ function drawLedge(ctx, f, x, y, t, alpha = 1) {
   const H = 18;
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
   rr(ctx, x + 3, y + 5, f.w, H, 8); ctx.fill();
+  if (f.kind === 'jelly') {
+    // a wobbly jelly block, springy
+    const wob = Math.sin(t * 6 + f.n) * 2;
+    ctx.fillStyle = '#3ddc84';
+    rr(ctx, x - wob / 2, y - wob / 2, f.w + wob, H + 6 + wob / 2, 10); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.45)'; rr(ctx, x + 8, y + 3, f.w * 0.4, 4, 2); ctx.fill();
+    ctx.fillStyle = '#20a85f'; rr(ctx, x, y + H, f.w, 6, 3); ctx.fill();
+    ctx.fillStyle = '#17133f'; ctx.font = '900 10px Figtree, system-ui'; ctx.textAlign = 'center'; ctx.fillText('BOING', x + f.w / 2, y + 14);
+    ctx.globalAlpha = 1;
+    return;
+  }
+  if (f.kind === 'crumble' && f.level === 3) {
+    // a big cookie with chocolate chips (it wobbles, then crumbles)
+    ctx.fillStyle = '#d9a05b'; rr(ctx, x, y, f.w, H + 4, 11); ctx.fill();
+    ctx.fillStyle = '#b97a3a'; rr(ctx, x, y + H - 2, f.w, 6, 3); ctx.fill();
+    ctx.fillStyle = '#5e2f18';
+    for (let i = 0; i < Math.floor(f.w / 18); i++) { ctx.beginPath(); ctx.arc(x + 10 + i * 18 + (i % 2) * 4, y + 6 + (i % 3) * 4, 2.6, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    return;
+  }
   if (f.kind === 'cloud' || f.kind === 'blink' || f.kind === 'bounce') {
     // puffy clouds
     ctx.fillStyle = f.kind === 'blink' ? '#c9cff5' : f.kind === 'bounce' ? '#ffd1f0' : W.ledge;
@@ -284,6 +331,7 @@ function drawLedge(ctx, f, x, y, t, alpha = 1) {
     // a floating island: a grassy top, a chunky rock body that tapers into
     // hanging stones, and a soft highlight
     const top = f.kind === 'move' ? '#ffcd1f' : f.kind === 'crumble' ? '#e7b46e' : f.kind === 'fade' ? '#a8f0ff' : f.kind === 'ice' ? '#e6fbff' : W.ledge;
+    // candy: chocolate cake with pink icing and sprinkles on top
     const rock = ROCK[f.level];
     const depth = Math.min(46, 18 + f.w * 0.16);
     const bob = f.kind === 'move' ? 0 : Math.sin(t * 1.2 + f.n) * 1.5;
@@ -317,6 +365,11 @@ function drawLedge(ctx, f, x, y, t, alpha = 1) {
       ctx.fillStyle = 'rgba(23,19,63,.45)';
       for (const d of [-1, 1]) { const ax = x + f.w / 2 + d * (f.w / 2 - 12); ctx.beginPath(); ctx.moveTo(ax + d * 6, y + 9); ctx.lineTo(ax - d * 2, y + 4); ctx.lineTo(ax - d * 2, y + 14); ctx.fill(); }
     }
+    if (f.level === 3 && f.kind === 'solid') {
+      const sp = ['#ff4772', '#ffcd1f', '#12c9a6', '#2f9bff', '#a560ff'];
+      for (let i = 6; i < f.w - 6; i += 9) { ctx.fillStyle = sp[(i + f.n) % 5]; ctx.fillRect(x + i, y + 7 + ((i * 7) % 5), 5, 2); }
+      ctx.fillStyle = W.edge; for (let i = 8; i < f.w - 8; i += 22) { ctx.beginPath(); ctx.arc(x + i, y + H - 4, 4, 0, Math.PI); ctx.fill(); }
+    }
     if (f.level === 1 && f.kind === 'solid') {
       // a bit of moss
       ctx.fillStyle = '#4bb35f';
@@ -332,7 +385,7 @@ function drawLedge(ctx, f, x, y, t, alpha = 1) {
 /** Scenery standing on a ledge: every world has its own. Purely for looks. */
 function drawProps(ctx, f, x, y, t) {
   if (f.kind === 'gate' || f.kind === 'summit') { drawGateArch(ctx, f, x, y, t); return; }
-  if (f.kind === 'ground' || f.kind === 'cloud' || f.kind === 'blink' || f.kind === 'bounce' || f.w < 90) return;
+  if (f.kind === 'ground' || f.kind === 'cloud' || f.kind === 'blink' || f.kind === 'bounce' || f.kind === 'jelly' || f.kind === 'crumble' || f.w < 90) return;
   const h1 = (f.n * 2654435761) >>> 0;
   const pick = (k) => ((h1 >>> (k * 3)) & 7) / 7;
   if (pick(0) < 0.35) return;                      // some ledges stay bare
@@ -374,11 +427,20 @@ function drawProps(ctx, f, x, y, t) {
       ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.moveTo(px + 2, y - 18); ctx.lineTo(px + 8, y - 17); ctx.lineTo(px + 2, y - 16); ctx.fill();
     }
   } else if (L === 3) {
-    // cactus and a skull rock
-    ctx.fillStyle = '#3c8d4a';
-    rr(ctx, px - 4, y - 26, 8, 26, 4); ctx.fill();
-    rr(ctx, px - 13, y - 18, 6, 10, 3); ctx.fill(); rr(ctx, px + 7, y - 22, 6, 10, 3); ctx.fill();
-    ctx.fillRect(px - 9, y - 11, 6, 3); ctx.fillRect(px + 3, y - 15, 6, 3);
+    // a lollipop, a candy cane or a cupcake
+    const kind = Math.floor(pick(2) * 3);
+    if (kind === 0) {
+      ctx.fillStyle = '#fff'; ctx.fillRect(px - 1.5, y - 26, 3, 26);
+      for (const [r, c] of [[10, '#ff4772'], [7, '#ffcd1f'], [4, '#12c9a6']]) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(px, y - 30, r, 0, Math.PI * 2); ctx.fill(); }
+    } else if (kind === 1) {
+      ctx.lineCap = 'round'; ctx.lineWidth = 5;
+      ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px, y - 22); ctx.arc(px + 6, y - 22, 6, Math.PI, 0); ctx.stroke();
+      ctx.strokeStyle = '#ff2d55'; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px, y - 22); ctx.arc(px + 6, y - 22, 6, Math.PI, 0); ctx.stroke(); ctx.setLineDash([]);
+    } else {
+      ctx.fillStyle = '#c98a4a'; ctx.beginPath(); ctx.moveTo(px - 9, y - 12); ctx.lineTo(px + 9, y - 12); ctx.lineTo(px + 6, y); ctx.lineTo(px - 6, y); ctx.fill();
+      ctx.fillStyle = '#ffb3d9'; ctx.beginPath(); ctx.arc(px, y - 14, 10, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#ff2d55'; ctx.beginPath(); ctx.arc(px, y - 25, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
   } else if (L === 4) {
     // a lightning rod that sparks
     ctx.strokeStyle = '#9aa2d8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px, y - 26); ctx.stroke();
@@ -424,8 +486,16 @@ function drawCritters(ctx, w, h, camY, t) {
     const x = ((t * speed + n * 260) % (w + 160)) - 80;
     const y = h * (0.15 + n * 0.17) + Math.sin(t * 2 + n) * 10;
     const flap = Math.sin(t * 12 + n) * 6;
-    if (world === 0 || world === 3) {
-      ctx.strokeStyle = world === 3 ? 'rgba(90,50,20,.6)' : 'rgba(23,19,63,.55)'; ctx.lineWidth = 2;
+    if (world === 3) {
+      // wrapped sweets floating by
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t + n) * 0.4);
+      ctx.fillStyle = ['#ff4772', '#ffcd1f', '#12c9a6', '#a560ff'][n];
+      ctx.beginPath(); ctx.ellipse(0, 0, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-15, -6); ctx.lineTo(-15, 6); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(15, -6); ctx.lineTo(15, 6); ctx.fill();
+      ctx.restore();
+    } else if (world === 0) {
+      ctx.strokeStyle = 'rgba(23,19,63,.55)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(x - 9, y - flap); ctx.quadraticCurveTo(x - 4, y - 4, x, y); ctx.quadraticCurveTo(x + 4, y - 4, x + 9, y - flap); ctx.stroke();
     } else if (world === 1) {
       ctx.fillStyle = `rgba(255,240,120,${0.5 + Math.sin(t * 5 + n) * 0.5})`; ctx.shadowColor = '#fff27a'; ctx.shadowBlur = 8;
@@ -523,9 +593,8 @@ export function mountPlayer(game) {
     const want = over ? 0 : ctl.x;
     me.vx = lerp(me.vx, want * RUN, me.on !== null ? (onIce ? 0.035 : 0.3) : 0.12);
     if (want) me.face = Math.sign(want);
-    // the sandstorm blows people about
-    if (level === 3 && !summitDone) me.x += Math.sin(tSec * 0.5) * (me.on === null ? 110 : 45) * dt;
-    if (level === 4 && Math.random() < dt * 0.25) { lightning = 1; sfx('drum'); }
+    // a soft flash of far-off lightning now and then (no bang, no blinding)
+    if (level === 4 && Math.random() < dt * 0.12) lightning = 0.35;
 
     if (!over && (ctl.tapped('action') || ctl.tapped('up'))) {
       if (me.on !== null) {
@@ -555,7 +624,7 @@ export function mountPlayer(game) {
       let landed = null;
       for (let n = hi; n >= lo; n--) {
         const f = getFloor(n);
-        if (!f || (crumble.get(n) || 0) > 0.8 || !solidAt(f, tSec)) continue;
+        if (!f || (crumble.get(n) || 0) > CRUMBLE || !solidAt(f, tSec)) continue;
         const x = ledgeX(f, tSec);
         const top = f.y + 22;
         if (prevY >= top - 1 && me.y <= top && me.x + PR * 0.6 > x && me.x - PR * 0.6 < x + f.w) { landed = f; me.y = top; break; }
@@ -570,7 +639,9 @@ export function mountPlayer(game) {
         me.peak = me.y;
         me.on = landed.n;
         me.vy = 0;
-        if (landed.kind === 'bounce') { me.vy = jumpV * 1.45; me.on = null; sfx('boost'); }
+        if (landed.kind === 'bounce') { me.vy = jumpV * 1.25; me.on = null; sfx('jump'); }
+        // jelly: a free little spring up (no energy used)
+        if (landed.kind === 'jelly') { me.vy = jumpV * 1.12; me.on = null; me.squash = 1.4; sfx('jump'); pop(me.x, me.y, { n: 10, color: '#7dffb0', speed: 140, life: 0.35 }); }
         if (landed.kind === 'crumble' && !crumble.has(landed.n)) crumble.set(landed.n, 0.001);
         if (landed.gem && !gemsTaken.has(landed.n)) {
           gemsTaken.add(landed.n);
@@ -596,7 +667,7 @@ export function mountPlayer(game) {
       } else if (me.on !== null) {
         const f = getFloor(me.on);
         const x = ledgeX(f, tSec);
-        if (me.x + PR * 0.6 <= x || me.x - PR * 0.6 >= x + f.w || (crumble.get(me.on) || 0) > 0.8 || !solidAt(f, tSec)) me.on = null;
+        if (me.x + PR * 0.6 <= x || me.x - PR * 0.6 >= x + f.w || (crumble.get(me.on) || 0) > CRUMBLE || !solidAt(f, tSec)) me.on = null;
       }
     }
     // ride a sliding ledge
@@ -639,8 +710,9 @@ export function mountPlayer(game) {
     for (let n = lo; n <= hi; n++) {
       const f = getFloor(n);
       const c = crumble.get(n) || 0;
-      if (c > 0.8) continue;
-      const jitter = c > 0 ? (Math.random() - 0.5) * 4 : 0;
+      if (c > CRUMBLE) continue;
+      // it wobbles more and more before it goes
+      const jitter = c > 0 ? (Math.random() - 0.5) * (2 + (c / CRUMBLE) * 6) : 0;
       const x = ledgeX(f, tSec) + jitter;
       const y = sy(f.y + 22) / s;
       drawLedge(ctx, f, x, y, tSec, visibility(f, tSec));
