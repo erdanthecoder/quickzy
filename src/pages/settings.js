@@ -552,7 +552,7 @@ function proSection() {
     if (plan.pro) {
       const until = m && m.until ? Number(m.until) : 0;
       const days = until ? Math.max(0, Math.ceil((until - Date.now()) / 86400000)) : 0;
-      const status = always ? 'Included with your account' : m && m.paid ? `Paid · active until ${fmtDate(until)}` : until ? `Gift from Quickzy · until ${fmtDate(until)}` : 'Active';
+      const status = always ? 'Included with your account' : m && m.test ? `Test payment (not real) · until ${fmtDate(until)}` : m && m.paid ? `Paid · active until ${fmtDate(until)}` : until ? `Gift from Quickzy · until ${fmtDate(until)}` : 'Active';
       fill(box,
         h('div', { class: 'pro-card is-pro' },
           h('div', { class: 'pro-card-top' }, verifiedBadge(null, 'pro'), h('div', { class: 'grow' }, h('b', {}, 'You have Quickzy Pro'), h('small', {}, status)),

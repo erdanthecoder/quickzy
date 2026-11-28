@@ -764,6 +764,22 @@ if (which === 'account' || which === 'all') {
   await host.waitForSelector('.big-score');
   await host.click('button:has-text("Other modes")');
   await setPro(false);
+  // the test site's pretend checkout: a declined card, then a good one, then stop
+  await host.goto(`${BASE}/pro`);
+  await host.click('button:has-text("Start my free week")');
+  await host.fill('.fc input[aria-label="Card number"]', '4000 0000 0000 0002');
+  await host.click('.fc button:has-text("Pay")');
+  await host.waitForSelector('.fc-msg.is-bad:has-text("declined")', { timeout: 8000 }).catch(() => fail('fake checkout: the declined card should be declined'));
+  await host.fill('.fc input[aria-label="Card number"]', '4242 4242 4242 4242');
+  await host.click('.fc button:has-text("Try again")');
+  await host.waitForSelector('.letter', { timeout: 10000 }).catch(() => fail('fake checkout: paying should show the Pro letter'));
+  await host.screenshot({ path: `${SHOTS}/fake-checkout-letter.png` });
+  await host.click('.letter button:has-text("Thank you")');
+  await host.waitForSelector('button:has-text("Stop test Pro")', { timeout: 10000 }).catch(() => fail('fake checkout: test Pro should be on'));
+  await host.click('button:has-text("Stop test Pro")');
+  await host.waitForSelector('button:has-text("Start my free week")', { timeout: 10000 });
+  await host.goto(`${BASE}/practice/${quizId}`);
+  await host.waitForSelector('.solo-modes');
   await host.waitForSelector('.solo-modes');
   await host.click('.solo-mode:has-text("Classic")');
   for (let i = 0; i < 12; i++) {

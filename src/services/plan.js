@@ -54,9 +54,32 @@ const known = new Map();      // answers already in, for code that cannot wait
 /** Pro, for the signed-in account, if we already know (false until then). */
 export const proNow = () => Boolean(signedIn() && known.get(me().uid));
 
+/* The fake checkout on the test site: "test Pro" for this account, on this
+ * device only, and only on the test address (or a computer running Quickzy
+ * for testing). No money moves and nothing is saved on the server, so it can
+ * never give anyone real Pro on the main site. */
+const TEST_KEY = (uid) => `quickzy.testPro.${uid}`;
+const testSite = () => typeof location !== 'undefined' && (location.hostname === TEST_HOST || /^(localhost|127\.)/.test(location.hostname));
+export function testProUntil(uid) {
+  if (!uid || !testSite() || !me() || me().uid !== uid) return 0;
+  try { return Number(localStorage.getItem(TEST_KEY(uid))) || 0; } catch { return 0; }
+}
+export function startTestPro(days = 7) {
+  const uid = me().uid; const until = Date.now() + days * 86400000;
+  try { localStorage.setItem(TEST_KEY(uid), String(until)); } catch { /* private mode */ }
+  forget(uid); setProFlag(true);
+  return until;
+}
+export function stopTestPro() {
+  const uid = me().uid;
+  try { localStorage.removeItem(TEST_KEY(uid)); localStorage.removeItem(`quickzy.proLetter.${uid}`); } catch { /* ignore */ }
+  forget(uid); setProFlag(false);
+}
+
 /** Is this account Pro right now? */
 export function isPro(uid) {
   if (!uid) return Promise.resolve(false);
+  if (testProUntil(uid) > Date.now()) { known.set(uid, true); setProFlag(true); return Promise.resolve(true); }
   if (uid === OWNER_UID || BADGES[uid] === 'official' || PRO_FREE.includes(uid)) { known.set(uid, true); return Promise.resolve(true); }
   if (trialOn()) { known.set(uid, true); if (me() && me().uid === uid) setProFlag(true); return Promise.resolve(true); }
   if (!cache.has(uid)) {
@@ -73,6 +96,8 @@ export const forget = (uid) => { cache.delete(uid); known.delete(uid); };
 /** Who has Pro: members/{uid}, given by the owner. (Payments are not connected.) */
 export async function membership(uid) {
   if (!uid) return null;
+  const test = testProUntil(uid);
+  if (test > Date.now()) return { plan: 'pro', until: test, test: true };
   return net.store.get('members', uid).catch(() => null);
 }
 

@@ -2752,3 +2752,19 @@ html[data-motion="calm"] .ld-logo { opacity: 1; animation: none; }
 .pk-tag.is-new { background: var(--zing); color: var(--night); }
 .pk-calm *, .pk-calm { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; }
 @media (prefers-reduced-motion: reduce) { .pk-pack svg, .pk-halo, .pk-glow, .pk-hint { animation: none !important; } }
+/* the pretend checkout on the test site */
+.fc { display: grid; gap: 12px; }
+.fc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fc-top b { font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; }
+.fc-test { background: #ffcd1f; color: #17133f; font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 99px; }
+.fc-order { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--bg-2, #f3f1ff); }
+.fc-order > div { display: grid; }
+.fc-order small { color: var(--muted, #6b6790); font-weight: 700; }
+.fc-today { text-align: right; }
+.fc-today b { font-size: 22px; }
+.fc-field { display: grid; gap: 4px; }
+.fc-field small { font-weight: 800; color: var(--muted, #6b6790); }
+.fc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fc-msg { margin: 0; min-height: 0; font-weight: 800; }
+.fc-msg.is-bad { color: #e0244a; }
+.fc-note { color: var(--muted, #6b6790); text-align: center; }
